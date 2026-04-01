@@ -97,7 +97,14 @@ export function HelpPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="sticky top-0 z-20 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur">
-        <div className="px-4 sm:px-6 lg:px-10 py-4 flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 lg:px-10 py-4 flex items-center gap-4">
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800/60 hover:text-white transition-colors"
+          >
+            <Home className="h-4 w-4" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </a>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/60">
               <BookOpenText className="h-4 w-4 text-slate-200" />
@@ -107,13 +114,6 @@ export function HelpPage() {
               <p className="text-xs text-slate-400 leading-tight">Find answers, guides, and platform documentation.</p>
             </div>
           </div>
-          <a
-            href="/"
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800/60 hover:text-white transition-colors"
-          >
-            <Home className="h-4 w-4" />
-            <span className="hidden sm:inline">Back to Dashboard</span>
-          </a>
         </div>
       </header>
 
@@ -146,23 +146,20 @@ export function HelpPage() {
                 {error}
               </div>
             ) : articles.length ? (
-              <div className="space-y-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {articles.map((article) => (
                   <a
                     key={article.id}
                     href={`/help/article/${article.slug}`}
-                    className="flex items-start justify-between gap-3 rounded-xl border border-slate-700 bg-slate-900/50 p-4 hover:bg-slate-800/60 hover:border-slate-600 transition-colors"
+                    className="flex flex-col gap-1 rounded-xl border border-slate-700 bg-slate-900/50 p-3 hover:bg-slate-800/60 hover:border-slate-600 transition-colors"
                   >
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-white">{article.title}</div>
-                      <p className="text-sm text-slate-400 mt-0.5 line-clamp-2">
-                        {article.summary || 'No summary provided.'}
-                      </p>
-                      <div className="text-xs text-slate-500 mt-1.5">
-                        Updated {new Date(article.updated_at).toLocaleDateString()}
-                      </div>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold text-white leading-snug">{article.title}</span>
+                      <ArrowRight className="h-3.5 w-3.5 flex-none text-slate-500 mt-0.5" />
                     </div>
-                    <ArrowRight className="h-4 w-4 flex-none text-slate-500 mt-0.5" />
+                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                      {article.summary || 'No summary provided.'}
+                    </p>
                   </a>
                 ))}
               </div>
