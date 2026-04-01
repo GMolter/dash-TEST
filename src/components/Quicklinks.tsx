@@ -118,6 +118,16 @@ export function Quicklinks({ editMode = false }: Props) {
     } catch { return ''; }
   };
 
+  // ── FolderIcon ────────────────────────────────────────────────────────────────
+  const FolderIcon = ({ icon, size = 40 }: { icon: string; size?: number }) => {
+    const isUrl = (icon || '').trim().startsWith('http://') || (icon || '').trim().startsWith('https://');
+    const [imgOk, setImgOk] = useState(isUrl);
+    if (isUrl && imgOk) {
+      return <img src={icon.trim()} alt="" width={size} height={size} className="rounded-md" onError={() => setImgOk(false)} />;
+    }
+    return <span className="leading-none" style={{ fontSize: Math.round(size * 0.9) }}>{icon || '📁'}</span>;
+  };
+
   // ── LinkIcon ──────────────────────────────────────────────────────────────────
   const LinkIcon = ({ link, size = 40 }: { link: Quicklink; size?: number }) => {
     const customImg = looksLikeUrl(link.icon) ? link.icon.trim() : '';
@@ -351,7 +361,7 @@ export function Quicklinks({ editMode = false }: Props) {
                     onClick={() => setExpandedFolderId(isOpen ? null : folder.id)}
                     className={`w-full hover:bg-slate-700/30 transition-colors ${isOpen ? 'flex items-center gap-3 px-4 py-3' : 'flex flex-col items-center justify-center text-center p-6'}`}
                   >
-                    <span className={`${isOpen ? 'text-xl shrink-0' : 'mb-3 text-4xl'}`}>{folder.icon}</span>
+                    <FolderIcon icon={folder.icon} size={isOpen ? 20 : 40} />
                     <span className={`text-white font-medium hover:text-blue-400 transition-colors ${isOpen ? 'text-sm' : ''}`}>{folder.name}</span>
                     {!isOpen && <span className="text-xs text-slate-500 mt-1">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>}
                   </button>
@@ -439,7 +449,7 @@ export function Quicklinks({ editMode = false }: Props) {
             <div>
               <label className="block text-sm text-slate-300 mb-2">Icon</label>
               <div className="flex gap-2 items-center">
-                <span className="text-3xl w-10 text-center shrink-0">{folderIcon}</span>
+                <span className="w-10 flex items-center justify-center shrink-0"><FolderIcon icon={folderIcon} size={32} /></span>
                 <input
                   type="text"
                   placeholder="emoji or https://…"
@@ -593,7 +603,7 @@ export function Quicklinks({ editMode = false }: Props) {
                   onClick={() => setExpandedFolderId(isExpanded ? null : folder.id)}
                   className="flex flex-col items-center w-full"
                 >
-                  <div className="mb-3 text-4xl">{folder.icon}</div>
+                  <div className="mb-3"><FolderIcon icon={folder.icon} size={40} /></div>
                   <h3 className="text-white font-medium mb-1">{folder.name}</h3>
                   <p className="text-xs text-slate-500">{count} link{count !== 1 ? 's' : ''}</p>
                 </button>
