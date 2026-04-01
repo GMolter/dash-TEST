@@ -53,6 +53,14 @@ export function Quicklinks({ editMode = false }: Props) {
   const [editingFolder, setEditingFolder] = useState<QuicklinkFolder | null>(null);
   const [folderName, setFolderName] = useState('');
   const [folderIcon, setFolderIcon] = useState('📁');
+  const [showIconPicker, setShowIconPicker] = useState(false);
+
+  const FOLDER_ICONS = [
+    '📁','📂','🗂️','💼','📚','🎯','🚀','⭐','🔧','💻',
+    '🎮','🎨','🏠','📝','🔖','📦','🌐','❤️','🔒','🎵',
+    '🎬','📸','🧪','🛠️','⚡','🌟','🔑','📊','🎓','🏆',
+    '🧠','🗺️','🌈','🔥','💡','🎁','🧩','📡','🏋️','✈️',
+  ];
 
   // ── Delete modals ────────────────────────────────────────────────────────────
   const [linkToDelete, setLinkToDelete] = useState<Quicklink | null>(null);
@@ -60,9 +68,8 @@ export function Quicklinks({ editMode = false }: Props) {
 
   // ── Drag state ───────────────────────────────────────────────────────────────
   const [dragging, setDragging] = useState<{ id: string; itemType: 'folder' | 'link' } | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  // 'into-folder' only when hovering the CENTER of a folder while dragging a link
-  const [dragMode, setDragMode] = useState<'reorder' | 'into-folder'>('reorder');
+  // side: 'before' | 'after' = insert indicator line; 'into' = drop into folder
+  const [dropTarget, setDropTarget] = useState<{ id: string; side: 'before' | 'after' | 'into' } | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
   const [draggingFolderItem, setDraggingFolderItem] = useState<string | null>(null);
   const [dragOverFolderItemId, setDragOverFolderItemId] = useState<string | null>(null);
@@ -164,7 +171,7 @@ export function Quicklinks({ editMode = false }: Props) {
 
   // ── Folder CRUD ───────────────────────────────────────────────────────────────
   const resetFolderForm = () => {
-    setFolderName(''); setFolderIcon('📁'); setShowFolderForm(false); setEditingFolder(null);
+    setFolderName(''); setFolderIcon('📁'); setShowFolderForm(false); setEditingFolder(null); setShowIconPicker(false);
   };
 
   const addFolder = async () => {
@@ -240,18 +247,14 @@ export function Quicklinks({ editMode = false }: Props) {
 
   const onDragOver = (id: string, targetItemType: 'folder' | 'link') => (e: React.DragEvent) => {
     e.preventDefault();
-    setDragOverId(id);
-
-    // Only a link being dragged over a folder can trigger 'into-folder' mode
-    if (dragging?.itemType === 'link' && targetItemType === 'folder') {
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const relX = (e.clientX - rect.left) / rect.width;
-      setDragMode(relX > 0.25 && relX < 0.75 ? 'into-folder' : 'reorder');
-    } else {
-      setDragMode('reorder');
-    }
-
     e.dataTransfer.dropEffect = 'move';
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width;
+    if (dragging?.itemType === 'link' && targetItemType === 'folder' && relX > 0.25 && relX < 0.75) {
+      setDropTarget({ id, side: 'into' });
+    } else {
+      setDropTarget({ id, side: relX < 0.5 ? 'before' : 'after' });
+    }
   };
 
   const onDropOn = (targetId: string, targetItemType: 'folder' | 'link') => async (e: React.DragEvent) => {
@@ -259,30 +262,33 @@ export function Quicklinks({ editMode = false }: Props) {
     const raw = e.dataTransfer.getData('text/plain');
     const dragId = dragging?.id ?? raw.split(':')[1];
     const dragItemType = dragging?.itemType ?? (raw.split(':')[0] as 'folder' | 'link');
+    const side = dropTarget?.side ?? 'after';
 
-    setDragging(null); setDragOverId(null);
-
+    setDragging(null); setDropTarget(null);
     if (!dragId || dragId === targetId) return;
 
-    // Drop link INTO folder
-    if (dragMode === 'into-folder' && targetItemType === 'folder' && dragItemType === 'link') {
-      setDragMode('reorder');
+    // Drop link INTO folder center
+    if (side === 'into' && targetItemType === 'folder' && dragItemType === 'link') {
       setLinks((prev) => prev.map((l) => l.id === dragId ? { ...l, folder_id: targetId } : l));
       await supabase.from('quicklinks').update({ folder_id: targetId }).eq('id', dragId);
       return;
     }
 
-    setDragMode('reorder');
-
-    // Reorder
+    // Reorder: insert before or after target
     const fromIdx = allGridItems.findIndex((i) => i.id === dragId);
     const toIdx = allGridItems.findIndex((i) => i.id === targetId);
     if (fromIdx < 0 || toIdx < 0) return;
 
-    await persistUnifiedOrder(moveItem(allGridItems, fromIdx, toIdx));
+    const items = [...allGridItems];
+    const [removed] = items.splice(fromIdx, 1);
+    const insertAt = side === 'before' ? toIdx : toIdx + 1;
+    const adjusted = insertAt > fromIdx ? insertAt - 1 : insertAt;
+    items.splice(adjusted, 0, removed);
+
+    await persistUnifiedOrder(items);
   };
 
-  const onDragEnd = () => { setDragging(null); setDragOverId(null); setDragMode('reorder'); };
+  const onDragEnd = () => { setDragging(null); setDropTarget(null); };
 
   // ── Folder-item reorder ───────────────────────────────────────────────────────
   const persistFolderOrder = async (folderId: string, reordered: Quicklink[]) => {
@@ -431,9 +437,40 @@ export function Quicklinks({ editMode = false }: Props) {
           <h3 className="text-lg font-semibold text-white mb-4">{editingFolder ? 'Edit Folder' : 'Add New Folder'}</h3>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm text-slate-300 mb-2">Icon (emoji)</label>
-              <input type="text" placeholder="📁" value={folderIcon} onChange={(e) => setFolderIcon(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <label className="block text-sm text-slate-300 mb-2">Icon</label>
+              <div className="flex gap-2 items-center">
+                <span className="text-3xl w-10 text-center shrink-0">{folderIcon}</span>
+                <input
+                  type="text"
+                  placeholder="emoji or https://…"
+                  value={folderIcon}
+                  onChange={(e) => setFolderIcon(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowIconPicker((v) => !v)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 ${showIconPicker ? 'bg-blue-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`}
+                >
+                  Pick
+                </button>
+              </div>
+              {showIconPicker && (
+                <div className="mt-2 p-3 bg-slate-900 border border-slate-700 rounded-xl">
+                  <div className="grid grid-cols-10 gap-1">
+                    {FOLDER_ICONS.map((ic) => (
+                      <button
+                        key={ic}
+                        type="button"
+                        onClick={() => { setFolderIcon(ic); setShowIconPicker(false); }}
+                        className={`text-xl p-1.5 rounded-lg hover:bg-slate-700 transition-colors ${folderIcon === ic ? 'bg-blue-600/30 ring-1 ring-blue-500' : ''}`}
+                      >
+                        {ic}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm text-slate-300 mb-2">Name</label>
@@ -512,14 +549,11 @@ export function Quicklinks({ editMode = false }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {allGridItems.map((item) => {
           const isDragging = dragging?.id === item.id;
-          const isOver = dragOverId === item.id && dragging && dragging.id !== item.id;
-          const isDropTarget = isOver && dragMode === 'into-folder' && item.itemType === 'folder';
-          const isReorderTarget = isOver && !isDropTarget;
-
+          const dt = dropTarget?.id === item.id && !isDragging ? dropTarget : null;
+          const isIntoTarget = dt?.side === 'into';
           const dragClasses = [
-            isDragging ? 'opacity-50' : '',
-            isDropTarget ? 'ring-2 ring-green-400/70 bg-slate-700/80' : '',
-            isReorderTarget ? 'ring-2 ring-blue-500/60' : '',
+            isDragging ? 'opacity-40 scale-95' : '',
+            isIntoTarget ? 'ring-2 ring-green-400/70 bg-slate-700/80' : '',
           ].join(' ');
 
           if (item.itemType === 'folder') {
@@ -544,8 +578,12 @@ export function Quicklinks({ editMode = false }: Props) {
                   <GripVertical className="w-4 h-4 text-slate-300" />
                 </button>
 
+                {/* Insert line indicator */}
+                {dt && dt.side !== 'into' && (
+                  <div className={`absolute inset-y-2 w-0.5 rounded-full bg-blue-400 pointer-events-none ${dt.side === 'before' ? 'left-0' : 'right-0'}`} />
+                )}
                 {/* Drop-into hint */}
-                {isDropTarget && (
+                {isIntoTarget && (
                   <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-green-500/10 pointer-events-none">
                     <span className="text-green-400 text-xs font-medium">Drop to add</span>
                   </div>
@@ -622,6 +660,9 @@ export function Quicklinks({ editMode = false }: Props) {
               onDragOver={onDragOver(link.id, 'link')}
               onDrop={onDropOn(link.id, 'link')}
             >
+              {dt && dt.side !== 'into' && (
+                <div className={`absolute inset-y-2 w-0.5 rounded-full bg-blue-400 pointer-events-none ${dt.side === 'before' ? 'left-0' : 'right-0'}`} />
+              )}
               <button
                 draggable
                 onDragStart={onDragStart(link.id, 'link')}
