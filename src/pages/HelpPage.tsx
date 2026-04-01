@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { MessageCircleQuestion, FileText, BookOpenText, ArrowRight, Home, ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { BookOpenText, Home, ChevronDown, Search, ArrowRight } from 'lucide-react';
 
 type HelpArticle = {
   id: string;
@@ -62,6 +62,7 @@ export function HelpPage() {
   const [articles, setArticles] = useState<HelpArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -89,10 +90,16 @@ export function HelpPage() {
     }
 
     load();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return articles;
+    return articles.filter((a) =>
+      `${a.title} ${a.summary}`.toLowerCase().includes(q)
+    );
+  }, [articles, search]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -105,70 +112,62 @@ export function HelpPage() {
             <Home className="h-4 w-4" />
             <span className="hidden sm:inline">Dashboard</span>
           </a>
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/60">
-              <BookOpenText className="h-4 w-4 text-slate-200" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-white leading-tight">Help Center</h1>
-              <p className="text-xs text-slate-400 leading-tight">Find answers, guides, and platform documentation.</p>
-            </div>
+          <div className="flex items-center gap-2.5">
+            <BookOpenText className="h-4 w-4 text-slate-400" />
+            <span className="text-sm font-medium text-slate-200">Help Center</span>
           </div>
         </div>
       </header>
 
-      <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-8">
-        <div className="grid gap-6 lg:grid-cols-5">
-          <section className="lg:col-span-2 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <MessageCircleQuestion className="h-4 w-4 text-slate-400" />
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Q&amp;A</h2>
-            </div>
-            <div className="space-y-2">
-              {QA_ITEMS.map((item) => (
-                <QAItem key={item.q} q={item.q} a={item.a} />
-              ))}
-            </div>
-          </section>
+      <div className="px-4 sm:px-6 lg:px-10 py-10 lg:py-14 space-y-10">
+        {/* Hero */}
+        <div className="text-center space-y-4 max-w-xl mx-auto">
+          <h1 className="text-3xl font-semibold text-white">How can we help?</h1>
+          <p className="text-slate-400">Search the docs or browse articles below.</p>
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search articles..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900/60 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 transition-colors"
+            />
+          </div>
+        </div>
 
-          <section className="lg:col-span-3 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="h-4 w-4 text-slate-400" />
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Docs</h2>
-            </div>
+        {/* Articles */}
+        {loading ? (
+          <p className="text-center text-sm text-slate-500">Loading articles...</p>
+        ) : error ? (
+          <p className="text-center text-sm text-red-400">{error}</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-center text-sm text-slate-500">
+            {search ? 'No articles match your search.' : 'No articles published yet.'}
+          </p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((article) => (
+              <a
+                key={article.id}
+                href={`/help/article/${article.slug}`}
+                className="flex items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-3 hover:bg-slate-800/60 hover:border-slate-600 transition-colors"
+              >
+                <span className="text-sm font-medium text-white leading-snug">{article.title}</span>
+                <ArrowRight className="h-3.5 w-3.5 flex-none text-slate-500" />
+              </a>
+            ))}
+          </div>
+        )}
 
-            {loading ? (
-              <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-3 text-sm text-slate-400">
-                Loading documentation...
-              </div>
-            ) : error ? (
-              <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                {error}
-              </div>
-            ) : articles.length ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {articles.map((article) => (
-                  <a
-                    key={article.id}
-                    href={`/help/article/${article.slug}`}
-                    className="flex flex-col gap-1 rounded-xl border border-slate-700 bg-slate-900/50 p-3 hover:bg-slate-800/60 hover:border-slate-600 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-semibold text-white leading-snug">{article.title}</span>
-                      <ArrowRight className="h-3.5 w-3.5 flex-none text-slate-500 mt-0.5" />
-                    </div>
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                      {article.summary || 'No summary provided.'}
-                    </p>
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-3 text-sm text-slate-400">
-                Documentation has not been published yet.
-              </div>
-            )}
-          </section>
+        {/* Common Questions */}
+        <div className="border-t border-slate-800 pt-8 space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Common Questions</h2>
+          <div className="space-y-2">
+            {QA_ITEMS.map((item) => (
+              <QAItem key={item.q} q={item.q} a={item.a} />
+            ))}
+          </div>
         </div>
       </div>
     </div>
