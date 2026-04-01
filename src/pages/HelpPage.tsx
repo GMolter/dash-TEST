@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BookOpenText, Home, ChevronDown, Search, ArrowRight } from 'lucide-react';
+import { BookOpenText, Home, ChevronDown, Search, ArrowRight, Users, Link2, Shield, EyeOff } from 'lucide-react';
 
 type HelpArticle = {
   id: string;
@@ -8,6 +8,13 @@ type HelpArticle = {
   summary: string;
   updated_at: string;
 };
+
+const TOPIC_TILES = [
+  { icon: Users, label: 'Organizations', sub: 'Joining, leaving, and managing teams' },
+  { icon: Link2, label: 'URL Shortener', sub: 'Shorten and manage links' },
+  { icon: EyeOff, label: 'Secret Sharing', sub: 'One-time encrypted secrets' },
+  { icon: Shield, label: 'Security & Access', sub: 'Invite codes, roles, and permissions' },
+];
 
 const QA_ITEMS = [
   {
@@ -80,7 +87,7 @@ export function HelpPage() {
 
   const query = search.trim().toLowerCase();
 
-  const sidebarArticles = useMemo(() => {
+  const filteredArticles = useMemo(() => {
     if (!query) return articles;
     return articles.filter((a) =>
       `${a.title} ${a.summary}`.toLowerCase().includes(query)
@@ -110,32 +117,19 @@ export function HelpPage() {
       <div className="flex flex-1 min-h-0">
 
         {/* Sidebar */}
-        <aside className="w-72 shrink-0 border-r border-slate-800 flex flex-col overflow-hidden">
-          {/* Sidebar search */}
+        <aside className="w-64 shrink-0 border-r border-slate-800 flex flex-col overflow-hidden">
           <div className="p-4 border-b border-slate-800">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-600 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-700/60 bg-slate-900/60 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-slate-600 transition-colors"
-              />
-            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Articles</p>
           </div>
-
-          {/* Article list */}
           <nav className="flex-1 overflow-y-auto p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 px-2 pb-2">
-              Articles
-            </p>
             {loading ? (
               <p className="text-xs text-slate-600 px-2 py-2">Loading...</p>
-            ) : sidebarArticles.length === 0 ? (
-              <p className="text-xs text-slate-600 px-2 py-2">No articles found.</p>
+            ) : articles.length === 0 ? (
+              <p className="text-xs text-slate-600 px-2 py-2">No articles yet.</p>
+            ) : filteredArticles.length === 0 ? (
+              <p className="text-xs text-slate-600 px-2 py-2">No articles match.</p>
             ) : (
-              sidebarArticles.map((article) => (
+              filteredArticles.map((article) => (
                 <a
                   key={article.id}
                   href={`/help/article/${article.slug}`}
@@ -151,19 +145,64 @@ export function HelpPage() {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-xl mx-auto px-8 py-16 space-y-12">
-            <div className="space-y-2">
-              <h1 className="text-3xl font-semibold text-white">How can we help?</h1>
-              <p className="text-slate-500 text-sm">Browse articles in the sidebar, or search by topic.</p>
-            </div>
 
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Common Questions</p>
-              <div className="rounded-xl border border-slate-800 bg-slate-900/20 px-5">
-                {QA_ITEMS.map((item) => (
-                  <QAItem key={item.q} q={item.q} a={item.a} />
-                ))}
+          {/* Hero */}
+          <div className="border-b border-slate-800 bg-slate-900/20 px-10 py-14">
+            <div className="max-w-2xl mx-auto space-y-6">
+              <div className="space-y-2">
+                <h1 className="text-4xl font-bold text-white tracking-tight">How can we help?</h1>
+                <p className="text-slate-400 text-base">Search the docs or browse common questions below.</p>
               </div>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search for articles..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-700 bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 text-sm transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Content below hero */}
+          <div className="px-10 py-10">
+            <div className="max-w-2xl mx-auto space-y-12">
+
+              {/* Topic tiles — hide when searching */}
+              {!query && (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Topics</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {TOPIC_TILES.map(({ icon: Icon, label, sub }) => (
+                      <div
+                        key={label}
+                        className="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4"
+                      >
+                        <div className="mt-0.5 rounded-lg border border-slate-700 bg-slate-800 p-2">
+                          <Icon className="h-4 w-4 text-slate-300" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-200">{label}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Q&A */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Common Questions</p>
+                <div className="rounded-xl border border-slate-800 bg-slate-900/20 px-5">
+                  {QA_ITEMS.map((item) => (
+                    <QAItem key={item.q} q={item.q} a={item.a} />
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
         </main>
