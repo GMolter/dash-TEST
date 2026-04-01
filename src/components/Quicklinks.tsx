@@ -64,6 +64,8 @@ export function Quicklinks({ editMode = false }: Props) {
   // 'into-folder' only when hovering the CENTER of a folder while dragging a link
   const [dragMode, setDragMode] = useState<'reorder' | 'into-folder'>('reorder');
   const [savingOrder, setSavingOrder] = useState(false);
+  const [draggingFolderItem, setDraggingFolderItem] = useState<string | null>(null);
+  const [dragOverFolderItemId, setDragOverFolderItemId] = useState<string | null>(null);
 
   // ── Computed ─────────────────────────────────────────────────────────────────
   const personalLinks = links.filter((l) => l.scope === 'personal' || l.scope === 'both');
@@ -282,6 +284,45 @@ export function Quicklinks({ editMode = false }: Props) {
 
   const onDragEnd = () => { setDragging(null); setDragOverId(null); setDragMode('reorder'); };
 
+  // ── Folder-item reorder ───────────────────────────────────────────────────────
+  const persistFolderOrder = async (folderId: string, reordered: Quicklink[]) => {
+    setLinks((prev) => prev.map((l) => {
+      const idx = reordered.findIndex((r) => r.id === l.id);
+      return idx >= 0 ? { ...l, order_index: idx } : l;
+    }));
+    await Promise.all(reordered.map((l, idx) =>
+      supabase.from('quicklinks').update({ order_index: idx }).eq('id', l.id)
+    ));
+  };
+
+  const onFolderItemDragStart = (linkId: string) => (e: React.DragEvent) => {
+    setDraggingFolderItem(linkId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+  };
+
+  const onFolderItemDragOver = (linkId: string) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverFolderItemId(linkId);
+  };
+
+  const onFolderItemDrop = (folderId: string, targetId: string) => async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const dragId = draggingFolderItem;
+    setDraggingFolderItem(null);
+    setDragOverFolderItemId(null);
+    if (!dragId || dragId === targetId) return;
+    const folderLinks = links.filter((l) => l.folder_id === folderId).sort((a, b) => a.order_index - b.order_index);
+    const fromIdx = folderLinks.findIndex((l) => l.id === dragId);
+    const toIdx = folderLinks.findIndex((l) => l.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    await persistFolderOrder(folderId, moveItem(folderLinks, fromIdx, toIdx));
+  };
+
+  const onFolderItemDragEnd = () => { setDraggingFolderItem(null); setDragOverFolderItemId(null); };
+
   // ── Shared tile classes ───────────────────────────────────────────────────────
   const tileBase = 'group relative rounded-xl p-6 border flex flex-col items-center justify-center text-center transition-all';
 
@@ -294,7 +335,7 @@ export function Quicklinks({ editMode = false }: Props) {
             if (item.itemType === 'folder') {
               const folder = item.data;
               const isOpen = expandedFolderId === folder.id;
-              const contents = linksInFolder(folder.id);
+              const contents = linksInFolder(folder.id).sort((a, b) => a.order_index - b.order_index);
               return (
                 <div
                   key={`folder-${folder.id}`}
@@ -302,11 +343,11 @@ export function Quicklinks({ editMode = false }: Props) {
                 >
                   <button
                     onClick={() => setExpandedFolderId(isOpen ? null : folder.id)}
-                    className="w-full flex flex-col items-center justify-center text-center p-6 hover:bg-slate-700/30 transition-colors"
+                    className={`w-full hover:bg-slate-700/30 transition-colors ${isOpen ? 'flex items-center gap-3 px-4 py-3' : 'flex flex-col items-center justify-center text-center p-6'}`}
                   >
-                    <div className="mb-3 text-4xl">{folder.icon}</div>
-                    <h3 className="text-white font-medium hover:text-blue-400 transition-colors">{folder.name}</h3>
-                    <p className="text-xs text-slate-500 mt-1">{contents.length} link{contents.length !== 1 ? 's' : ''}</p>
+                    <span className={`${isOpen ? 'text-xl shrink-0' : 'mb-3 text-4xl'}`}>{folder.icon}</span>
+                    <span className={`text-white font-medium hover:text-blue-400 transition-colors ${isOpen ? 'text-sm' : ''}`}>{folder.name}</span>
+                    {!isOpen && <span className="text-xs text-slate-500 mt-1">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>}
                   </button>
                   {isOpen && (
                     <div className="px-3 pb-3 border-t border-slate-700/50 ql-folder-open">
@@ -523,18 +564,36 @@ export function Quicklinks({ editMode = false }: Props) {
                   <div className="w-full mt-3 pt-3 border-t border-slate-700/50 ql-folder-open">
                     {folderLinks.length > 0 ? (
                       <div className="w-full space-y-1">
-                        {folderLinks.map((link) => (
-                          <div key={link.id} className="flex items-center gap-2 px-2 py-1.5 bg-slate-800/60 rounded-lg">
-                            <LinkIcon link={link} size={18} />
-                            <span className="text-white text-xs flex-1 truncate text-left">{link.title}</span>
-                            <button onClick={(e) => { e.stopPropagation(); startEditLink(link); }} className="p-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors shrink-0">
-                              <Pencil className="w-3 h-3 text-white" />
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); setLinkToDelete(link); }} className="p-1 bg-red-600 hover:bg-red-700 rounded transition-colors shrink-0">
-                              <Trash2 className="w-3 h-3 text-white" />
-                            </button>
-                          </div>
-                        ))}
+                        {folderLinks.sort((a, b) => a.order_index - b.order_index).map((link) => {
+                          const isItemDragging = draggingFolderItem === link.id;
+                          const isItemOver = dragOverFolderItemId === link.id && draggingFolderItem !== link.id;
+                          return (
+                            <div
+                              key={link.id}
+                              className={`flex items-center gap-2 px-2 py-1.5 bg-slate-800/60 rounded-lg transition-all ${isItemDragging ? 'opacity-40' : ''} ${isItemOver ? 'ring-1 ring-blue-500/60' : ''}`}
+                              onDragOver={onFolderItemDragOver(link.id)}
+                              onDrop={onFolderItemDrop(folder.id, link.id)}
+                            >
+                              <button
+                                draggable
+                                onDragStart={onFolderItemDragStart(link.id)}
+                                onDragEnd={onFolderItemDragEnd}
+                                className="cursor-grab active:cursor-grabbing shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <GripVertical className="w-3 h-3 text-slate-500" />
+                              </button>
+                              <LinkIcon link={link} size={18} />
+                              <span className="text-white text-xs flex-1 truncate text-left">{link.title}</span>
+                              <button onClick={(e) => { e.stopPropagation(); startEditLink(link); }} className="p-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors shrink-0">
+                                <Pencil className="w-3 h-3 text-white" />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setLinkToDelete(link); }} className="p-1 bg-red-600 hover:bg-red-700 rounded transition-colors shrink-0">
+                                <Trash2 className="w-3 h-3 text-white" />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-slate-500 text-xs text-center py-2">No links in this folder</p>
