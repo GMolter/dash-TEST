@@ -42,7 +42,7 @@ function QAItem({ q, a }: { q: string; a: string }) {
     <div className="border-b border-slate-800 last:border-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-3 py-3.5 text-left transition-colors group"
+        className="w-full flex items-center justify-between gap-3 py-4 text-left group"
       >
         <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{q}</span>
         <ChevronDown
@@ -69,7 +69,7 @@ export function HelpPage() {
         const j = await r.json();
         if (!cancelled) setArticles(Array.isArray(j.articles) ? j.articles : []);
       } catch {
-        // silent — search just won't return results
+        // silent
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -80,17 +80,18 @@ export function HelpPage() {
 
   const query = search.trim().toLowerCase();
 
-  const filtered = useMemo(() => {
-    if (!query) return [];
+  const sidebarArticles = useMemo(() => {
+    if (!query) return articles;
     return articles.filter((a) =>
       `${a.title} ${a.summary}`.toLowerCase().includes(query)
     );
   }, [articles, query]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="sticky top-0 z-20 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur">
-        <div className="px-4 sm:px-6 lg:px-10 py-4 flex items-center gap-4">
+    <div className="flex flex-col h-screen bg-slate-950 text-white overflow-hidden">
+      {/* Header */}
+      <header className="shrink-0 z-20 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur">
+        <div className="px-4 sm:px-6 py-4 flex items-center gap-4">
           <a
             href="/"
             className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800/60 hover:text-white transition-colors"
@@ -105,55 +106,67 @@ export function HelpPage() {
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-16 space-y-12">
-        {/* Hero */}
-        <div className="text-center space-y-4">
-          <h1 className="text-3xl font-semibold text-white">How can we help?</h1>
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search articles..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-700 bg-slate-900/60 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 transition-colors"
-            />
-          </div>
-        </div>
+      {/* Body */}
+      <div className="flex flex-1 min-h-0">
 
-        {/* Search results */}
-        {query && (
-          <div className="space-y-1.5">
+        {/* Sidebar */}
+        <aside className="w-72 shrink-0 border-r border-slate-800 flex flex-col overflow-hidden">
+          {/* Sidebar search */}
+          <div className="p-4 border-b border-slate-800">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-600 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-700/60 bg-slate-900/60 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-slate-600 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Article list */}
+          <nav className="flex-1 overflow-y-auto p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 px-2 pb-2">
+              Articles
+            </p>
             {loading ? (
-              <p className="text-sm text-slate-500 text-center">Loading...</p>
-            ) : filtered.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center">No articles match your search.</p>
+              <p className="text-xs text-slate-600 px-2 py-2">Loading...</p>
+            ) : sidebarArticles.length === 0 ? (
+              <p className="text-xs text-slate-600 px-2 py-2">No articles found.</p>
             ) : (
-              filtered.map((article) => (
+              sidebarArticles.map((article) => (
                 <a
                   key={article.id}
                   href={`/help/article/${article.slug}`}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 hover:bg-slate-800/60 hover:border-slate-700 transition-colors"
+                  className="flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors group"
                 >
-                  <span className="text-sm text-white">{article.title}</span>
-                  <ArrowRight className="h-3.5 w-3.5 flex-none text-slate-600" />
+                  <ArrowRight className="h-3 w-3 shrink-0 text-slate-700 group-hover:text-slate-500 transition-colors" />
+                  <span className="truncate">{article.title}</span>
                 </a>
               ))
             )}
-          </div>
-        )}
+          </nav>
+        </aside>
 
-        {/* Common Questions — shown when not searching */}
-        {!query && (
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 pb-2">Common Questions</p>
-            <div className="rounded-xl border border-slate-800 bg-slate-900/30 px-4">
-              {QA_ITEMS.map((item) => (
-                <QAItem key={item.q} q={item.q} a={item.a} />
-              ))}
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-xl mx-auto px-8 py-16 space-y-12">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold text-white">How can we help?</h1>
+              <p className="text-slate-500 text-sm">Browse articles in the sidebar, or search by topic.</p>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Common Questions</p>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/20 px-5">
+                {QA_ITEMS.map((item) => (
+                  <QAItem key={item.q} q={item.q} a={item.a} />
+                ))}
+              </div>
             </div>
           </div>
-        )}
+        </main>
       </div>
     </div>
   );
