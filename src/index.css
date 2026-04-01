@@ -24,6 +24,14 @@
   animation: ql-pop-in 0.14s ease-out forwards;
 }
 
+@keyframes ql-folder-open {
+  from { opacity: 0; transform: translateY(-6px) scaleY(0.96); transform-origin: top; }
+  to   { opacity: 1; transform: translateY(0) scaleY(1); transform-origin: top; }
+}
+.ql-folder-open {
+  animation: ql-folder-open 0.18s ease-out forwards;
+}
+
 @layer utilities {
   .scrollbar-theme {
     scrollbar-width: thin;
