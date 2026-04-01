@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, GripVertical, Pencil, Folder, FolderOpen } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Pencil, Folder } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useOrg } from '../hooks/useOrg';
 import { useAuth } from '../hooks/useAuth';
@@ -295,62 +295,41 @@ export function Quicklinks({ editMode = false }: Props) {
               const folder = item.data;
               const isOpen = expandedFolderId === folder.id;
               const contents = linksInFolder(folder.id);
-
-              if (isOpen) {
-                return (
-                  // Expanded folder: spans full width, contains its own inner grid
-                  <div
-                    key={`folder-open-${folder.id}`}
-                    className="col-span-full ql-folder-open rounded-xl border border-blue-500/40 bg-slate-800/60 overflow-hidden"
+              return (
+                <div
+                  key={`folder-${folder.id}`}
+                  className="rounded-xl border border-slate-700/50 bg-slate-800/50 backdrop-blur overflow-hidden"
+                >
+                  <button
+                    onClick={() => setExpandedFolderId(isOpen ? null : folder.id)}
+                    className="w-full flex flex-col items-center justify-center text-center p-6 hover:bg-slate-700/30 transition-colors"
                   >
-                    {/* Folder header — click to collapse */}
-                    <button
-                      onClick={() => setExpandedFolderId(null)}
-                      className="w-full flex items-center gap-3 px-5 py-4 hover:bg-slate-700/30 transition-colors text-left"
-                    >
-                      <FolderOpen className="w-5 h-5 text-blue-400 shrink-0" />
-                      <span className="text-white font-semibold">{folder.name}</span>
-                      <span className="text-slate-500 text-sm ml-1">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>
-                      <span className="ml-auto text-xs text-slate-500">click to close</span>
-                    </button>
-
-                    {/* Inner grid */}
-                    <div className="px-5 pb-5">
+                    <div className="mb-3 text-4xl">{folder.icon}</div>
+                    <h3 className="text-white font-medium hover:text-blue-400 transition-colors">{folder.name}</h3>
+                    <p className="text-xs text-slate-500 mt-1">{contents.length} link{contents.length !== 1 ? 's' : ''}</p>
+                  </button>
+                  {isOpen && (
+                    <div className="px-3 pb-3 border-t border-slate-700/50 ql-folder-open">
                       {contents.length > 0 ? (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 gap-2 mt-3">
                           {contents.map((link, i) => (
                             <a
                               key={link.id}
                               href={formatUrl(link.url)}
-                              className="ql-pop-in group bg-slate-900/60 hover:bg-slate-700/60 backdrop-blur rounded-xl p-5 border border-slate-700/40 hover:border-slate-600 transition-all flex flex-col items-center justify-center text-center"
+                              className="ql-pop-in group/inner bg-slate-900/60 hover:bg-slate-700/60 rounded-lg p-3 flex flex-col items-center text-center"
                               style={{ animationDelay: `${i * 30}ms` }}
                             >
-                              <div className="mb-3"><LinkIcon link={link} size={40} /></div>
-                              <h3 className="text-white font-medium group-hover:text-blue-400 transition-colors text-sm">
-                                {link.title}
-                              </h3>
+                              <div className="mb-2"><LinkIcon link={link} size={28} /></div>
+                              <span className="text-white text-xs font-medium group-hover/inner:text-blue-400 transition-colors leading-tight">{link.title}</span>
                             </a>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-slate-500 text-sm text-center py-6">This folder is empty.</p>
+                        <p className="text-slate-500 text-xs text-center py-4">Empty folder</p>
                       )}
                     </div>
-                  </div>
-                );
-              }
-
-              // Collapsed folder tile
-              return (
-                <button
-                  key={`folder-closed-${folder.id}`}
-                  onClick={() => setExpandedFolderId(folder.id)}
-                  className={`${tileBase} bg-slate-800/50 hover:bg-slate-700/50 backdrop-blur border-slate-700/50 hover:border-slate-600`}
-                >
-                  <div className="mb-3 text-4xl">{folder.icon}</div>
-                  <h3 className="text-white font-medium group-hover:text-blue-400 transition-colors">{folder.name}</h3>
-                  <p className="text-xs text-slate-500 mt-1">{contents.length} link{contents.length !== 1 ? 's' : ''}</p>
-                </button>
+                  )}
+                </div>
               );
             }
 
@@ -505,10 +484,12 @@ export function Quicklinks({ editMode = false }: Props) {
           if (item.itemType === 'folder') {
             const folder = item.data;
             const count = links.filter((l) => l.folder_id === folder.id).length;
+            const folderLinks = links.filter((l) => l.folder_id === folder.id);
+            const isExpanded = expandedFolderId === folder.id;
             return (
               <div
                 key={`folder-${folder.id}`}
-                className={`${tileBase} bg-slate-900/50 hover:bg-slate-900/80 border-slate-700/50 ${dragClasses}`}
+                className={`group relative rounded-xl p-6 border flex flex-col items-center ${isExpanded ? 'justify-start' : 'justify-center'} text-center transition-all bg-slate-900/50 hover:bg-slate-900/80 border-slate-700/50 ${dragClasses}`}
                 onDragOver={onDragOver(folder.id, 'folder')}
                 onDrop={onDropOn(folder.id, 'folder')}
               >
@@ -529,9 +510,37 @@ export function Quicklinks({ editMode = false }: Props) {
                   </div>
                 )}
 
-                <div className="mb-3 text-4xl">{folder.icon}</div>
-                <h3 className="text-white font-medium mb-1">{folder.name}</h3>
-                <p className="text-xs text-slate-500">{count} link{count !== 1 ? 's' : ''}</p>
+                <button
+                  onClick={() => setExpandedFolderId(isExpanded ? null : folder.id)}
+                  className="flex flex-col items-center w-full"
+                >
+                  <div className="mb-3 text-4xl">{folder.icon}</div>
+                  <h3 className="text-white font-medium mb-1">{folder.name}</h3>
+                  <p className="text-xs text-slate-500">{count} link{count !== 1 ? 's' : ''}</p>
+                </button>
+
+                {isExpanded && (
+                  <div className="w-full mt-3 pt-3 border-t border-slate-700/50 ql-folder-open">
+                    {folderLinks.length > 0 ? (
+                      <div className="w-full space-y-1">
+                        {folderLinks.map((link) => (
+                          <div key={link.id} className="flex items-center gap-2 px-2 py-1.5 bg-slate-800/60 rounded-lg">
+                            <LinkIcon link={link} size={18} />
+                            <span className="text-white text-xs flex-1 truncate text-left">{link.title}</span>
+                            <button onClick={(e) => { e.stopPropagation(); startEditLink(link); }} className="p-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors shrink-0">
+                              <Pencil className="w-3 h-3 text-white" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setLinkToDelete(link); }} className="p-1 bg-red-600 hover:bg-red-700 rounded transition-colors shrink-0">
+                              <Trash2 className="w-3 h-3 text-white" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 text-xs text-center py-2">No links in this folder</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => startEditFolder(folder)} className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
