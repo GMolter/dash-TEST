@@ -39,20 +39,18 @@ const QA_ITEMS = [
 function QAItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-slate-700 rounded-xl overflow-hidden">
+    <div className="border-b border-slate-800 last:border-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-slate-900/50 hover:bg-slate-800/60 transition-colors text-left"
+        className="w-full flex items-center justify-between gap-3 py-3.5 text-left transition-colors group"
       >
-        <span className="text-sm font-medium text-white">{q}</span>
+        <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{q}</span>
         <ChevronDown
-          className={`h-4 w-4 flex-none text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 flex-none text-slate-600 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
       </button>
       {open && (
-        <div className="px-4 py-3 bg-slate-950/40 border-t border-slate-700/60">
-          <p className="text-sm text-slate-300 leading-relaxed">{a}</p>
-        </div>
+        <p className="pb-4 text-sm text-slate-500 leading-relaxed">{a}</p>
       )}
     </div>
   );
@@ -61,45 +59,33 @@ function QAItem({ q, a }: { q: string; a: string }) {
 export function HelpPage() {
   const [articles, setArticles] = useState<HelpArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-
     async function load() {
       try {
         const r = await fetch('/api/public/help-articles', { cache: 'no-store' });
         const j = await r.json();
-        if (cancelled) return;
-        if (!r.ok) {
-          setArticles([]);
-          setError(j.error || 'Could not load documentation.');
-          return;
-        }
-        setArticles(Array.isArray(j.articles) ? j.articles : []);
-        setError(null);
+        if (!cancelled) setArticles(Array.isArray(j.articles) ? j.articles : []);
       } catch {
-        if (!cancelled) {
-          setArticles([]);
-          setError('Could not load documentation.');
-        }
+        // silent — search just won't return results
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-
     load();
     return () => { cancelled = true; };
   }, []);
 
+  const query = search.trim().toLowerCase();
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return articles;
+    if (!query) return [];
     return articles.filter((a) =>
-      `${a.title} ${a.summary}`.toLowerCase().includes(q)
+      `${a.title} ${a.summary}`.toLowerCase().includes(query)
     );
-  }, [articles, search]);
+  }, [articles, query]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -119,11 +105,10 @@ export function HelpPage() {
         </div>
       </header>
 
-      <div className="px-4 sm:px-6 lg:px-10 py-10 lg:py-14 space-y-10">
+      <div className="max-w-2xl mx-auto px-4 py-16 space-y-12">
         {/* Hero */}
-        <div className="text-center space-y-4 max-w-xl mx-auto">
+        <div className="text-center space-y-4">
           <h1 className="text-3xl font-semibold text-white">How can we help?</h1>
-          <p className="text-slate-400">Search the docs or browse articles below.</p>
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
             <input
@@ -131,44 +116,44 @@ export function HelpPage() {
               placeholder="Search articles..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900/60 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 transition-colors"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-700 bg-slate-900/60 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 transition-colors"
             />
           </div>
         </div>
 
-        {/* Articles */}
-        {loading ? (
-          <p className="text-center text-sm text-slate-500">Loading articles...</p>
-        ) : error ? (
-          <p className="text-center text-sm text-red-400">{error}</p>
-        ) : filtered.length === 0 ? (
-          <p className="text-center text-sm text-slate-500">
-            {search ? 'No articles match your search.' : 'No articles published yet.'}
-          </p>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((article) => (
-              <a
-                key={article.id}
-                href={`/help/article/${article.slug}`}
-                className="flex items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-3 hover:bg-slate-800/60 hover:border-slate-600 transition-colors"
-              >
-                <span className="text-sm font-medium text-white leading-snug">{article.title}</span>
-                <ArrowRight className="h-3.5 w-3.5 flex-none text-slate-500" />
-              </a>
-            ))}
+        {/* Search results */}
+        {query && (
+          <div className="space-y-1.5">
+            {loading ? (
+              <p className="text-sm text-slate-500 text-center">Loading...</p>
+            ) : filtered.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center">No articles match your search.</p>
+            ) : (
+              filtered.map((article) => (
+                <a
+                  key={article.id}
+                  href={`/help/article/${article.slug}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 hover:bg-slate-800/60 hover:border-slate-700 transition-colors"
+                >
+                  <span className="text-sm text-white">{article.title}</span>
+                  <ArrowRight className="h-3.5 w-3.5 flex-none text-slate-600" />
+                </a>
+              ))
+            )}
           </div>
         )}
 
-        {/* Common Questions */}
-        <div className="border-t border-slate-800 pt-8 space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Common Questions</h2>
-          <div className="space-y-2">
-            {QA_ITEMS.map((item) => (
-              <QAItem key={item.q} q={item.q} a={item.a} />
-            ))}
+        {/* Common Questions — shown when not searching */}
+        {!query && (
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 pb-2">Common Questions</p>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/30 px-4">
+              {QA_ITEMS.map((item) => (
+                <QAItem key={item.q} q={item.q} a={item.a} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
