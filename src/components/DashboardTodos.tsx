@@ -498,7 +498,7 @@ export function DashboardTodosHomeHeader() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(16rem,24rem)] items-start gap-6 xl:grid-cols-[minmax(0,1fr)_auto_minmax(18rem,25rem)]">
+          <div className="grid grid-cols-[minmax(18rem,30rem)_auto_minmax(18rem,30rem)] items-center gap-6 xl:grid-cols-[minmax(20rem,34rem)_auto_minmax(20rem,34rem)]">
             <div />
             <div className="justify-self-center text-center">
               <h2 className="text-3xl font-semibold text-indigo-300">Quick Links</h2>
@@ -506,15 +506,15 @@ export function DashboardTodosHomeHeader() {
             <button
               type="button"
               onClick={() => setIsOpen(true)}
-              className="group justify-self-end overflow-hidden rounded-[1.85rem] border border-slate-700/60 bg-slate-900/55 p-5 text-left shadow-[0_24px_70px_rgba(2,6,23,0.26)] backdrop-blur transition-all hover:border-blue-400/30 hover:bg-slate-900/70 hover:shadow-[0_30px_80px_rgba(15,23,42,0.4)]"
+              className="group justify-self-end w-full overflow-hidden rounded-[1.85rem] border border-slate-700/60 bg-slate-900/55 px-5 py-4 text-left shadow-[0_24px_70px_rgba(2,6,23,0.26)] backdrop-blur transition-all hover:border-blue-400/30 hover:bg-slate-900/70 hover:shadow-[0_30px_80px_rgba(15,23,42,0.4)]"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-blue-200/90">
                     <ListTodo className="h-3.5 w-3.5" />
                     My Tasks
                   </div>
-                  <div className="mt-3 text-2xl font-semibold text-white">{activeTodos.length}</div>
+                  <div className="mt-2 text-[1.7rem] font-semibold leading-none text-white">{activeTodos.length}</div>
                   <div className="mt-1 text-sm text-slate-400">
                     {activeTodos.length === 1 ? 'Open task' : 'Open tasks'}
                     {completedTodos.length > 0 ? ` · ${completedTodos.length} done` : ''}
@@ -525,16 +525,16 @@ export function DashboardTodosHomeHeader() {
                 </div>
               </div>
 
-              <div className="mt-4 space-y-2">
+              <div className="mt-3 space-y-2">
                 {loading ? (
                   <div className="rounded-2xl border border-slate-700/50 bg-slate-950/45 px-4 py-3 text-sm text-slate-400">
                     Loading tasks…
                   </div>
                 ) : previewTodos.length > 0 ? (
-                  previewTodos.map((todo) => (
+                  previewTodos.slice(0, 2).map((todo) => (
                     <div
                       key={todo.id}
-                      className="truncate rounded-2xl border border-slate-800/70 bg-slate-950/55 px-4 py-3 text-sm text-slate-200"
+                      className="truncate rounded-2xl border border-slate-800/70 bg-slate-950/55 px-4 py-2.5 text-sm text-slate-200"
                     >
                       {todo.title}
                     </div>
@@ -544,9 +544,9 @@ export function DashboardTodosHomeHeader() {
                     No tasks yet. Start a list.
                   </div>
                 )}
-                {!loading && activeTodos.length > previewTodos.length && (
+                {!loading && activeTodos.length > 2 && (
                   <div className="px-1 text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                    +{activeTodos.length - previewTodos.length} more
+                    +{activeTodos.length - 2} more
                   </div>
                 )}
               </div>
