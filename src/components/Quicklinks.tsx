@@ -461,16 +461,15 @@ export function Quicklinks({ editMode = false }: Props) {
         </div>
 
         {isMobileFolderView && focusedFolder && (
-          <div className="fixed inset-0 z-50 px-4 py-8 sm:hidden">
-            <button
-              type="button"
-              aria-label="Close folder"
-              className="absolute inset-0 bg-slate-950/72 backdrop-blur-md"
-              onClick={() => setExpandedFolderId(null)}
-            />
-
-            <div className="relative z-10 mx-auto flex h-full max-w-md items-center justify-center">
-              <div className="ql-folder-focus w-full rounded-[2rem] border border-slate-600/70 bg-slate-900/88 p-5 shadow-2xl shadow-slate-950/70">
+          <div
+            className="fixed inset-0 z-50 px-4 py-8 sm:hidden bg-slate-950/72 backdrop-blur-md"
+            onClick={() => setExpandedFolderId(null)}
+          >
+            <div className="mx-auto flex h-full max-w-lg items-center justify-center">
+              <div
+                className="ql-folder-focus w-full rounded-[2rem] border border-slate-600/70 bg-slate-900/88 p-5 shadow-2xl shadow-slate-950/70"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="mb-5 flex items-center justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700/70 bg-slate-800/85">
@@ -494,22 +493,24 @@ export function Quicklinks({ editMode = false }: Props) {
                 </div>
 
                 {focusedFolderLinks.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-3">
-                    {focusedFolderLinks.map((link, i) => (
-                      <a
-                        key={link.id}
-                        href={formatUrl(link.url)}
-                        className="ql-pop-in rounded-2xl border border-slate-700/60 bg-slate-800/78 px-2 py-5 text-center hover:bg-slate-700/78"
-                        style={{ animationDelay: `${i * 36}ms` }}
-                      >
-                        <div className="mb-2 flex justify-center">
-                          <LinkIcon link={link} size={46} />
-                        </div>
-                        <span className="block text-xs font-medium leading-tight text-white">
-                          {link.title}
-                        </span>
-                      </a>
-                    ))}
+                  <div className="max-h-[min(60vh,30rem)] overflow-y-auto pr-1 scrollbar-theme">
+                    <div className="grid grid-cols-3 gap-3">
+                      {focusedFolderLinks.map((link, i) => (
+                        <a
+                          key={link.id}
+                          href={formatUrl(link.url)}
+                          className="ql-pop-in rounded-2xl border border-slate-700/60 bg-slate-800/78 px-3 py-6 text-center hover:bg-slate-700/78"
+                          style={{ animationDelay: `${i * 36}ms` }}
+                        >
+                          <div className="mb-3 flex justify-center">
+                            <LinkIcon link={link} size={52} />
+                          </div>
+                          <span className="block text-[13px] font-medium leading-tight text-white">
+                            {link.title}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-slate-700/60 bg-slate-800/45 px-4 py-8 text-center text-sm text-slate-400">
