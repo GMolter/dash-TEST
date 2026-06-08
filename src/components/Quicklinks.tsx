@@ -73,6 +73,10 @@ export function Quicklinks({ editMode = false }: Props) {
   const [savingOrder, setSavingOrder] = useState(false);
   const [draggingFolderItem, setDraggingFolderItem] = useState<string | null>(null);
   const [dragOverFolderItemId, setDragOverFolderItemId] = useState<string | null>(null);
+  const [isMobileFolderView, setIsMobileFolderView] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 768;
+  });
 
   // ── Computed ─────────────────────────────────────────────────────────────────
   const personalLinks = links.filter((l) => l.scope === 'personal' || l.scope === 'both');
@@ -88,6 +92,36 @@ export function Quicklinks({ editMode = false }: Props) {
 
   // ── Load ─────────────────────────────────────────────────────────────────────
   useEffect(() => { loadLinks(); loadFolders(); }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const media = window.matchMedia('(max-width: 767px)');
+    const sync = () => setIsMobileFolderView(media.matches);
+
+    sync();
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', sync);
+      return () => media.removeEventListener('change', sync);
+    }
+
+    media.addListener(sync);
+    return () => media.removeListener(sync);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (!isMobileFolderView || !expandedFolderId) return;
+
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [expandedFolderId, isMobileFolderView]);
 
   const loadLinks = async () => {
     const { data, error } = await supabase.from('quicklinks').select('*').order('order_index', { ascending: true });
@@ -341,6 +375,14 @@ export function Quicklinks({ editMode = false }: Props) {
 
   // ── Shared tile classes ───────────────────────────────────────────────────────
   const tileBase = 'group relative rounded-xl p-6 border flex flex-col items-center justify-center text-center transition-all';
+  const focusedFolder = expandedFolderId ? folders.find((folder) => folder.id === expandedFolderId) || null : null;
+  const focusedFolderLinks = focusedFolder
+    ? linksInFolder(focusedFolder.id).sort((a, b) => a.order_index - b.order_index)
+    : [];
+
+  const toggleFolderOpen = (folderId: string) => {
+    setExpandedFolderId((current) => current === folderId ? null : folderId);
+  };
 
   // ── View mode ─────────────────────────────────────────────────────────────────
   if (!editMode) {
@@ -352,20 +394,29 @@ export function Quicklinks({ editMode = false }: Props) {
               const folder = item.data;
               const isOpen = expandedFolderId === folder.id;
               const contents = linksInFolder(folder.id).sort((a, b) => a.order_index - b.order_index);
+              const showInlineContents = isOpen && !isMobileFolderView;
               return (
                 <div
                   key={`folder-${folder.id}`}
-                  className="rounded-xl border border-slate-700/50 bg-slate-800/50 backdrop-blur overflow-hidden"
+                  className={`rounded-xl border bg-slate-800/50 backdrop-blur overflow-hidden transition-colors ${
+                    isOpen && isMobileFolderView
+                      ? 'border-blue-400/60 shadow-[0_0_0_1px_rgba(96,165,250,0.25)]'
+                      : 'border-slate-700/50'
+                  }`}
                 >
                   <button
-                    onClick={() => setExpandedFolderId(isOpen ? null : folder.id)}
-                    className={`w-full hover:bg-slate-700/30 transition-colors ${isOpen ? 'flex items-center gap-3 px-4 py-3' : 'flex flex-col items-center justify-center text-center p-6'}`}
+                    onClick={() => toggleFolderOpen(folder.id)}
+                    className={`w-full hover:bg-slate-700/30 transition-colors ${
+                      showInlineContents
+                        ? 'flex items-center gap-3 px-4 py-3'
+                        : 'flex flex-col items-center justify-center text-center p-6'
+                    }`}
                   >
-                    <FolderIcon icon={folder.icon} size={isOpen ? 20 : 40} />
-                    <span className={`text-white font-medium hover:text-blue-400 transition-colors ${isOpen ? 'text-sm' : ''}`}>{folder.name}</span>
-                    {!isOpen && <span className="text-xs text-slate-500 mt-1">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>}
+                    <FolderIcon icon={folder.icon} size={showInlineContents ? 20 : 40} />
+                    <span className={`text-white font-medium hover:text-blue-400 transition-colors ${showInlineContents ? 'text-sm' : ''}`}>{folder.name}</span>
+                    {!showInlineContents && <span className="text-xs text-slate-500 mt-1">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>}
                   </button>
-                  {isOpen && (
+                  {showInlineContents && (
                     <div className="px-3 pb-3 border-t border-slate-700/50 ql-folder-open">
                       {contents.length > 0 ? (
                         <div className="grid grid-cols-2 gap-2 mt-3">
@@ -408,6 +459,67 @@ export function Quicklinks({ editMode = false }: Props) {
             <div className="col-span-full text-center py-12 text-slate-400">No quick links yet.</div>
           )}
         </div>
+
+        {isMobileFolderView && focusedFolder && (
+          <div className="fixed inset-0 z-50 px-4 py-8 sm:hidden">
+            <button
+              type="button"
+              aria-label="Close folder"
+              className="absolute inset-0 bg-slate-950/72 backdrop-blur-md"
+              onClick={() => setExpandedFolderId(null)}
+            />
+
+            <div className="relative z-10 mx-auto flex h-full max-w-md items-center justify-center">
+              <div className="ql-folder-focus w-full rounded-[2rem] border border-slate-600/70 bg-slate-900/88 p-5 shadow-2xl shadow-slate-950/70">
+                <div className="mb-5 flex items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700/70 bg-slate-800/85">
+                      <FolderIcon icon={focusedFolder.icon} size={28} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-lg font-semibold text-white">{focusedFolder.name}</div>
+                      <div className="text-sm text-slate-400">
+                        {focusedFolderLinks.length} link{focusedFolderLinks.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setExpandedFolderId(null)}
+                    className="rounded-full border border-slate-700/70 bg-slate-800/80 px-3 py-1.5 text-xs font-medium text-slate-200"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                {focusedFolderLinks.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-3">
+                    {focusedFolderLinks.map((link, i) => (
+                      <a
+                        key={link.id}
+                        href={formatUrl(link.url)}
+                        className="ql-pop-in rounded-2xl border border-slate-700/60 bg-slate-800/78 px-2 py-5 text-center hover:bg-slate-700/78"
+                        style={{ animationDelay: `${i * 36}ms` }}
+                      >
+                        <div className="mb-2 flex justify-center">
+                          <LinkIcon link={link} size={46} />
+                        </div>
+                        <span className="block text-xs font-medium leading-tight text-white">
+                          {link.title}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-slate-700/60 bg-slate-800/45 px-4 py-8 text-center text-sm text-slate-400">
+                    Empty folder
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
