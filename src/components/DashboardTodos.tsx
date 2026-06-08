@@ -194,6 +194,7 @@ function TaskPanelContent({
   onDeleteTodo: (id: string) => Promise<boolean>;
   mobile: boolean;
 }) {
+  const [composerOpen, setComposerOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [showNoteField, setShowNoteField] = useState(false);
@@ -207,13 +208,17 @@ function TaskPanelContent({
     [todos],
   );
 
-  const submitTodo = async () => {
-    const created = await onAddTodo(title, note);
-    if (!created) return;
-
+  const resetComposer = () => {
+    setComposerOpen(false);
     setTitle('');
     setNote('');
     setShowNoteField(false);
+  };
+
+  const submitTodo = async () => {
+    const created = await onAddTodo(title, note);
+    if (!created) return;
+    resetComposer();
   };
 
   return (
@@ -229,7 +234,7 @@ function TaskPanelContent({
             <p className="mt-2 text-sm text-slate-400">
               {formatTaskCount(activeTodos.length)} open
               {completedTodos.length > 0 ? ` · ${formatTaskCount(completedTodos.length)} completed` : ''}
-              {syncing ? ' · Syncing…' : ''}
+              {syncing ? ' · Syncing...' : ''}
             </p>
           </div>
           <button
@@ -246,48 +251,72 @@ function TaskPanelContent({
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6 scrollbar-theme">
         <div className="space-y-5">
           <div className="rounded-[1.6rem] border border-slate-700/70 bg-slate-900/60 p-4 sm:p-5">
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    void submitTodo();
-                  }
-                }}
-                placeholder="Add a new task"
-                className="w-full rounded-2xl border border-slate-700/70 bg-slate-950/80 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:outline-none"
-              />
-              {(showNoteField || note) && (
-                <textarea
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  rows={mobile ? 3 : 4}
-                  placeholder="Optional note"
-                  className="w-full resize-none rounded-2xl border border-slate-700/70 bg-slate-950/80 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:outline-none"
+            {composerOpen ? (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      void submitTodo();
+                    }
+                  }}
+                  placeholder="Add a new task"
+                  className="w-full rounded-2xl border border-slate-700/70 bg-slate-950/80 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:outline-none"
                 />
-              )}
-              <div className="flex flex-wrap items-center gap-2">
+                {(showNoteField || note) && (
+                  <textarea
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    rows={mobile ? 3 : 4}
+                    placeholder="Optional note"
+                    className="w-full resize-none rounded-2xl border border-slate-700/70 bg-slate-950/80 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:outline-none"
+                  />
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNoteField((value) => !value)}
+                    className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-700/80"
+                  >
+                    {showNoteField || note ? 'Hide note' : 'Add note'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void submitTodo()}
+                    disabled={syncing || !title.trim()}
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-500/85 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Save task
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetComposer}
+                    className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-700/80"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-slate-200">Add something new</div>
+                  <div className="mt-1 text-sm text-slate-500">Open the composer only when you need it.</div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setShowNoteField((value) => !value)}
-                  className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-700/80"
-                >
-                  {showNoteField || note ? 'Hide note' : 'Add note'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void submitTodo()}
-                  disabled={syncing || !title.trim()}
-                  className="inline-flex items-center gap-2 rounded-xl bg-blue-500/85 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => setComposerOpen(true)}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-blue-500/85 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400"
                 >
                   <Plus className="h-4 w-4" />
                   Add task
                 </button>
               </div>
-            </div>
+            )}
           </div>
 
           {error && (
@@ -304,7 +333,7 @@ function TaskPanelContent({
 
             {loading ? (
               <div className="rounded-[1.35rem] border border-slate-700/60 bg-slate-900/45 px-4 py-8 text-center text-sm text-slate-400">
-                Loading tasks…
+                Loading tasks...
               </div>
             ) : activeTodos.length > 0 ? (
               <div className="space-y-3">
@@ -380,7 +409,6 @@ export function DashboardTodosHomeHeader() {
     () => todos.filter((todo) => todo.completed),
     [todos],
   );
-  const previewTodos = activeTodos.slice(0, 3);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -498,7 +526,7 @@ export function DashboardTodosHomeHeader() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-[minmax(18rem,30rem)_auto_minmax(18rem,30rem)] items-center gap-6 xl:grid-cols-[minmax(20rem,34rem)_auto_minmax(20rem,34rem)]">
+          <div className="grid grid-cols-[minmax(22rem,38rem)_auto_minmax(22rem,38rem)] items-center gap-6 xl:grid-cols-[minmax(24rem,40rem)_auto_minmax(24rem,40rem)]">
             <div />
             <div className="justify-self-center text-center">
               <h2 className="text-3xl font-semibold text-indigo-300">Quick Links</h2>
@@ -506,49 +534,40 @@ export function DashboardTodosHomeHeader() {
             <button
               type="button"
               onClick={() => setIsOpen(true)}
-              className="group justify-self-end w-full overflow-hidden rounded-[1.85rem] border border-slate-700/60 bg-slate-900/55 px-5 py-4 text-left shadow-[0_24px_70px_rgba(2,6,23,0.26)] backdrop-blur transition-all hover:border-blue-400/30 hover:bg-slate-900/70 hover:shadow-[0_30px_80px_rgba(15,23,42,0.4)]"
+              className="group justify-self-end flex w-full items-center gap-4 overflow-hidden rounded-[1.55rem] border border-slate-700/60 bg-slate-900/55 px-4 py-3 text-left shadow-[0_24px_70px_rgba(2,6,23,0.26)] backdrop-blur transition-all hover:border-blue-400/30 hover:bg-slate-900/70 hover:shadow-[0_30px_80px_rgba(15,23,42,0.4)]"
             >
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-blue-200/90">
-                    <ListTodo className="h-3.5 w-3.5" />
-                    My Tasks
-                  </div>
-                  <div className="mt-2 text-[1.7rem] font-semibold leading-none text-white">{activeTodos.length}</div>
-                  <div className="mt-1 text-sm text-slate-400">
-                    {activeTodos.length === 1 ? 'Open task' : 'Open tasks'}
-                    {completedTodos.length > 0 ? ` · ${completedTodos.length} done` : ''}
-                  </div>
+              <div className="min-w-0 flex items-center gap-3">
+                <div className="inline-flex shrink-0 items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-blue-200/90">
+                  <ListTodo className="h-3.5 w-3.5" />
+                  My Tasks
                 </div>
-                <div className="rounded-2xl border border-slate-700/70 bg-slate-800/80 p-3 text-slate-200 transition-colors group-hover:border-blue-400/35 group-hover:text-blue-100">
-                  <ChevronUp className="h-4 w-4 rotate-90" />
+                <div className="shrink-0 text-2xl font-semibold leading-none text-white">{activeTodos.length}</div>
+                <div className="truncate text-sm text-slate-400">
+                  {activeTodos.length === 1 ? 'Open task' : 'Open tasks'}
+                  {completedTodos.length > 0 ? ` · ${completedTodos.length} done` : ''}
+                  {syncing ? ' · Syncing...' : ''}
                 </div>
               </div>
 
-              <div className="mt-3 space-y-2">
+              <div className="min-w-0 flex-1">
                 {loading ? (
-                  <div className="rounded-2xl border border-slate-700/50 bg-slate-950/45 px-4 py-3 text-sm text-slate-400">
-                    Loading tasks…
+                  <div className="truncate rounded-2xl border border-slate-700/50 bg-slate-950/45 px-4 py-2.5 text-sm text-slate-400">
+                    Loading tasks...
                   </div>
-                ) : previewTodos.length > 0 ? (
-                  previewTodos.slice(0, 2).map((todo) => (
-                    <div
-                      key={todo.id}
-                      className="truncate rounded-2xl border border-slate-800/70 bg-slate-950/55 px-4 py-2.5 text-sm text-slate-200"
-                    >
-                      {todo.title}
-                    </div>
-                  ))
+                ) : activeTodos.length > 0 ? (
+                  <div className="truncate rounded-2xl border border-slate-800/70 bg-slate-950/55 px-4 py-2.5 text-sm text-slate-200">
+                    {activeTodos[0].title}
+                    {activeTodos.length > 1 ? ` +${activeTodos.length - 1} more` : ''}
+                  </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-700/60 bg-slate-950/35 px-4 py-4 text-sm text-slate-400">
+                  <div className="truncate rounded-2xl border border-dashed border-slate-700/60 bg-slate-950/35 px-4 py-2.5 text-sm text-slate-400">
                     No tasks yet. Start a list.
                   </div>
                 )}
-                {!loading && activeTodos.length > 2 && (
-                  <div className="px-1 text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                    +{activeTodos.length - 2} more
-                  </div>
-                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-700/70 bg-slate-800/80 p-3 text-slate-200 transition-colors group-hover:border-blue-400/35 group-hover:text-blue-100">
+                <ChevronUp className="h-4 w-4 rotate-90" />
               </div>
             </button>
           </div>
