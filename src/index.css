@@ -40,6 +40,14 @@
   animation: ql-folder-focus 0.22s ease-out forwards;
 }
 
+@keyframes todo-drawer-open {
+  from { opacity: 0; transform: translateX(36px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.todo-drawer-open {
+  animation: todo-drawer-open 0.24s ease-out forwards;
+}
+
 @layer utilities {
   .scrollbar-theme {
     scrollbar-width: thin;

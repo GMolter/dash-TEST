@@ -12,6 +12,7 @@ import { PasteList } from './pages/PasteList';
 import { NotFound } from './pages/NotFound';
 import Admin from './pages/Admin';
 import { UtilitiesHub } from './components/UtilitiesHub';
+import { DashboardTodosHomeHeader } from './components/DashboardTodos';
 import { ProjectsCenterApp } from './pages/ProjectsCenterApp';
 import { ProjectDashboard } from './pages/ProjectDashboard';
 import { Onboarding } from './pages/Onboarding';
@@ -59,7 +60,7 @@ type BannerState = { enabled: boolean; text: string };
 
 function App() {
   const { user, loading: authLoading } = useAuth();
-  const { profile, organization, loading: orgLoading } = useOrg();
+  const { profile, organization } = useOrg();
 
   const [view, setView] = useState<View>({ type: 'home' });
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -324,9 +325,7 @@ function App() {
 
   const renderHome = () => (
     <div className="w-full">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-semibold text-indigo-300">Quick Links</h2>
-      </div>
+      <DashboardTodosHomeHeader />
       <Quicklinks editMode={false} />
     </div>
   );
