@@ -303,10 +303,7 @@ function TaskPanelContent({
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-medium text-slate-200">Add something new</div>
-                  <div className="mt-1 text-sm text-slate-500">Open the composer only when you need it.</div>
-                </div>
+                <div className="text-sm font-medium text-slate-200">Add something new</div>
                 <button
                   type="button"
                   onClick={() => setComposerOpen(true)}
