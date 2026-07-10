@@ -1,7 +1,7 @@
 ########
 Title: Quick Links — Bookmark Manager
 Slug: quick-links
-Summary: Create, organize, and access personal bookmarks using folders, emoji icons, and drag-and-drop reordering.
+Summary: Create personal bookmarks and manage organization-wide shared links from their dedicated workspaces.
 Sort Order: 5
 ########
 
@@ -9,11 +9,12 @@ Sort Order: 5
 
 1. [What are Quick Links?](olio://help-anchor/what-are-quick-links)
 2. [Adding a Link](olio://help-anchor/adding-a-link)
-3. [Creating a Folder](olio://help-anchor/creating-a-folder)
-4. [Editing and Deleting](olio://help-anchor/editing-and-deleting)
-5. [Drag-and-Drop Reordering](olio://help-anchor/drag-and-drop-reordering)
-6. [Expanding Folders](olio://help-anchor/expanding-folders)
-7. [Quick-Start Checklist](olio://help-anchor/quick-start-checklist)
+3. [Shared Quick Links](olio://help-anchor/shared-quick-links)
+4. [Creating a Folder](olio://help-anchor/creating-a-folder)
+5. [Editing and Deleting](olio://help-anchor/editing-and-deleting)
+6. [Drag-and-Drop Reordering](olio://help-anchor/drag-and-drop-reordering)
+7. [Expanding Folders](olio://help-anchor/expanding-folders)
+8. [Quick-Start Checklist](olio://help-anchor/quick-start-checklist)
 
 ---
 
@@ -23,7 +24,7 @@ Sort Order: 5
 
 ## 🧩 What are Quick Links?
 
-**Quick Links** is Olio Workstation's built-in personal bookmark manager. It lets you save, organize, and quickly access the URLs you use most, grouped into folders with emoji icons for easy scanning.
+**Quick Links** is Olio Workstation's bookmark manager. Personal links appear on your dashboard and can be organized into folders. Shared links live in the Organization page and are available to everyone in that organization.
 
 ---
 
@@ -37,15 +38,29 @@ Sort Order: 5
 6. Optionally select a **Folder** to place it in
 7. Click **Save**
 
-The link will appear immediately in the grid.
+The link is personal automatically and will appear immediately in your personal grid and on the dashboard. There is no visibility selector in this form.
 
 > 💡 **Tip:** Use descriptive titles rather than raw URLs — `Team Figma` is much easier to scan than `figma.com/file/abc123xyz`.
 
 ---
 
+## 👥 Shared Quick Links
+
+To create a link for everyone in your organization:
+
+1. Open the menu and go to **Organization**
+2. Select the **Shared Links** tab
+3. Click **+ Add Link**
+4. Enter the icon, title, and URL
+5. Click **Save**
+
+Links created there are shared automatically and do not appear on personal dashboards. Shared links use a flat list rather than personal folders.
+
+---
+
 ## 📁 Creating a Folder
 
-Folders help you group related links together:
+Personal folders help you group related links together:
 
 1. Click **+ Folder**
 2. Enter a **Folder Name**
@@ -103,3 +118,4 @@ Use this checklist to get Quick Links set up:
 - [ ] Add your most-visited URLs with descriptive titles
 - [ ] Add emoji icons to make tiles visually distinct
 - [ ] Drag tiles into the order you want them
+- [ ] Add team-wide bookmarks from **Organization → Shared Links**

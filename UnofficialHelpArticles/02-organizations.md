@@ -11,8 +11,9 @@ Sort Order: 2
 2. [Joining an Existing Organization](olio://help-anchor/joining-an-existing-organization)
 3. [Creating a New Organization](olio://help-anchor/creating-a-new-organization)
 4. [Roles Explained](olio://help-anchor/roles-explained)
-5. [Switching Organizations](olio://help-anchor/switching-organizations)
-6. [FAQ](olio://help-anchor/faq)
+5. [Shared Quick Links](olio://help-anchor/shared-quick-links)
+6. [Switching Organizations](olio://help-anchor/switching-organizations)
+7. [FAQ](olio://help-anchor/faq)
 
 ---
 
@@ -27,6 +28,7 @@ Every user in Olio Workstation belongs to an **organization**. Your organization
 An organization is a group that shares:
 
 - **Projects** (accessible by all members)
+- **Shared Quick Links** (organization-wide bookmarks)
 - **URL Shortener** links (org-scoped)
 - **Secrets** and **Pastebin** content (depending on scope settings)
 - **Triggers/Webhooks**
@@ -60,6 +62,14 @@ If you're starting fresh or setting up a workspace for your team:
 Your organization will be assigned a unique 4-digit invite code automatically. Share this code with teammates so they can join.
 
 > 💡 **Tip:** You can rename your organization and regenerate the invite code later from the **Organization** page.
+
+---
+
+## 🔗 Shared Quick Links
+
+The **Shared Links** tab on the Organization page contains bookmarks intended for everyone in the organization. Any link created from this tab is shared automatically.
+
+Personal links are created under **Utilities → Quick Links** and appear only on that user's dashboard. Moving shared-link creation into the Organization page keeps personal and team bookmarks clearly separated.
 
 ---
 

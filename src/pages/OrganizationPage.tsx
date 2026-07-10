@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useOrg } from '../hooks/useOrg';
 import { usePermission } from '../hooks/usePermission';
-import { Building2, Copy, Users, Settings, Crown, Shield as ShieldIcon, User, RefreshCw } from 'lucide-react';
+import { Quicklinks } from '../components/Quicklinks';
+import { Building2, Copy, Users, Settings, Crown, Shield as ShieldIcon, User, RefreshCw, Link2 } from 'lucide-react';
 
-type Tab = 'overview' | 'manage';
+type Tab = 'overview' | 'shared-links' | 'manage';
 
 export function OrganizationPage() {
   const { organization, members, updateOrg, regenerateCode, updateMemberRole, removeMember } = useOrg();
@@ -117,7 +118,7 @@ export function OrganizationPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="glass-panel overflow-hidden rounded-[1.5rem]">
         <div className="border-b border-slate-700">
           <div className="flex">
@@ -131,6 +132,17 @@ export function OrganizationPage() {
             >
               <Building2 className="w-4 h-4 inline-block mr-2" />
               Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('shared-links')}
+              className={`flex-1 px-6 py-4 font-medium transition-colors ${
+                activeTab === 'shared-links'
+                  ? 'bg-slate-700/50 text-white border-b-2 border-blue-500'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
+              }`}
+            >
+              <Link2 className="w-4 h-4 inline-block mr-2" />
+              Shared Links
             </button>
             {canManageOrg() && (
               <button
@@ -203,6 +215,10 @@ export function OrganizationPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === 'shared-links' && (
+            <Quicklinks editMode collection="shared" />
           )}
 
           {activeTab === 'manage' && canManageOrg() && (

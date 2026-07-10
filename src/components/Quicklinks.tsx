@@ -4,6 +4,7 @@ import { ArrowRight, Plus, Trash2, GripVertical, Pencil, Folder } from 'lucide-r
 import { supabase } from '../lib/supabase';
 import { useOrg } from '../hooks/useOrg';
 import { useAuth } from '../hooks/useAuth';
+import { usePermission } from '../hooks/usePermission';
 
 interface Quicklink {
   id: string;
@@ -21,6 +22,8 @@ interface QuicklinkFolder {
   name: string;
   icon: string;
   order_index: number;
+  scope?: 'personal' | 'shared' | 'both';
+  user_id?: string;
 }
 
 type GridItem =
@@ -29,11 +32,13 @@ type GridItem =
 
 interface Props {
   editMode?: boolean;
+  collection?: 'personal' | 'shared';
 }
 
-export function Quicklinks({ editMode = false }: Props) {
+export function Quicklinks({ editMode = false, collection = 'personal' }: Props) {
   const { user } = useAuth();
   const { organization } = useOrg();
+  const { canManageOrg } = usePermission();
 
   // ── Data ─────────────────────────────────────────────────────────────────────
   const [links, setLinks] = useState<Quicklink[]>([]);
@@ -46,7 +51,6 @@ export function Quicklinks({ editMode = false }: Props) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [icon, setIcon] = useState('🔗');
-  const [scope, setScope] = useState<'personal' | 'shared' | 'both'>('personal');
   const [linkFolderId, setLinkFolderId] = useState<string>('');
 
   // ── Folder form ──────────────────────────────────────────────────────────────
@@ -80,14 +84,22 @@ export function Quicklinks({ editMode = false }: Props) {
   });
 
   // ── Computed ─────────────────────────────────────────────────────────────────
-  const personalLinks = links.filter((l) => l.scope === 'personal' || l.scope === 'both');
-  const rootPersonalLinks = personalLinks.filter((l) => !l.folder_id);
-  const linksInFolder = (folderId: string) => personalLinks.filter((l) => l.folder_id === folderId);
+  const collectionLinks = collection === 'shared'
+    ? links.filter((link) => link.scope === 'shared' || link.scope === 'both')
+    : links.filter((link) => link.user_id === user?.id && (link.scope === 'personal' || link.scope === 'both'));
+  const collectionFolders = collection === 'personal'
+    ? folders.filter((folder) => folder.user_id === user?.id && (!folder.scope || folder.scope === 'personal' || folder.scope === 'both'))
+    : [];
+  const linksInFolder = (folderId: string) => collectionLinks.filter((link) => link.folder_id === folderId);
 
-  const rootLinksForGrid = editMode ? links.filter((l) => !l.folder_id) : rootPersonalLinks;
+  // Shared links are intentionally flat. This also keeps legacy shared links visible
+  // if they were previously assigned to a personal folder.
+  const rootLinksForGrid = collection === 'shared'
+    ? collectionLinks
+    : collectionLinks.filter((link) => !link.folder_id);
 
   const allGridItems: GridItem[] = [
-    ...folders.map((f) => ({ itemType: 'folder' as const, id: f.id, order_index: f.order_index, data: f })),
+    ...collectionFolders.map((f) => ({ itemType: 'folder' as const, id: f.id, order_index: f.order_index, data: f })),
     ...rootLinksForGrid.map((l) => ({ itemType: 'link' as const, id: l.id, order_index: l.order_index, data: l })),
   ].sort((a, b) => a.order_index - b.order_index);
 
@@ -181,7 +193,7 @@ export function Quicklinks({ editMode = false }: Props) {
 
   // ── Link CRUD ─────────────────────────────────────────────────────────────────
   const resetForm = () => {
-    setTitle(''); setUrl(''); setIcon('🔗'); setScope('personal'); setLinkFolderId('');
+    setTitle(''); setUrl(''); setIcon('🔗'); setLinkFolderId('');
     setShowForm(false); setEditingLink(null);
   };
 
@@ -189,7 +201,7 @@ export function Quicklinks({ editMode = false }: Props) {
     if (!title || !url || !organization || !user) return;
     const { error } = await supabase.from('quicklinks').insert({
       title, url, icon, order_index: links.length,
-      org_id: organization.id, user_id: user.id, scope, folder_id: linkFolderId || null,
+      org_id: organization.id, user_id: user.id, scope: collection, folder_id: collection === 'personal' ? linkFolderId || null : null,
     });
     if (!error) { resetForm(); loadLinks(); }
   };
@@ -197,7 +209,7 @@ export function Quicklinks({ editMode = false }: Props) {
   const updateLink = async () => {
     if (!editingLink || !title || !url) return;
     const { error } = await supabase.from('quicklinks')
-      .update({ title, url, icon, scope, folder_id: linkFolderId || null })
+      .update({ title, url, icon, scope: collection, folder_id: collection === 'personal' ? linkFolderId || null : null })
       .eq('id', editingLink.id);
     if (!error) { resetForm(); loadLinks(); }
   };
@@ -210,8 +222,8 @@ export function Quicklinks({ editMode = false }: Props) {
 
   const startEditLink = (link: Quicklink) => {
     setEditingLink(link); setTitle(link.title); setUrl(link.url);
-    setIcon(link.icon || '🔗'); setScope(link.scope || 'personal');
-    setLinkFolderId(link.folder_id || ''); setShowForm(true);
+    setIcon(link.icon || '🔗');
+    setLinkFolderId(collection === 'personal' ? link.folder_id || '' : ''); setShowForm(true);
   };
 
   // ── Folder CRUD ───────────────────────────────────────────────────────────────
@@ -367,7 +379,7 @@ export function Quicklinks({ editMode = false }: Props) {
     setDraggingFolderItem(null);
     setDragOverFolderItemId(null);
     if (!dragId || dragId === targetId) return;
-    const folderLinks = links.filter((l) => l.folder_id === folderId).sort((a, b) => a.order_index - b.order_index);
+    const folderLinks = collectionLinks.filter((l) => l.folder_id === folderId).sort((a, b) => a.order_index - b.order_index);
     const fromIdx = folderLinks.findIndex((l) => l.id === dragId);
     const toIdx = folderLinks.findIndex((l) => l.id === targetId);
     if (fromIdx < 0 || toIdx < 0) return;
@@ -377,8 +389,8 @@ export function Quicklinks({ editMode = false }: Props) {
   const onFolderItemDragEnd = () => { setDraggingFolderItem(null); setDragOverFolderItemId(null); };
 
   // ── Shared tile classes ───────────────────────────────────────────────────────
-  const tileBase = 'glass-panel group relative flex min-h-[17rem] flex-col items-center justify-center overflow-hidden rounded-[1.8rem] p-7 text-center transition-all duration-300 sm:min-h-[19rem] lg:min-h-[21rem] lg:p-9 hover:-translate-y-1 hover:border-indigo-300/30 hover:bg-slate-900/55 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.11),0_32px_90px_rgba(49,46,129,0.22)]';
-  const focusedFolder = expandedFolderId ? folders.find((folder) => folder.id === expandedFolderId) || null : null;
+  const tileBase = 'glass-panel group relative flex min-h-[13.5rem] flex-col items-center justify-center overflow-hidden rounded-[1.6rem] p-6 text-center transition-all duration-300 sm:min-h-[14.5rem] lg:min-h-[15.5rem] lg:p-7 hover:-translate-y-1 hover:border-indigo-300/30 hover:bg-slate-900/55 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.11),0_28px_70px_rgba(49,46,129,0.2)]';
+  const focusedFolder = expandedFolderId ? collectionFolders.find((folder) => folder.id === expandedFolderId) || null : null;
   const focusedFolderLinks = focusedFolder
     ? linksInFolder(focusedFolder.id).sort((a, b) => a.order_index - b.order_index)
     : [];
@@ -473,15 +485,15 @@ export function Quicklinks({ editMode = false }: Props) {
                 >
                   <button
                     onClick={() => toggleFolderOpen(folder.id)}
-                    className="flex h-full min-h-[17rem] w-full flex-col items-center justify-center p-7 text-center sm:min-h-[19rem] lg:min-h-[21rem] lg:p-9"
+                    className="flex h-full min-h-[13.5rem] w-full flex-col items-center justify-center p-6 text-center sm:min-h-[14.5rem] lg:min-h-[15.5rem] lg:p-7"
                   >
-                    <div className="flex h-20 w-20 items-center justify-center rounded-[1.4rem] border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_16px_38px_rgba(2,6,23,0.28)]">
-                      <FolderIcon icon={folder.icon} size={isMobileFolderView ? 52 : 58} />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-[1.2rem] border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_14px_30px_rgba(2,6,23,0.25)]">
+                      <FolderIcon icon={folder.icon} size={isMobileFolderView ? 44 : 48} />
                     </div>
-                    <span className="mt-7 max-w-full truncate text-xl font-medium text-white transition-colors group-hover:text-indigo-100">{folder.name}</span>
+                    <span className="mt-5 max-w-full truncate text-lg font-medium text-white transition-colors group-hover:text-indigo-100">{folder.name}</span>
                     <span className="mt-2 text-sm text-violet-300">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>
-                    <span className="mt-8 flex h-12 w-12 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_28px_rgba(139,92,246,0.25)]">
-                      <ArrowRight className="h-5 w-5" />
+                    <span className="mt-5 flex h-10 w-10 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_24px_rgba(139,92,246,0.25)]">
+                      <ArrowRight className="h-4 w-4" />
                     </span>
                   </button>
                 </div>
@@ -496,13 +508,13 @@ export function Quicklinks({ editMode = false }: Props) {
                 href={formatUrl(link.url)}
                 className={tileBase}
               >
-                <div className="flex h-20 w-20 items-center justify-center rounded-[1.4rem] border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_16px_38px_rgba(2,6,23,0.28)]">
-                  <LinkIcon link={link} size={isMobileFolderView ? 52 : 58} />
+                <div className="flex h-16 w-16 items-center justify-center rounded-[1.2rem] border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_14px_30px_rgba(2,6,23,0.25)]">
+                  <LinkIcon link={link} size={isMobileFolderView ? 44 : 48} />
                 </div>
-                <h3 className="mt-7 max-w-full truncate text-xl font-medium text-white transition-colors group-hover:text-indigo-100">{link.title}</h3>
+                <h3 className="mt-5 max-w-full truncate text-lg font-medium text-white transition-colors group-hover:text-indigo-100">{link.title}</h3>
                 <p className="mt-2 text-sm text-violet-300">Quick link</p>
-                <span className="mt-8 flex h-12 w-12 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_28px_rgba(139,92,246,0.25)]">
-                  <ArrowRight className="h-5 w-5" />
+                <span className="mt-5 flex h-10 w-10 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_24px_rgba(139,92,246,0.25)]">
+                  <ArrowRight className="h-4 w-4" />
                 </span>
               </a>
             );
@@ -523,20 +535,26 @@ export function Quicklinks({ editMode = false }: Props) {
     <div className="glass-panel rounded-[1.75rem] p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-semibold text-white mb-1">Quick Links</h2>
+          <h2 className="text-2xl font-semibold text-white mb-1">
+            {collection === 'shared' ? 'Shared Quick Links' : 'Personal Quick Links'}
+          </h2>
           <p className="text-sm text-slate-400">
-            Drag to reorder · Drag a link onto a folder to move it in · Click pencil to edit
+            {collection === 'shared'
+              ? 'Links added here are available to everyone in your organization · Click pencil to edit'
+              : 'Drag to reorder · Drag a link onto a folder to move it in · Click pencil to edit'}
             {savingOrder ? ' · Saving…' : ''}
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => { resetFolderForm(); setShowFolderForm(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors"
-          >
-            <Folder className="w-4 h-4" />
-            Add Folder
-          </button>
+          {collection === 'personal' && (
+            <button
+              onClick={() => { resetFolderForm(); setShowFolderForm(true); }}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors"
+            >
+              <Folder className="w-4 h-4" />
+              Add Folder
+            </button>
+          )}
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
@@ -548,7 +566,7 @@ export function Quicklinks({ editMode = false }: Props) {
       </div>
 
       {/* Folder form */}
-      {showFolderForm && (
+      {collection === 'personal' && showFolderForm && (
         <div className="mb-6 p-6 bg-slate-900/50 rounded-lg border border-slate-700">
           <h3 className="text-lg font-semibold text-white mb-4">{editingFolder ? 'Edit Folder' : 'Add New Folder'}</h3>
           <div className="space-y-3">
@@ -628,22 +646,13 @@ export function Quicklinks({ editMode = false }: Props) {
               <input type="url" placeholder="https://example.com" value={url} onChange={(e) => setUrl(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-            <div>
-              <label className="block text-sm text-slate-300 mb-2">Visibility</label>
-              <select value={scope} onChange={(e) => setScope(e.target.value as 'personal' | 'shared' | 'both')}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="personal">Personal - Only you can see this</option>
-                <option value="shared">Shared - All organization members can see this</option>
-                <option value="both">Both - Visible in personal and shared views</option>
-              </select>
-            </div>
-            {folders.length > 0 && (
+            {collection === 'personal' && collectionFolders.length > 0 && (
               <div>
                 <label className="block text-sm text-slate-300 mb-2">Folder</label>
                 <select value={linkFolderId} onChange={(e) => setLinkFolderId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">No folder (root)</option>
-                  {folders.map((f) => <option key={f.id} value={f.id}>{f.icon} {f.name}</option>)}
+                  {collectionFolders.map((f) => <option key={f.id} value={f.id}>{f.icon} {f.name}</option>)}
                 </select>
               </div>
             )}
@@ -674,8 +683,8 @@ export function Quicklinks({ editMode = false }: Props) {
 
           if (item.itemType === 'folder') {
             const folder = item.data;
-            const count = links.filter((l) => l.folder_id === folder.id).length;
-            const folderLinks = links.filter((l) => l.folder_id === folder.id);
+            const count = collectionLinks.filter((l) => l.folder_id === folder.id).length;
+            const folderLinks = collectionLinks.filter((l) => l.folder_id === folder.id);
             const isExpanded = expandedFolderId === folder.id;
             return (
               <div
@@ -768,45 +777,47 @@ export function Quicklinks({ editMode = false }: Props) {
           }
 
           const link = item.data;
-          const inFolder = folders.find((f) => f.id === link.folder_id);
+          const inFolder = collectionFolders.find((f) => f.id === link.folder_id);
+          const canEditLink = collection === 'personal' || link.user_id === user?.id || canManageOrg();
           return (
             <div
               key={`link-${link.id}`}
               className={`${tileBase} bg-slate-900/50 hover:bg-slate-900/80 border-slate-700/50 ${dragClasses}`}
-              onDragOver={onDragOver(link.id, 'link')}
-              onDrop={onDropOn(link.id, 'link')}
+              onDragOver={collection === 'personal' ? onDragOver(link.id, 'link') : undefined}
+              onDrop={collection === 'personal' ? onDropOn(link.id, 'link') : undefined}
             >
               {dt && dt.side !== 'into' && (
                 <div className={`absolute inset-y-2 w-0.5 rounded-full bg-blue-400 pointer-events-none ${dt.side === 'before' ? 'left-0' : 'right-0'}`} />
               )}
-              <button
-                draggable
-                onDragStart={onDragStart(link.id, 'link')}
-                onDragEnd={onDragEnd}
-                className="absolute top-2 left-2 p-2 rounded-lg bg-slate-800/40 border border-slate-700/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-                title="Drag to reorder"
-              >
-                <GripVertical className="w-4 h-4 text-slate-300" />
-              </button>
+              {collection === 'personal' && (
+                <button
+                  draggable
+                  onDragStart={onDragStart(link.id, 'link')}
+                  onDragEnd={onDragEnd}
+                  className="absolute top-2 left-2 p-2 rounded-lg bg-slate-800/40 border border-slate-700/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+                  title="Drag to reorder"
+                >
+                  <GripVertical className="w-4 h-4 text-slate-300" />
+                </button>
+              )}
 
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end gap-1">
-                {link.scope === 'personal' && <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs rounded border border-blue-600/30">Personal</span>}
-                {link.scope === 'shared' && <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded border border-green-600/30">Shared</span>}
-                {link.scope === 'both' && <span className="px-2 py-1 bg-purple-600/20 text-purple-400 text-xs rounded border border-purple-600/30">Both</span>}
                 {inFolder && <span className="px-2 py-1 bg-slate-600/30 text-slate-400 text-xs rounded border border-slate-600/30">{inFolder.icon} {inFolder.name}</span>}
               </div>
 
               <div className="mb-3"><LinkIcon link={link} size={42} /></div>
               <h3 className="text-white font-medium mb-3">{link.title}</h3>
 
-              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => startEditLink(link)} className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
-                  <Pencil className="w-4 h-4 text-white" />
-                </button>
-                <button onClick={() => setLinkToDelete(link)} className="p-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
-                  <Trash2 className="w-4 h-4 text-white" />
-                </button>
-              </div>
+              {canEditLink && (
+                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => startEditLink(link)} className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                    <Pencil className="w-4 h-4 text-white" />
+                  </button>
+                  <button onClick={() => setLinkToDelete(link)} className="p-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                    <Trash2 className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

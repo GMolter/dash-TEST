@@ -300,7 +300,7 @@ function App() {
   const renderHome = () => (
     <div className="mx-auto min-h-screen w-full max-w-[88rem] px-5 pb-16 sm:px-8 lg:px-12">
       <DashboardTodosHomeHeader />
-      <section className="mx-auto max-w-4xl pt-32 text-center sm:pt-36 lg:pt-40">
+      <section className="mx-auto max-w-4xl pt-24 text-center sm:pt-24 lg:pt-24">
         <h1 className="text-4xl font-semibold tracking-[-0.035em] text-white drop-shadow-[0_5px_28px_rgba(255,255,255,0.12)] sm:text-5xl lg:text-6xl">
           Olio Workstation
         </h1>
@@ -325,7 +325,7 @@ function App() {
         </div>
       )}
 
-      <section className="mt-14 sm:mt-16 lg:mt-20" aria-label="Quick Links">
+      <section className="mt-9 sm:mt-10 lg:mt-11" aria-label="Quick Links">
         <Quicklinks editMode={false} />
       </section>
     </div>
