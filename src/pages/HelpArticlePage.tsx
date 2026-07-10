@@ -135,9 +135,9 @@ export function HelpArticlePage({ slug }: { slug: string }) {
   }, [article?.id]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="sticky top-0 z-20 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur">
-        <div className="px-4 sm:px-6 lg:px-10 py-4 flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-slate-950/55 text-white backdrop-blur-[2px]">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
+        <div className="px-4 [padding-left:5.5rem] sm:px-6 sm:[padding-left:7rem] lg:px-10 lg:[padding-left:7rem] py-4 flex items-center justify-between gap-4">
           <a
             href="/help"
             className="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-white transition-colors"
@@ -156,7 +156,7 @@ export function HelpArticlePage({ slug }: { slug: string }) {
       </header>
 
       <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-8">
-        <section className="rounded-xl border border-slate-700 bg-slate-900/50 p-6">
+        <section className="glass-panel rounded-[1.5rem] p-6">
           {loading ? (
             <div className="text-sm text-slate-400">Loading article...</div>
           ) : missing || !article ? (

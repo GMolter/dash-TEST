@@ -207,7 +207,6 @@ function TaskPanelContent({
     () => todos.filter((todo) => todo.completed),
     [todos],
   );
-
   const resetComposer = () => {
     setComposerOpen(false);
     setTitle('');
@@ -402,10 +401,6 @@ export function DashboardTodosHomeHeader() {
     () => todos.filter((todo) => !todo.completed).sort((a, b) => a.sort_order - b.sort_order),
     [todos],
   );
-  const completedTodos = useMemo(
-    () => todos.filter((todo) => todo.completed),
-    [todos],
-  );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -509,67 +504,19 @@ export function DashboardTodosHomeHeader() {
 
   return (
     <>
-      <div className="mb-7 sm:mb-8">
-        {isMobile ? (
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-left text-2xl font-semibold text-indigo-300 sm:text-3xl">Quick Links</h2>
-            <button
-              type="button"
-              onClick={() => setIsOpen(true)}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-700/70 bg-slate-900/55 px-4 py-3 text-sm font-medium text-slate-100 shadow-[0_16px_40px_rgba(2,6,23,0.24)] backdrop-blur transition-colors hover:bg-slate-800/65"
-            >
-              <ListTodo className="h-4 w-4 text-blue-200" />
-              My Tasks
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-[minmax(22rem,38rem)_auto_minmax(22rem,38rem)] items-center gap-6 xl:grid-cols-[minmax(24rem,40rem)_auto_minmax(24rem,40rem)]">
-            <div />
-            <div className="justify-self-center text-center">
-              <h2 className="text-3xl font-semibold text-indigo-300">Quick Links</h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsOpen(true)}
-              className="group justify-self-end flex w-full items-center gap-4 overflow-hidden rounded-[1.55rem] border border-slate-700/60 bg-slate-900/55 px-4 py-3 text-left shadow-[0_24px_70px_rgba(2,6,23,0.26)] backdrop-blur transition-all hover:border-blue-400/30 hover:bg-slate-900/70 hover:shadow-[0_30px_80px_rgba(15,23,42,0.4)]"
-            >
-              <div className="min-w-0 flex items-center gap-3">
-                <div className="inline-flex shrink-0 items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-blue-200/90">
-                  <ListTodo className="h-3.5 w-3.5" />
-                  My Tasks
-                </div>
-                <div className="shrink-0 text-2xl font-semibold leading-none text-white">{activeTodos.length}</div>
-                <div className="truncate text-sm text-slate-400">
-                  {activeTodos.length === 1 ? 'Open task' : 'Open tasks'}
-                  {completedTodos.length > 0 ? ` · ${completedTodos.length} done` : ''}
-                  {syncing ? ' · Syncing...' : ''}
-                </div>
-              </div>
-
-              <div className="min-w-0 flex-1">
-                {loading ? (
-                  <div className="truncate rounded-2xl border border-slate-700/50 bg-slate-950/45 px-4 py-2.5 text-sm text-slate-400">
-                    Loading tasks...
-                  </div>
-                ) : activeTodos.length > 0 ? (
-                  <div className="truncate rounded-2xl border border-slate-800/70 bg-slate-950/55 px-4 py-2.5 text-sm text-slate-200">
-                    {activeTodos[0].title}
-                    {activeTodos.length > 1 ? ` +${activeTodos.length - 1} more` : ''}
-                  </div>
-                ) : (
-                  <div className="truncate rounded-2xl border border-dashed border-slate-700/60 bg-slate-950/35 px-4 py-2.5 text-sm text-slate-400">
-                    No tasks yet. Start a list.
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-slate-700/70 bg-slate-800/80 p-3 text-slate-200 transition-colors group-hover:border-blue-400/35 group-hover:text-blue-100">
-                <ChevronUp className="h-4 w-4 rotate-90" />
-              </div>
-            </button>
-          </div>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="glass-control fixed right-4 top-4 z-[100] flex h-14 items-center gap-2 px-4 sm:right-7 sm:top-7 sm:h-16 sm:gap-3 sm:px-5"
+        aria-label={`Open My Tasks, ${activeTodos.length} open`}
+      >
+        <ListTodo className="h-5 w-5 text-indigo-200 sm:h-6 sm:w-6" />
+        <span className="hidden text-sm font-medium sm:inline">My Tasks</span>
+        <span className="flex h-7 min-w-7 items-center justify-center rounded-full border border-indigo-300/20 bg-indigo-400/15 px-2 text-xs font-semibold text-indigo-100">
+          {loading ? '…' : activeTodos.length}
+        </span>
+        {syncing && <span className="sr-only">Syncing</span>}
+      </button>
       {panel}
     </>
   );

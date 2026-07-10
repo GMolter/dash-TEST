@@ -118,7 +118,7 @@ export function OrganizationPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 overflow-hidden">
+      <div className="glass-panel overflow-hidden rounded-[1.5rem]">
         <div className="border-b border-slate-700">
           <div className="flex">
             <button

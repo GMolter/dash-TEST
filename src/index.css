@@ -48,6 +48,41 @@
   animation: todo-drawer-open 0.24s ease-out forwards;
 }
 
+@keyframes nav-drawer-open {
+  from { opacity: 0; transform: translateX(-32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.nav-drawer-open {
+  animation: nav-drawer-open 0.24s ease-out forwards;
+}
+
+@layer components {
+  .glass-control {
+    @apply rounded-2xl border border-white/10 bg-slate-950/45 text-slate-100 backdrop-blur-xl transition-all;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 18px 50px rgba(2, 6, 23, 0.34);
+  }
+
+  .glass-control:hover {
+    @apply border-indigo-300/30 bg-slate-900/65 text-white;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 20px 58px rgba(79, 70, 229, 0.16);
+  }
+
+  .glass-panel {
+    @apply border border-white/10 bg-slate-950/40 backdrop-blur-xl;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.075), 0 28px 80px rgba(2, 6, 23, 0.3);
+  }
+
+  .glass-drawer {
+    @apply border-r border-white/10 backdrop-blur-2xl;
+    background-color: rgba(2, 6, 23, 0.82);
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04), 28px 0 90px rgba(2, 6, 23, 0.55);
+  }
+
+  .glass-page-offset {
+    @apply pt-24 sm:pt-28;
+  }
+}
+
 @layer utilities {
   .scrollbar-theme {
     scrollbar-width: thin;

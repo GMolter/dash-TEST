@@ -40,7 +40,7 @@ export function UtilitiesHub({
 
         <button
           onClick={() => setShowDescriptions((v) => !v)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-700 bg-slate-900/30 hover:bg-slate-900/50 text-slate-200 transition-colors"
+          className="glass-control inline-flex items-center gap-2 px-4 py-2 text-slate-200"
           aria-pressed={showDescriptions}
         >
           {/* nicer than an emoji */}
@@ -58,7 +58,7 @@ export function UtilitiesHub({
           <button
             key={tool.id}
             onClick={() => onOpenTool(tool.id)}
-            className="group text-left bg-slate-900/30 border border-slate-800/60 hover:border-slate-700 rounded-2xl p-6 transition-colors"
+            className="glass-panel group rounded-2xl p-6 text-left transition-all hover:-translate-y-0.5 hover:border-indigo-300/25 hover:bg-slate-900/55"
           >
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl border border-slate-800 bg-slate-900/50 flex items-center justify-center text-lg">

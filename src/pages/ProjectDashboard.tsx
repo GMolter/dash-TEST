@@ -36,6 +36,7 @@ import { DocEditor } from '../projectFiles/DocEditor';
 import { NameModal } from '../projectFiles/NameModal';
 import { ContextMenu, ContextMenuItem } from '../projectFiles/ContextMenu';
 import type { ParsedMarkdownLink } from '../lib/linking';
+import type { AppBackgroundPreset, AppBackgroundTheme } from '../lib/appTheme';
 
 type Tab = 'overview' | 'board' | 'planner' | 'files' | 'resources';
 
@@ -161,9 +162,13 @@ function toExternalUrl(raw: string) {
 export function ProjectDashboard({
   projectId,
   onBack,
+  backgroundTheme,
+  backgroundPreset,
 }: {
   projectId?: string;
   onBack?: () => void;
+  backgroundTheme?: AppBackgroundTheme;
+  backgroundPreset?: AppBackgroundPreset;
 }) {
   const { user } = useAuth();
   const { organization, profile } = useOrg();
@@ -995,14 +1000,14 @@ export function ProjectDashboard({
 
   return (
     <div className="min-h-screen text-white relative">
-      <AnimatedBackground />
+      <AnimatedBackground theme={backgroundTheme} preset={backgroundPreset} />
       {/* readability veil (keeps text readable vs the animation) */}
       <div className="absolute inset-0 bg-slate-950/45" />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Top bar */}
-        <header className="relative z-30 border-b border-slate-800/50 bg-slate-950/75 backdrop-blur">
-          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-wrap items-center justify-between gap-3 sm:gap-6">
+        <header className="relative z-30 border-b border-white/10 bg-slate-950/52 shadow-[inset_0_-1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
+          <div className="px-4 [padding-left:5.5rem] sm:px-6 sm:[padding-left:7rem] lg:px-8 lg:[padding-left:7rem] py-4 sm:py-5 flex flex-wrap items-center justify-between gap-3 sm:gap-6">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               <button
                 onClick={handleBack}

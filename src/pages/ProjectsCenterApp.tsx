@@ -15,6 +15,7 @@ import { AnimatedBackground } from '../components/AnimatedBackground';
 import { supabase } from '../lib/supabase';
 import { useOrg } from '../hooks/useOrg';
 import { useAuth } from '../hooks/useAuth';
+import type { AppBackgroundPreset, AppBackgroundTheme } from '../lib/appTheme';
 
 type ProjectStatus = 'planning' | 'active' | 'review' | 'completed' | 'archived';
 type Filter = 'all' | 'active' | 'completed' | 'archived';
@@ -84,8 +85,12 @@ function navigateTo(path: string) {
 
 export function ProjectsCenterApp({
   onOpenProject,
+  backgroundTheme,
+  backgroundPreset,
 }: {
   onOpenProject: (id: string) => void;
+  backgroundTheme?: AppBackgroundTheme;
+  backgroundPreset?: AppBackgroundPreset;
 }) {
   const { user } = useAuth();
   const { organization } = useOrg();
@@ -402,12 +407,12 @@ export function ProjectsCenterApp({
 
   return (
     <div className="min-h-screen text-white relative">
-      <AnimatedBackground />
+      <AnimatedBackground theme={backgroundTheme} preset={backgroundPreset} />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Top bar */}
-        <header className="border-b border-slate-800/50 bg-slate-950/75 backdrop-blur">
-          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-wrap items-center justify-between gap-3 sm:gap-6">
+        <header className="border-b border-white/10 bg-slate-950/52 shadow-[inset_0_-1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
+          <div className="px-4 [padding-left:5.5rem] sm:px-6 sm:[padding-left:7rem] lg:px-8 lg:[padding-left:7rem] py-4 sm:py-5 flex flex-wrap items-center justify-between gap-3 sm:gap-6">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               <button
                 onClick={() => navigateTo('/utilities')}

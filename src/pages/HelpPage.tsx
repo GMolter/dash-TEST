@@ -95,10 +95,10 @@ export function HelpPage() {
   }, [articles, query]);
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-white overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-950/55 text-white overflow-hidden backdrop-blur-[2px]">
       {/* Header */}
-      <header className="shrink-0 z-20 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur">
-        <div className="px-4 sm:px-6 py-4 flex items-center gap-4">
+      <header className="shrink-0 z-20 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
+        <div className="px-4 [padding-left:5.5rem] sm:px-6 sm:[padding-left:7rem] py-4 flex items-center gap-4">
           <a
             href="/"
             className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800/60 hover:text-white transition-colors"
@@ -147,7 +147,7 @@ export function HelpPage() {
         <main className="flex-1 overflow-y-auto">
 
           {/* Hero */}
-          <div className="border-b border-slate-800 bg-slate-900/20 px-10 py-14">
+          <div className="border-b border-white/10 bg-slate-900/20 px-10 py-14 backdrop-blur-md">
             <div className="max-w-2xl mx-auto space-y-6">
               <div className="space-y-2">
                 <h1 className="text-4xl font-bold text-white tracking-tight">How can we help?</h1>

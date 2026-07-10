@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Trash2, GripVertical, Pencil, Folder } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, GripVertical, Pencil, Folder } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useOrg } from '../hooks/useOrg';
 import { useAuth } from '../hooks/useAuth';
@@ -284,10 +284,12 @@ export function Quicklinks({ editMode = false }: Props) {
 
   const onDragStart = (id: string, itemType: 'folder' | 'link') => (e: React.DragEvent) => {
     setDragging({ id, itemType });
-    setDragOverId(null);
+    setDropTarget(null);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', `${itemType}:${id}`);
-    try { e.dataTransfer.setDragImage(e.currentTarget as HTMLElement, 0, 0); } catch {}
+    try { e.dataTransfer.setDragImage(e.currentTarget as HTMLElement, 0, 0); } catch {
+      // Some browsers do not support a custom drag image.
+    }
   };
 
   const onDragOver = (id: string, targetItemType: 'folder' | 'link') => (e: React.DragEvent) => {
@@ -336,7 +338,7 @@ export function Quicklinks({ editMode = false }: Props) {
   const onDragEnd = () => { setDragging(null); setDropTarget(null); };
 
   // ── Folder-item reorder ───────────────────────────────────────────────────────
-  const persistFolderOrder = async (folderId: string, reordered: Quicklink[]) => {
+  const persistFolderOrder = async (reordered: Quicklink[]) => {
     setLinks((prev) => prev.map((l) => {
       const idx = reordered.findIndex((r) => r.id === l.id);
       return idx >= 0 ? { ...l, order_index: idx } : l;
@@ -369,13 +371,13 @@ export function Quicklinks({ editMode = false }: Props) {
     const fromIdx = folderLinks.findIndex((l) => l.id === dragId);
     const toIdx = folderLinks.findIndex((l) => l.id === targetId);
     if (fromIdx < 0 || toIdx < 0) return;
-    await persistFolderOrder(folderId, moveItem(folderLinks, fromIdx, toIdx));
+    await persistFolderOrder(moveItem(folderLinks, fromIdx, toIdx));
   };
 
   const onFolderItemDragEnd = () => { setDraggingFolderItem(null); setDragOverFolderItemId(null); };
 
   // ── Shared tile classes ───────────────────────────────────────────────────────
-  const tileBase = 'group relative rounded-[1.6rem] border flex flex-col items-center justify-center text-center transition-all p-7 sm:p-6 min-h-[11.5rem] sm:min-h-0';
+  const tileBase = 'glass-panel group relative flex min-h-[17rem] flex-col items-center justify-center overflow-hidden rounded-[1.8rem] p-7 text-center transition-all duration-300 sm:min-h-[19rem] lg:min-h-[21rem] lg:p-9 hover:-translate-y-1 hover:border-indigo-300/30 hover:bg-slate-900/55 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.11),0_32px_90px_rgba(49,46,129,0.22)]';
   const focusedFolder = expandedFolderId ? folders.find((folder) => folder.id === expandedFolderId) || null : null;
   const focusedFolderLinks = focusedFolder
     ? linksInFolder(focusedFolder.id).sort((a, b) => a.order_index - b.order_index)
@@ -393,7 +395,7 @@ export function Quicklinks({ editMode = false }: Props) {
         >
           <div className="mx-auto flex h-full max-w-5xl items-center justify-center">
             <div
-              className="ql-folder-focus w-full rounded-[2rem] border border-slate-600/70 bg-slate-900/88 p-5 sm:p-6 shadow-2xl shadow-slate-950/70"
+              className="glass-panel ql-folder-focus w-full rounded-[2rem] bg-slate-950/75 p-5 sm:p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-5 flex items-center justify-between gap-4">
@@ -455,7 +457,7 @@ export function Quicklinks({ editMode = false }: Props) {
     return (
       <>
         <div className="w-full">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-5 sm:gap-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3 xl:gap-8">
           {allGridItems.map((item) => {
             if (item.itemType === 'folder') {
               const folder = item.data;
@@ -463,19 +465,24 @@ export function Quicklinks({ editMode = false }: Props) {
               return (
                 <div
                   key={`folder-${folder.id}`}
-                  className={`rounded-[1.6rem] border bg-slate-800/50 backdrop-blur overflow-hidden transition-all min-h-[11.5rem] sm:min-h-0 ${
+                  className={`${tileBase} p-0 ${
                     expandedFolderId === folder.id
-                      ? 'border-blue-400/60 shadow-[0_0_0_1px_rgba(96,165,250,0.25)] scale-[1.01]'
-                      : 'border-slate-700/50'
+                      ? 'border-indigo-300/45 bg-indigo-950/35 shadow-[0_0_0_1px_rgba(129,140,248,0.2),0_32px_90px_rgba(49,46,129,0.24)]'
+                      : ''
                   }`}
                 >
                   <button
                     onClick={() => toggleFolderOpen(folder.id)}
-                    className="flex h-full w-full flex-col items-center justify-center text-center p-7 sm:p-6 hover:bg-slate-700/30 transition-colors"
+                    className="flex h-full min-h-[17rem] w-full flex-col items-center justify-center p-7 text-center sm:min-h-[19rem] lg:min-h-[21rem] lg:p-9"
                   >
-                    <FolderIcon icon={folder.icon} size={isMobileFolderView ? 52 : 46} />
-                    <span className="mt-3 text-white font-medium hover:text-blue-400 transition-colors">{folder.name}</span>
-                    <span className="text-xs text-slate-500 mt-1">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>
+                    <div className="flex h-20 w-20 items-center justify-center rounded-[1.4rem] border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_16px_38px_rgba(2,6,23,0.28)]">
+                      <FolderIcon icon={folder.icon} size={isMobileFolderView ? 52 : 58} />
+                    </div>
+                    <span className="mt-7 max-w-full truncate text-xl font-medium text-white transition-colors group-hover:text-indigo-100">{folder.name}</span>
+                    <span className="mt-2 text-sm text-violet-300">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>
+                    <span className="mt-8 flex h-12 w-12 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_28px_rgba(139,92,246,0.25)]">
+                      <ArrowRight className="h-5 w-5" />
+                    </span>
                   </button>
                 </div>
               );
@@ -487,16 +494,22 @@ export function Quicklinks({ editMode = false }: Props) {
               <a
                 key={`link-${link.id}`}
                 href={formatUrl(link.url)}
-                className={`${tileBase} bg-slate-800/50 hover:bg-slate-700/50 backdrop-blur border-slate-700/50 hover:border-slate-600`}
+                className={tileBase}
               >
-                <div className="mb-3"><LinkIcon link={link} size={isMobileFolderView ? 48 : 42} /></div>
-                <h3 className="text-white font-medium group-hover:text-blue-400 transition-colors">{link.title}</h3>
+                <div className="flex h-20 w-20 items-center justify-center rounded-[1.4rem] border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_16px_38px_rgba(2,6,23,0.28)]">
+                  <LinkIcon link={link} size={isMobileFolderView ? 52 : 58} />
+                </div>
+                <h3 className="mt-7 max-w-full truncate text-xl font-medium text-white transition-colors group-hover:text-indigo-100">{link.title}</h3>
+                <p className="mt-2 text-sm text-violet-300">Quick link</p>
+                <span className="mt-8 flex h-12 w-12 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_28px_rgba(139,92,246,0.25)]">
+                  <ArrowRight className="h-5 w-5" />
+                </span>
               </a>
             );
           })}
 
           {allGridItems.length === 0 && (
-            <div className="col-span-full text-center py-12 text-slate-400">No quick links yet.</div>
+            <div className="glass-panel col-span-full rounded-[1.8rem] px-6 py-16 text-center text-slate-400">No quick links yet.</div>
           )}
         </div>
         </div>
@@ -507,7 +520,7 @@ export function Quicklinks({ editMode = false }: Props) {
 
   // ── Edit mode ─────────────────────────────────────────────────────────────────
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 border border-slate-700">
+    <div className="glass-panel rounded-[1.75rem] p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-white mb-1">Quick Links</h2>

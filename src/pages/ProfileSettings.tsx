@@ -106,7 +106,7 @@ export function ProfileSettings({
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 space-y-6">
+      <div className="glass-panel space-y-6 rounded-[1.5rem] p-6">
         <div className="flex items-start justify-between gap-4">
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
             <User className="w-6 h-6" />

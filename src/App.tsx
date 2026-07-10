@@ -13,6 +13,7 @@ import { NotFound } from './pages/NotFound';
 import Admin from './pages/Admin';
 import { UtilitiesHub } from './components/UtilitiesHub';
 import { DashboardTodosHomeHeader } from './components/DashboardTodos';
+import { AppNavigation } from './components/AppNavigation';
 import { ProjectsCenterApp } from './pages/ProjectsCenterApp';
 import { ProjectDashboard } from './pages/ProjectDashboard';
 import { Onboarding } from './pages/Onboarding';
@@ -37,7 +38,7 @@ import {
   setStoredAppBackgroundThemePreset,
   setStoredAppBackgroundTheme,
 } from './lib/appTheme';
-import { Home, Wrench, Menu, X, AlertTriangle, Building2, UserCircle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 type View =
   | { type: 'home' }
@@ -63,18 +64,6 @@ function App() {
   const { profile, organization } = useOrg();
 
   const [view, setView] = useState<View>({ type: 'home' });
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try {
-      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-        return false;
-      }
-      const saved = localStorage.getItem('sidebarOpen');
-      return saved === null ? true : saved === 'true';
-    } catch {
-      return true;
-    }
-  });
-
   const [currentTime, setCurrentTime] = useState(new Date());
   const [banner, setBanner] = useState<BannerState>({ enabled: false, text: '' });
   const [allowOnboarding, setAllowOnboarding] = useState(false);
@@ -96,12 +85,6 @@ function App() {
     const timeout = window.setTimeout(() => setAllowOnboarding(true), 350);
     return () => clearTimeout(timeout);
   }, [authLoading, user]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sidebarOpen', String(sidebarOpen));
-    } catch {}
-  }, [sidebarOpen]);
 
   useEffect(() => {
     const onThemeChange = (event: Event) => {
@@ -280,8 +263,6 @@ function App() {
     return () => window.removeEventListener('popstate', resolve);
   }, []);
 
-  const toggleSidebar = () => setSidebarOpen((v) => !v);
-
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -316,17 +297,37 @@ function App() {
     { id: 'pastebin', label: 'Pastebin', icon: '📝', desc: 'Share code/text' },
   ];
 
-  const navItems = [
-    { id: 'home', label: 'Home', icon: <Home className="w-5 h-5" />, view: { type: 'home' as const } },
-    { id: 'utilities', label: 'Utilities', icon: <Wrench className="w-5 h-5" />, view: { type: 'utilities' as const } },
-    { id: 'organization', label: 'Organization', icon: <Building2 className="w-5 h-5" />, view: { type: 'organization' as const } },
-    { id: 'profile', label: 'Profile', icon: <UserCircle className="w-5 h-5" />, view: { type: 'profile' as const } },
-  ];
-
   const renderHome = () => (
-    <div className="w-full">
+    <div className="mx-auto min-h-screen w-full max-w-[88rem] px-5 pb-16 sm:px-8 lg:px-12">
       <DashboardTodosHomeHeader />
-      <Quicklinks editMode={false} />
+      <section className="mx-auto max-w-4xl pt-32 text-center sm:pt-36 lg:pt-40">
+        <h1 className="text-4xl font-semibold tracking-[-0.035em] text-white drop-shadow-[0_5px_28px_rgba(255,255,255,0.12)] sm:text-5xl lg:text-6xl">
+          Olio Workstation
+        </h1>
+        <p className="mt-5 text-base text-slate-300 sm:text-xl lg:text-2xl">
+          {getGreeting()}
+          <span className="mx-2 text-violet-400">•</span>
+          {formatDate(currentTime)}
+          <span className="mx-2 text-violet-400">•</span>
+          <span className="font-mono text-slate-200">{formatTime(currentTime)}</span>
+        </p>
+        <div className="mx-auto mt-6 h-px w-16 bg-gradient-to-r from-transparent via-violet-400 to-transparent shadow-[0_0_14px_rgba(139,92,246,0.9)]" />
+      </section>
+
+      {banner.enabled && banner.text?.trim() && (
+        <div className="mx-auto mt-9 max-w-4xl rounded-3xl border border-amber-300/20 bg-amber-400/[0.09] px-5 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_65px_rgba(2,6,23,0.3)] backdrop-blur-xl sm:px-6">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 flex-none items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-400/10">
+              <AlertTriangle className="h-5 w-5 text-amber-200" />
+            </div>
+            <div className="pt-2 text-sm leading-relaxed text-amber-100 sm:text-base">{banner.text}</div>
+          </div>
+        </div>
+      )}
+
+      <section className="mt-14 sm:mt-16 lg:mt-20" aria-label="Quick Links">
+        <Quicklinks editMode={false} />
+      </section>
     </div>
   );
 
@@ -368,24 +369,79 @@ function App() {
 
   const isPublicRoute = view.type === 'redirect' || view.type === 'secret' || view.type === 'paste' || view.type === 'paste-list';
 
+  const currentNavigationPath = (() => {
+    if (view.type === 'home') return '/';
+    if (view.type === 'utilities' || view.type === 'tool') return '/utilities';
+    if (view.type === 'projects-center') return '/projects';
+    if (view.type === 'project-dashboard') return `/projects/${view.id}`;
+    if (view.type === 'organization') return '/organization';
+    if (view.type === 'profile') return '/profile';
+    if (view.type === 'help') return '/help';
+    if (view.type === 'help-article') return `/help/article/${view.slug}`;
+    return window.location.pathname || '/';
+  })();
+
+  const floatingNavigation = user ? (
+    <AppNavigation
+      currentPath={currentNavigationPath}
+      organizationName={organization?.name}
+      onNavigate={navigateTo}
+    />
+  ) : null;
+
   if (view.type === 'projects-center') {
-    return <ProjectsCenterApp onOpenProject={(id) => navigateTo(`/projects/${id}`)} />;
+    return (
+      <>
+        {floatingNavigation}
+        <ProjectsCenterApp
+          onOpenProject={(id) => navigateTo(`/projects/${id}`)}
+          backgroundTheme={appBackgroundTheme}
+          backgroundPreset={appBackgroundPreset}
+        />
+      </>
+    );
   }
 
   if (view.type === 'project-dashboard') {
-    return <ProjectDashboard projectId={view.id} />;
+    return (
+      <>
+        {floatingNavigation}
+        <ProjectDashboard
+          projectId={view.id}
+          backgroundTheme={appBackgroundTheme}
+          backgroundPreset={appBackgroundPreset}
+        />
+      </>
+    );
   }
 
   if (view.type === 'help') {
-    return <HelpPage />;
+    return (
+      <>
+        <AnimatedBackground theme={appBackgroundTheme} preset={appBackgroundPreset} />
+        {floatingNavigation}
+        <div className="relative z-10"><HelpPage /></div>
+      </>
+    );
   }
 
   if (view.type === 'help-article') {
-    return <HelpArticlePage slug={view.slug} />;
+    return (
+      <>
+        <AnimatedBackground theme={appBackgroundTheme} preset={appBackgroundPreset} />
+        {floatingNavigation}
+        <div className="relative z-10"><HelpArticlePage slug={view.slug} /></div>
+      </>
+    );
   }
 
   if (view.type === 'admin-editor') {
-    return <Admin editorOnly />;
+    return (
+      <>
+        {floatingNavigation}
+        <Admin editorOnly />
+      </>
+    );
   }
 
   if (isPublicRoute) {
@@ -410,83 +466,10 @@ function App() {
   return (
     <div className="min-h-screen text-white relative">
       <AnimatedBackground theme={appBackgroundTheme} preset={appBackgroundPreset} />
+      {floatingNavigation}
       <div className="relative z-10 min-h-screen flex flex-col">
-        <header className="relative z-20 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur">
-          <div className="px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-7 flex items-start justify-between">
-            <div className="flex items-start gap-4 sm:gap-6 lg:gap-8">
-              <button
-                onClick={toggleSidebar}
-                className="p-3 sm:p-4 hover:bg-slate-800/50 bg-slate-900/30 border border-slate-800/60 rounded-2xl transition-colors"
-                aria-label="Toggle menu"
-              >
-                {sidebarOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
-              </button>
-
-              <div className="pt-1">
-                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-white">
-                  Olio Workstation
-                </h1>
-
-                <p className="mt-4 text-lg md:text-xl text-slate-300">
-                  {getGreeting()} · {formatDate(currentTime)} ·{' '}
-                  <span className="font-mono text-slate-200">{formatTime(currentTime)}</span>
-                </p>
-
-                {organization && (
-                  <div className="mt-2 text-sm text-slate-400">
-                    {organization.name}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {banner.enabled && banner.text?.trim() && (
-          <div className="relative z-20 px-4 sm:px-6 lg:px-10 pt-4 sm:pt-5">
-            <div className="rounded-3xl border border-amber-500/25 bg-amber-500/12 backdrop-blur px-6 py-5 flex items-start gap-4">
-              <div className="h-11 w-11 rounded-2xl border border-amber-500/25 bg-amber-500/12 flex items-center justify-center flex-none">
-                <AlertTriangle className="w-5 h-5 text-amber-200" />
-              </div>
-              <div className="text-base md:text-lg text-amber-100 leading-snug">
-                {banner.text}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="relative z-10 flex flex-1 min-h-0 flex-col lg:flex-row">
-          {sidebarOpen && (
-            <aside className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-slate-800/50 bg-slate-950/40 backdrop-blur">
-              <nav className="p-5 space-y-3">
-                {navItems.map((item) => {
-                  const active =
-                    (view.type === 'home' && item.id === 'home') ||
-                    (view.type === 'utilities' && item.id === 'utilities') ||
-                    (view.type === 'organization' && item.id === 'organization') ||
-                    (view.type === 'profile' && item.id === 'profile') ||
-                    (view.type === 'tool' && item.id === 'utilities');
-
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setView(item.view)}
-                      className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-colors ${
-                        active
-                          ? 'bg-blue-500/20 border border-blue-500/30 text-blue-200'
-                          : 'hover:bg-slate-800/40 text-slate-200'
-                      }`}
-                    >
-                      {item.icon}
-                      <span className="text-base font-medium">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </aside>
-          )}
-
-          <main className="flex-1 p-4 sm:p-6 lg:p-10">
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <main className={view.type === 'home' ? 'flex-1' : 'glass-page-offset flex-1 p-4 sm:p-6 lg:p-10'}>
             {view.type === 'home' && renderHome()}
             {view.type === 'utilities' && renderUtilities()}
             {view.type === 'tool' && renderUtilities()}
