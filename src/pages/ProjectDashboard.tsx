@@ -1006,8 +1006,8 @@ export function ProjectDashboard({
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Top bar */}
-        <header className="relative z-30 border-b border-white/10 bg-slate-950/52 shadow-[inset_0_-1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
-          <div className="px-4 [padding-left:5.5rem] sm:px-6 sm:[padding-left:7rem] lg:px-8 lg:[padding-left:7rem] py-4 sm:py-5 flex flex-wrap items-center justify-between gap-3 sm:gap-6">
+        <header className="relative z-30 min-h-28 border-b border-white/10 bg-slate-950/52 shadow-[inset_0_-1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
+          <div className="flex min-h-28 flex-wrap items-center justify-between gap-3 px-4 [padding-left:7rem] sm:gap-6 sm:px-6 sm:[padding-left:8rem] lg:px-8 lg:[padding-left:8rem]">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               <button
                 onClick={handleBack}

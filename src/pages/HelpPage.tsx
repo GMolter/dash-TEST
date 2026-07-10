@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BookOpenText, Home, ChevronDown, Search, ArrowRight, Users, Link2, Shield, EyeOff } from 'lucide-react';
+import { BookOpenText, ChevronDown, Search, ArrowRight, Users, Link2, Shield, EyeOff } from 'lucide-react';
 
 type HelpArticle = {
   id: string;
@@ -97,18 +97,11 @@ export function HelpPage() {
   return (
     <div className="flex flex-col h-screen bg-slate-950/55 text-white overflow-hidden backdrop-blur-[2px]">
       {/* Header */}
-      <header className="shrink-0 z-20 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
-        <div className="px-4 [padding-left:5.5rem] sm:px-6 sm:[padding-left:7rem] py-4 flex items-center gap-4">
-          <a
-            href="/"
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800/60 hover:text-white transition-colors"
-          >
-            <Home className="h-4 w-4" />
-            <span className="hidden sm:inline">Dashboard</span>
-          </a>
+      <header className="z-20 min-h-28 shrink-0 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
+        <div className="flex min-h-28 items-center px-4 [padding-left:7rem] sm:px-6 sm:[padding-left:8rem]">
           <div className="flex items-center gap-2.5">
-            <BookOpenText className="h-4 w-4 text-slate-400" />
-            <span className="text-sm font-medium text-slate-200">Help Center</span>
+            <BookOpenText className="h-5 w-5 text-indigo-200" />
+            <span className="text-lg font-semibold text-slate-100">Help Center</span>
           </div>
         </div>
       </header>
@@ -117,7 +110,7 @@ export function HelpPage() {
       <div className="flex flex-1 min-h-0">
 
         {/* Sidebar */}
-        <aside className="w-64 shrink-0 border-r border-slate-800 flex flex-col overflow-hidden">
+        <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-slate-950/20 md:flex">
           <div className="p-4 border-b border-slate-800">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Articles</p>
           </div>

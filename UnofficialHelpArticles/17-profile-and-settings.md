@@ -20,13 +20,13 @@ Sort Order: 17
 
 # ⚙️ Profile and Settings
 
-The **Profile page** is where you manage your personal account settings, customize the app's appearance, and control your organization membership. Navigate here by clicking **Profile** in the left sidebar.
+The **Profile page** is where you manage your personal account settings, customize the app's appearance, and control your organization membership. Navigate here by opening the menu and selecting **Profile**.
 
 ---
 
 ## 👤 Accessing Profile Settings
 
-Click **Profile** in the left sidebar navigation to open your Profile page. It is accessible at all times from any section of the app.
+Open the navigation drawer and click **Profile**. The floating menu is available from every signed-in section of the app.
 
 ---
 

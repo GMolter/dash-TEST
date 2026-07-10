@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, FileText, Home } from 'lucide-react';
+import { ArrowLeft, FileText } from 'lucide-react';
 import { LinkedContent } from '../components/linking/renderLinkedContent';
 import type { LinkResolvedMeta } from '../components/linking/types';
 import type { ParsedMarkdownLink } from '../lib/linking';
@@ -136,21 +136,14 @@ export function HelpArticlePage({ slug }: { slug: string }) {
 
   return (
     <div className="min-h-screen bg-slate-950/55 text-white backdrop-blur-[2px]">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
-        <div className="px-4 [padding-left:5.5rem] sm:px-6 sm:[padding-left:7rem] lg:px-10 lg:[padding-left:7rem] py-4 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-20 min-h-28 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
+        <div className="flex min-h-28 items-center px-4 [padding-left:7rem] sm:px-6 sm:[padding-left:8rem] lg:px-10 lg:[padding-left:8rem]">
           <a
             href="/help"
-            className="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/[0.07] hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Help Center</span>
-          </a>
-          <a
-            href="/"
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800/60 hover:text-white transition-colors"
-          >
-            <Home className="h-4 w-4" />
-            <span className="hidden sm:inline">Dashboard</span>
           </a>
         </div>
       </header>

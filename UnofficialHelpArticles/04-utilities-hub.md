@@ -20,7 +20,7 @@ Sort Order: 4
 
 ## 🧩 What is the Utilities Hub?
 
-The **Utilities Hub** is your central launchpad for all of Olio Workstation's built-in tools. It's available from the `Utilities` link in the sidebar and presents every tool in a clean, tile-based grid.
+The **Utilities Hub** is your central launchpad for all of Olio Workstation's built-in tools. Open it from `Utilities` in the navigation drawer to see every tool in a clean, tile-based grid.
 
 ---
 
@@ -43,11 +43,11 @@ Olio Workstation includes the following utilities:
 
 To open any tool:
 
-1. Click **Utilities** in the left sidebar
+1. Open the menu and click **Utilities**
 2. The Hub grid will appear with all available tools
 3. Click any tool tile to open it directly
 
-The selected tool will load in the main content area. You can return to the Hub at any time by clicking **Utilities** again in the sidebar.
+The selected tool will load in the main content area. You can return to the Hub with its back control or by choosing **Utilities** from the navigation drawer.
 
 > 💡 **Tip:** You can toggle tool descriptions on or off in the Hub view. Look for the **Show Descriptions** button near the top of the grid to see a one-line summary of each tool.
 

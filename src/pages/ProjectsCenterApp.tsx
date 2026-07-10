@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft,
   ArrowUpDown,
   CheckCircle2,
   Clock,
@@ -76,11 +75,6 @@ function stopIfEditableTarget(e: KeyboardEvent) {
   if (!el) return false;
   const tag = el.tagName.toLowerCase();
   return tag === 'input' || tag === 'textarea' || el.isContentEditable;
-}
-
-function navigateTo(path: string) {
-  window.history.pushState({}, '', path);
-  window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 export function ProjectsCenterApp({
@@ -411,17 +405,9 @@ export function ProjectsCenterApp({
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Top bar */}
-        <header className="border-b border-white/10 bg-slate-950/52 shadow-[inset_0_-1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
-          <div className="px-4 [padding-left:5.5rem] sm:px-6 sm:[padding-left:7rem] lg:px-8 lg:[padding-left:7rem] py-4 sm:py-5 flex flex-wrap items-center justify-between gap-3 sm:gap-6">
+        <header className="min-h-28 border-b border-white/10 bg-slate-950/52 shadow-[inset_0_-1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
+          <div className="flex min-h-28 flex-wrap items-center justify-between gap-3 px-4 [padding-left:7rem] sm:gap-6 sm:px-6 sm:[padding-left:8rem] lg:px-8 lg:[padding-left:8rem]">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <button
-                onClick={() => navigateTo('/utilities')}
-                className="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-slate-800/60 bg-slate-900/25 hover:bg-slate-900/45 transition-colors shrink-0"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span className="font-medium hidden sm:inline">Back to Utilities</span>
-              </button>
-
               <div className="flex items-center gap-3 min-w-0">
                 <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-indigo-500 to-sky-400" />
                 <div className="leading-tight min-w-0">

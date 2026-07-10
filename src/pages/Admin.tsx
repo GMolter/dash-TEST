@@ -829,7 +829,7 @@ export default function Admin({ editorOnly = false }: AdminProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
-      <div className={`relative z-10 mx-auto px-6 py-10 space-y-6 ${editorOnly ? "max-w-[1800px]" : "max-w-7xl"}`}>
+      <div className={`relative z-10 mx-auto space-y-6 px-6 pb-10 ${editorOnly ? "max-w-[1800px] pt-28 sm:[padding-left:8rem]" : "max-w-7xl py-10"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center">

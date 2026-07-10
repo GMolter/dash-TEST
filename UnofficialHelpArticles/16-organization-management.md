@@ -22,7 +22,7 @@ Sort Order: 16
 
 The **Organization page** gives the organization Owner the tools to manage their team — controlling membership, access levels, and organization settings. Members have read-only access to this page.
 
-Navigate here by clicking **Organization** in the left sidebar.
+Navigate here by opening the menu and selecting **Organization**.
 
 ---
 

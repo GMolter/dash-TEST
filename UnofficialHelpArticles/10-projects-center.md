@@ -40,7 +40,7 @@ Projects belong to your organization, so all org members can access and collabor
 
 ## ➕ Creating a Project
 
-1. Navigate to **Projects** in the sidebar
+1. Open the menu and select **Projects**
 2. Click **New Project**
 3. Enter a **Project Name**
 4. Optionally add a **Description** and **Tags**
