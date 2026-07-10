@@ -389,7 +389,7 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
   const onFolderItemDragEnd = () => { setDraggingFolderItem(null); setDragOverFolderItemId(null); };
 
   // ── Shared tile classes ───────────────────────────────────────────────────────
-  const tileBase = 'glass-panel group relative flex min-h-[13.5rem] flex-col items-center justify-center overflow-hidden rounded-[1.6rem] p-6 text-center transition-all duration-300 sm:min-h-[14.5rem] lg:min-h-[15.5rem] lg:p-7 hover:-translate-y-1 hover:border-indigo-300/30 hover:bg-slate-900/55 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.11),0_28px_70px_rgba(49,46,129,0.2)]';
+  const tileBase = 'glass-panel group relative flex min-h-[11.5rem] flex-col items-center justify-center overflow-hidden rounded-[1.4rem] p-5 text-center transition-all duration-300 sm:min-h-[12rem] lg:min-h-[12.5rem] hover:-translate-y-1 hover:border-indigo-300/30 hover:bg-slate-900/55 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.11),0_24px_60px_rgba(49,46,129,0.18)]';
   const focusedFolder = expandedFolderId ? collectionFolders.find((folder) => folder.id === expandedFolderId) || null : null;
   const focusedFolderLinks = focusedFolder
     ? linksInFolder(focusedFolder.id).sort((a, b) => a.order_index - b.order_index)
@@ -469,7 +469,7 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
     return (
       <>
         <div className="w-full">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3 xl:gap-8">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-5">
           {allGridItems.map((item) => {
             if (item.itemType === 'folder') {
               const folder = item.data;
@@ -485,14 +485,14 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
                 >
                   <button
                     onClick={() => toggleFolderOpen(folder.id)}
-                    className="flex h-full min-h-[13.5rem] w-full flex-col items-center justify-center p-6 text-center sm:min-h-[14.5rem] lg:min-h-[15.5rem] lg:p-7"
+                    className="flex h-full min-h-[11.5rem] w-full flex-col items-center justify-center p-5 text-center sm:min-h-[12rem] lg:min-h-[12.5rem]"
                   >
-                    <div className="flex h-16 w-16 items-center justify-center rounded-[1.2rem] border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_14px_30px_rgba(2,6,23,0.25)]">
-                      <FolderIcon icon={folder.icon} size={isMobileFolderView ? 44 : 48} />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_26px_rgba(2,6,23,0.24)]">
+                      <FolderIcon icon={folder.icon} size={isMobileFolderView ? 38 : 42} />
                     </div>
-                    <span className="mt-5 max-w-full truncate text-lg font-medium text-white transition-colors group-hover:text-indigo-100">{folder.name}</span>
-                    <span className="mt-2 text-sm text-violet-300">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>
-                    <span className="mt-5 flex h-10 w-10 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_24px_rgba(139,92,246,0.25)]">
+                    <span className="mt-4 max-w-full truncate text-base font-medium text-white transition-colors group-hover:text-indigo-100">{folder.name}</span>
+                    <span className="mt-1.5 text-xs text-violet-300">{contents.length} link{contents.length !== 1 ? 's' : ''}</span>
+                    <span className="mt-4 flex h-9 w-9 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_20px_rgba(139,92,246,0.25)]">
                       <ArrowRight className="h-4 w-4" />
                     </span>
                   </button>
@@ -508,12 +508,12 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
                 href={formatUrl(link.url)}
                 className={tileBase}
               >
-                <div className="flex h-16 w-16 items-center justify-center rounded-[1.2rem] border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_14px_30px_rgba(2,6,23,0.25)]">
-                  <LinkIcon link={link} size={isMobileFolderView ? 44 : 48} />
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_26px_rgba(2,6,23,0.24)]">
+                  <LinkIcon link={link} size={isMobileFolderView ? 38 : 42} />
                 </div>
-                <h3 className="mt-5 max-w-full truncate text-lg font-medium text-white transition-colors group-hover:text-indigo-100">{link.title}</h3>
-                <p className="mt-2 text-sm text-violet-300">Quick link</p>
-                <span className="mt-5 flex h-10 w-10 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_24px_rgba(139,92,246,0.25)]">
+                <h3 className="mt-4 max-w-full truncate text-base font-medium text-white transition-colors group-hover:text-indigo-100">{link.title}</h3>
+                <p className="mt-1.5 text-xs text-violet-300">Quick link</p>
+                <span className="mt-4 flex h-9 w-9 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-100 transition-all group-hover:border-violet-300/50 group-hover:bg-violet-400/20 group-hover:shadow-[0_0_20px_rgba(139,92,246,0.25)]">
                   <ArrowRight className="h-4 w-4" />
                 </span>
               </a>

@@ -43,6 +43,8 @@ Your organization name appears at the top of the navigation drawer.
 
 The main content area of the Home Dashboard displays only your **personal Quick Links**. Shared organization links are kept in **Organization → Shared Links** so the dashboard stays focused on your own shortcuts.
 
+On desktop, the compact dashboard grid shows up to four links or folders per row so more shortcuts are available without scrolling. The grid automatically reduces its column count on smaller screens.
+
 From the home view you can:
 
 - **Click any link** to open it in a new tab

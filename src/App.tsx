@@ -300,18 +300,18 @@ function App() {
   const renderHome = () => (
     <div className="mx-auto min-h-screen w-full max-w-[88rem] px-5 pb-16 sm:px-8 lg:px-12">
       <DashboardTodosHomeHeader />
-      <section className="mx-auto max-w-4xl pt-24 text-center sm:pt-24 lg:pt-24">
-        <h1 className="text-4xl font-semibold tracking-[-0.035em] text-white drop-shadow-[0_5px_28px_rgba(255,255,255,0.12)] sm:text-5xl lg:text-6xl">
+      <section className="mx-auto max-w-4xl pt-24 text-center md:pt-6 lg:pt-5">
+        <h1 className="text-3xl font-semibold tracking-[-0.03em] text-white drop-shadow-[0_5px_28px_rgba(255,255,255,0.12)] sm:text-4xl lg:text-4xl">
           Olio Workstation
         </h1>
-        <p className="mt-5 text-base text-slate-300 sm:text-xl lg:text-2xl">
+        <p className="mt-3 text-sm text-slate-300 sm:text-lg lg:text-xl">
           {getGreeting()}
           <span className="mx-2 text-violet-400">•</span>
           {formatDate(currentTime)}
           <span className="mx-2 text-violet-400">•</span>
           <span className="font-mono text-slate-200">{formatTime(currentTime)}</span>
         </p>
-        <div className="mx-auto mt-6 h-px w-16 bg-gradient-to-r from-transparent via-violet-400 to-transparent shadow-[0_0_14px_rgba(139,92,246,0.9)]" />
+        <div className="mx-auto mt-4 h-px w-14 bg-gradient-to-r from-transparent via-violet-400 to-transparent shadow-[0_0_14px_rgba(139,92,246,0.9)]" />
       </section>
 
       {banner.enabled && banner.text?.trim() && (
@@ -325,7 +325,7 @@ function App() {
         </div>
       )}
 
-      <section className="mt-9 sm:mt-10 lg:mt-11" aria-label="Quick Links">
+      <section className="mt-7 sm:mt-8 lg:mt-8" aria-label="Quick Links">
         <Quicklinks editMode={false} />
       </section>
     </div>
