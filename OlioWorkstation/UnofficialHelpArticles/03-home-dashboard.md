@@ -62,12 +62,13 @@ Use the floating menu button in the top-left corner to open the navigation drawe
 |:--------|:--------|
 | `Home` | Return to the dashboard |
 | `Utilities` | Access all built-in tools |
-| `Projects` | Open the Projects Center |
 | `Organization` | View and manage your org |
 | `Profile` | Account settings and theme |
 | `Help Center` | Browse documentation and guides |
 
 The drawer starts closed on every screen. Click outside it, press **Escape**, or use its close button to dismiss it.
+
+Open the Projects Center from the **Projects** tile inside **Utilities**.
 
 ---
 

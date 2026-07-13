@@ -40,12 +40,13 @@ Projects belong to your organization, so all org members can access and collabor
 
 ## ➕ Creating a Project
 
-1. Open the menu and select **Projects**
-2. Click **New Project**
-3. Enter a **Project Name**
-4. Optionally add a **Description** and **Tags**
-5. Choose a **Template** (see below)
-6. Click **Create**
+1. Open the menu and select **Utilities**
+2. Select the **Projects** tile
+3. Click **New Project**
+4. Enter a **Project Name**
+5. Optionally add a **Description** and **Tags**
+6. Choose a **Template** (see below)
+7. Click **Create**
 
 Your new project opens immediately.
 

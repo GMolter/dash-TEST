@@ -372,8 +372,7 @@ function App() {
   const currentNavigationPath = (() => {
     if (view.type === 'home') return '/';
     if (view.type === 'utilities' || view.type === 'tool') return '/utilities';
-    if (view.type === 'projects-center') return '/projects';
-    if (view.type === 'project-dashboard') return `/projects/${view.id}`;
+    if (view.type === 'projects-center' || view.type === 'project-dashboard') return '/utilities';
     if (view.type === 'organization') return '/organization';
     if (view.type === 'profile') return '/profile';
     if (view.type === 'help') return '/help';

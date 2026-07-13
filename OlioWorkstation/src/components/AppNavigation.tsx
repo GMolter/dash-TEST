@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   BookOpenText,
   Building2,
-  FolderKanban,
   Home,
   Menu,
   UserCircle,
@@ -19,7 +18,6 @@ type AppNavigationProps = {
 const navigationItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/utilities', label: 'Utilities', icon: Wrench },
-  { path: '/projects', label: 'Projects', icon: FolderKanban },
   { path: '/organization', label: 'Organization', icon: Building2 },
   { path: '/profile', label: 'Profile', icon: UserCircle },
   { path: '/help', label: 'Help Center', icon: BookOpenText },
@@ -145,10 +143,6 @@ export function AppNavigation({ currentPath, organizationName, onNavigate }: App
                 );
               })}
             </nav>
-
-            <div className="mt-auto border-t border-white/10 pt-5 text-sm leading-relaxed text-slate-500">
-              Your background and color choices follow you throughout Olio.
-            </div>
           </aside>
         </div>
       )}
