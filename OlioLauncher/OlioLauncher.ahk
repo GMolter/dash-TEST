@@ -12,11 +12,14 @@ DllCall("SetProcessDpiAwarenessContext", "ptr", -4, "ptr") ; PER_MONITOR_AWARE_V
 #Include src\WindowsInterop.ahk
 #Include src\InstanceCoordinator.ahk
 #Include src\HotkeyManager.ahk
+#Include src\FocusKeyGesture.ahk
 #Include src\StartupManager.ahk
 #Include src\ClipboardManager.ahk
+#Include src\ScreenshotManager.ahk
 #Include src\Navigation.ahk
 #Include src\TileRenderer.ahk
 #Include src\ClipboardRenderer.ahk
+#Include src\ClipboardPreviewWindow.ahk
 #Include src\LauncherWindow.ahk
 #Include src\App.ahk
 

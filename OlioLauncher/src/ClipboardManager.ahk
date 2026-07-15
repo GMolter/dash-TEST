@@ -470,6 +470,35 @@ class ClipboardManager {
         return true
     }
 
+    BeginLauncherMutation() {
+        this.MutationDepth += 1
+    }
+
+    EndLauncherMutation() {
+        this.SuppressedSequence := DllCall("GetClipboardSequenceNumber", "uint")
+        this.MutationDepth := Max(0, this.MutationDepth - 1)
+    }
+
+    PrepareBitmapEntry(bitmap, source := "Olio Launcher") {
+        if this.Stopped || this.Paused || this.IsSensitiveApplication(source)
+            return 0
+        result := this.CopyBitmapHandle(bitmap, source)
+        return IsObject(result) ? result : 0
+    }
+
+    CommitPreparedEntry(entry) {
+        if !IsObject(entry)
+            return {Added: false, Status: "unavailable"}
+        if this.Stopped || this.Paused {
+            entry.Release()
+            return {Added: false, Status: this.Stopped ? "stopped" : "paused"}
+        }
+        result := this.Model.Add(entry)
+        this.LastStatus := result.Status
+        this.Notify(result.Status)
+        return result
+    }
+
     PublishText(text) {
         bytes := StrPut(text, "UTF-16") * 2
         memory := DllCall("GlobalAlloc", "uint", 0x42, "uptr", bytes, "ptr")
@@ -503,7 +532,7 @@ class ClipboardManager {
     }
 
     PublishHandle(format, memory) {
-        this.MutationDepth += 1
+        this.BeginLauncherMutation()
         transferred := false
         opened := false
         try {
@@ -527,8 +556,7 @@ class ClipboardManager {
                 DllCall("CloseClipboard")
             if !transferred
                 DllCall("GlobalFree", "ptr", memory)
-            this.SuppressedSequence := DllCall("GetClipboardSequenceNumber", "uint")
-            this.MutationDepth -= 1
+            this.EndLauncherMutation()
         }
     }
 

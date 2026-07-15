@@ -34,6 +34,7 @@ Olio Workstation includes the following utilities:
 | **URL Shortener** | Shorten long URLs with optional custom codes and track click counts | [URL Shortener](olio://help/url-shortener) |
 | **Secret Sharing** | Send one-time encrypted messages that self-destruct after being viewed | [Secret Sharing](olio://help/secret-sharing) |
 | **QR Code Generator** | Generate QR codes from any text or URL and download as PNG | [QR Code Generator](olio://help/qr-code-generator) |
+| **Quick Pastes** | Manage private reusable text available only to your account | [Quick Pastes](olio://help/quick-pastes) |
 | **Pastebin** | Share code and text snippets with syntax highlighting and expiry options | [Pastebin](olio://help/pastebin) |
 | **Triggers** | Create webhook triggers to connect Olio Workstation to external services | [Triggers and Webhooks](olio://help/triggers-and-webhooks) |
 

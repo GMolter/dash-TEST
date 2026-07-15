@@ -15,6 +15,11 @@ class LauncherWindow {
         this.DesiredLogicalHeight := 286
         this.HasVisibleStatus := false
         this.AutoCloseOnDeactivate := !visualTestMode
+        this.PreviewWindow := 0
+        this.PreviewPriorAutoClose := this.AutoCloseOnDeactivate
+        this.LastPreviewError := ""
+        this.DirectScreenshotActive := false
+        this.DirectScreenshotPriorAutoClose := this.AutoCloseOnDeactivate
 
         options := "-Caption +Border"
         if !visualTestMode
@@ -70,7 +75,7 @@ class LauncherWindow {
 
         this.PageDefinitions := Map(
             "clipboard", {Title: "Clipboard History", Subtitle: "History will appear here.", Accent: 0x38BDF8},
-            "screenshot", {Title: "Dynamic Screenshot", Subtitle: "Capture tools will appear here.", Accent: 0x8B5CF6},
+            "screenshot", {Title: "Dynamic Screenshot", Subtitle: "Drag to select an area.", Accent: 0x8B5CF6},
             "quickPastes", {Title: "Quick Pastes", Subtitle: "Connected pastes will appear here.", Accent: 0x34D399},
             "settings", {Title: "Settings", Subtitle: "Launcher preferences will appear here.", Accent: 0xFBBF24}
         )
@@ -145,12 +150,17 @@ class LauncherWindow {
         ClipboardRenderer.Register(this.ClipboardList, this.ClipboardManager)
         this.ClipboardControls.Push(this.ClipboardList)
 
+        this.ClipboardOpenButton := this.AddClipboardButton(
+            "x128 y438 w104 h42 Hidden", "Open", 0x38BDF8)
+        this.ButtonKeysByHwnd[this.ClipboardOpenButton.Hwnd] := "__clip_open"
+        TileRenderer.SetEnabled(this.ClipboardOpenButton, false)
+
         this.ClipboardDeleteButton := this.AddClipboardButton(
             "x240 y438 w104 h42 Hidden", "Delete", 0xFB7185)
         this.ButtonKeysByHwnd[this.ClipboardDeleteButton.Hwnd] := "__clip_delete"
 
         this.ClipboardActionControls := [this.BackButton, this.ClipboardClearButton,
-            this.ClipboardList, this.ClipboardDeleteButton]
+            this.ClipboardList, this.ClipboardOpenButton, this.ClipboardDeleteButton]
     }
 
     AddClipboardButton(options, title, accent) {
@@ -221,12 +231,40 @@ class LauncherWindow {
     Hide(restoreFocus := true) {
         if !this.IsVisible()
             return
+        this.CloseClipboardPreview(false)
         foreground := DllCall("GetForegroundWindow", "ptr")
         launcherOwnedFocus := LauncherWindow.ShouldRestoreFocus(foreground, this.Gui.Hwnd)
         this.Gui.Hide()
         this.ShowHome(false)
         if restoreFocus && launcherOwnedFocus
             WindowsInterop.RestoreForeground(this.PreviousForeground)
+    }
+
+    PrepareScreenshotCapture(hideLauncher := true) {
+        if !hideLauncher {
+            this.DirectScreenshotActive := true
+            this.DirectScreenshotPriorAutoClose := this.AutoCloseOnDeactivate
+            this.AutoCloseOnDeactivate := false
+            return DllCall("GetForegroundWindow", "ptr")
+        }
+        previous := this.PreviousForeground
+        if this.IsVisible() {
+            this.Gui.Hide()
+            this.ShowHome(false)
+        }
+        return previous
+    }
+
+    RestoreAfterScreenshot(previousForeground) {
+        if this.DirectScreenshotActive {
+            this.DirectScreenshotActive := false
+            this.AutoCloseOnDeactivate := this.DirectScreenshotPriorAutoClose
+        }
+        if previousForeground && DllCall("IsWindow", "ptr", previousForeground) {
+            WindowsInterop.RestoreForeground(previousForeground)
+            return
+        }
+        this.Show()
     }
 
     Toggle() {
@@ -242,7 +280,8 @@ class LauncherWindow {
         this.CurrentView := key
         TileRenderer.SetSelected(this.Buttons[key].Hwnd)
         if notify {
-            this.ShowPage(key)
+            if key != "screenshot"
+                this.ShowPage(key)
             this.NavigateCallback.Call(key)
         }
     }
@@ -283,6 +322,7 @@ class LauncherWindow {
     }
 
     ShowHome(focusSelected := true) {
+        this.CloseClipboardPreview(false)
         if IsObject(this.ClipboardManager)
             this.ClipboardManager.ReleasePreviews()
         for control in this.ClipboardControls
@@ -358,6 +398,7 @@ class LauncherWindow {
             countText := "Capture paused"
         this.ClipboardStatus.Text := countText
         DllCall("InvalidateRect", "ptr", this.ClipboardList.Hwnd, "ptr", 0, "int", true)
+        this.UpdateClipboardOpenState()
         TileRenderer.RefreshAll()
     }
 
@@ -367,6 +408,69 @@ class LauncherWindow {
         selected := DllCall("SendMessageW", "ptr", this.ClipboardList.Hwnd,
             "uint", 0x0188, "uptr", 0, "ptr", 0, "ptr") ; LB_GETCURSEL
         return selected < 0 || selected > 10000 ? 0 : selected + 1
+    }
+
+    UpdateClipboardOpenState() {
+        index := this.SelectedClipboardIndex()
+        enabled := IsObject(this.ClipboardManager) && index
+            && index <= this.ClipboardManager.Entries.Length
+            && this.ClipboardManager.Entries[index].Kind = "image"
+        TileRenderer.SetEnabled(this.ClipboardOpenButton, enabled)
+        return enabled
+    }
+
+    OpenClipboardPreview() {
+        index := this.SelectedClipboardIndex()
+        if !IsObject(this.ClipboardManager) || !index
+            return false
+        entry := this.ClipboardManager.Entries[index]
+        if entry.Kind != "image" || !IsObject(entry.Dib)
+            return false
+        details := this.ClipboardManager.ValidateDib(entry.Dib)
+        if !details.Ok
+            return false
+        this.CloseClipboardPreview(false)
+        this.PreviewPriorAutoClose := this.AutoCloseOnDeactivate
+        this.LastPreviewError := ""
+        this.AutoCloseOnDeactivate := false
+        this.Gui.Opt("+Disabled")
+        try {
+            this.PreviewWindow := ClipboardPreviewWindow(this.Gui, entry, details,
+                (*) => this.OnClipboardPreviewClosed())
+            return true
+        } catch as previewError {
+            this.PreviewWindow := 0
+            this.Gui.Opt("-Disabled")
+            this.AutoCloseOnDeactivate := this.PreviewPriorAutoClose
+            this.LastPreviewError := previewError.Message
+            this.ClipboardStatus.Text := "Image preview could not be opened"
+            return false
+        }
+    }
+
+    OnClipboardPreviewClosed() {
+        this.PreviewWindow := 0
+        try this.Gui.Opt("-Disabled")
+        this.AutoCloseOnDeactivate := this.PreviewPriorAutoClose
+        if this.IsVisible() {
+            DllCall("SetForegroundWindow", "ptr", this.Gui.Hwnd)
+            if this.ClipboardOpenButton.Enabled
+                this.ClipboardOpenButton.Focus()
+            else
+                this.ClipboardList.Focus()
+        }
+    }
+
+    CloseClipboardPreview(restoreParent := true) {
+        if !IsObject(this.PreviewWindow)
+            return
+        preview := this.PreviewWindow
+        this.PreviewWindow := 0
+        preview.Close(false)
+        try this.Gui.Opt("-Disabled")
+        this.AutoCloseOnDeactivate := this.PreviewPriorAutoClose
+        if restoreParent && this.IsVisible()
+            DllCall("SetForegroundWindow", "ptr", this.Gui.Hwnd)
     }
 
     ActivateClipboardFocused() {
@@ -421,6 +525,7 @@ class LauncherWindow {
             return
         DllCall("SendMessageW", "ptr", hwnd, "uint", 0x0186,
             "uptr", index - 1, "ptr", 0)
+        this.UpdateClipboardOpenState()
         SetTimer(() => this.ActivateClipboardSelection(index), -1)
     }
 
@@ -468,6 +573,10 @@ class LauncherWindow {
         if hwnd != guiHwnd || !lParam
             return
         notification := (wParam >> 16) & 0xFFFF
+        if lParam = this.ClipboardList.Hwnd && notification = 1 {
+            this.UpdateClipboardOpenState()
+            return 0
+        }
         if notification = 0 && this.ButtonKeysByHwnd.Has(lParam) {
             key := this.ButtonKeysByHwnd[lParam]
             if key = "__back" {
@@ -476,6 +585,7 @@ class LauncherWindow {
             }
             switch key {
                 case "__clip_clear": this.ConfirmClearClipboard()
+                case "__clip_open": this.OpenClipboardPreview()
                 case "__clip_delete": this.DeleteClipboardSelection()
                 default:
                     if this.Buttons[key].Enabled

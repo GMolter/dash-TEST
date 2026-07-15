@@ -23,6 +23,8 @@ Sort Order: 9
 
 **Pastebin** lets you save and share code snippets, configuration files, notes, or any block of text. Unlike a plain text file, pastes support **syntax highlighting**, **expiry timers**, and **visibility scopes** — giving you control over who sees your content and for how long.
 
+> 💡 **Quick Pastes are different:** Use [Quick Pastes](olio://help/quick-pastes) for private, reusable personal text that does not need a URL, audience, expiry, or view count. Pastebin remains the sharing tool.
+
 ---
 
 ## 🧩 What is Pastebin?

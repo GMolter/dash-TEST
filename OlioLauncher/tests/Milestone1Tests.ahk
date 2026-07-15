@@ -11,6 +11,7 @@
 #Include ..\src\Navigation.ahk
 #Include ..\src\TileRenderer.ahk
 #Include ..\src\ClipboardRenderer.ahk
+#Include ..\src\ClipboardPreviewWindow.ahk
 #Include ..\src\LauncherWindow.ahk
 
 class Milestone1Tests {
@@ -87,9 +88,15 @@ class Milestone1Tests {
         this.Assert(InStr(startupCommand, A_AhkPath) > 0, "Source startup command omits AutoHotkey.")
 
         hotkeyCallback := (*) => 0
-        hotkeyResult := HotkeyManager.Register("^!F24", hotkeyCallback)
+        hotkeyReleaseCallback := (*) => 0
+        hotkeyResult := HotkeyManager.Register("^!F24", hotkeyCallback,
+            hotkeyReleaseCallback)
         this.Assert(hotkeyResult.Ok, "Valid Focus Key registration failed.")
+        this.Assert(HotkeyManager.RegisteredReleaseKey = "^!F24 up",
+            "Focus Key release registration failed.")
         HotkeyManager.Unregister()
+        this.Assert(!HotkeyManager.RegisteredKey && !HotkeyManager.RegisteredReleaseKey,
+            "Focus Key press/release unregistration was incomplete.")
         invalidHotkey := HotkeyManager.Register("DefinitelyNotAKey", hotkeyCallback)
         this.Assert(!invalidHotkey.Ok, "Invalid Focus Key was accepted.")
 
@@ -215,6 +222,13 @@ class Milestone1Tests {
         this.Assert(!clipboardWindow.HasOwnProp("ClipboardCopyButton")
             && !clipboardWindow.HasOwnProp("ClipboardPinButton"),
             "Removed Clipboard Copy or Pin controls still exist.")
+        clipboardWindow.ClipboardOpenButton.GetPos(&openX, &openY, &openWidth, &openHeight)
+        clipboardWindow.ClipboardDeleteButton.GetPos(&deleteX, &deleteY,
+            &deleteWidth, &deleteHeight)
+        this.Assert(openX + openWidth < deleteX && openY = deleteY,
+            "Clipboard Open is not immediately left of Delete.")
+        this.Assert(!clipboardWindow.ClipboardOpenButton.Enabled,
+            "Clipboard Open must be disabled for a selected text item.")
         this.Assert(clipboardWindow.ClipboardClearButton.Enabled,
             "Clipboard Clear all is not a keyboard-accessible native control.")
         this.Assert(listStyle & 0x00200000,
@@ -231,6 +245,35 @@ class Milestone1Tests {
         this.Assert(!clipboardWindow.Buttons["sendToPhone"].Enabled
             && !clipboardWindow.Buttons["networkAnalyzer"].Enabled,
             "Deferred placeholders became interactive on the Clipboard page.")
+
+        previewDib := Buffer(56, 0)
+        NumPut("uint", 40, previewDib, 0)
+        NumPut("int", 2, previewDib, 4)
+        NumPut("int", 2, previewDib, 8)
+        NumPut("ushort", 1, previewDib, 12)
+        NumPut("ushort", 32, previewDib, 14)
+        NumPut("uint", 16, previewDib, 20)
+        loop 4
+            NumPut("uint", 0x004080FF, previewDib, 40 + (A_Index - 1) * 4)
+        historyManager.CaptureDib(previewDib)
+        clipboardWindow.RefreshClipboardHistory()
+        this.Assert(clipboardWindow.ClipboardOpenButton.Enabled,
+            "Clipboard Open was not enabled for a selected image item.")
+        this.Assert(clipboardWindow.OpenClipboardPreview(),
+            "The selected image preview did not open.")
+        previewCanvasHwnd := clipboardWindow.PreviewWindow.Canvas.Hwnd
+        this.Assert(clipboardWindow.PreviewWindow.IsVisible()
+            && ClipboardPreviewWindow.Canvases.Has(previewCanvasHwnd),
+            "The image preview window or paint registration is missing.")
+        clipboardWindow.CloseClipboardPreview(false)
+        this.Assert(!IsObject(clipboardWindow.PreviewWindow)
+            && !ClipboardPreviewWindow.Canvases.Has(previewCanvasHwnd),
+            "Closing image preview retained its window or canvas registration.")
+        DllCall("SendMessageW", "ptr", clipboardWindow.ClipboardList.Hwnd,
+            "uint", 0x0186, "uptr", 1, "ptr", 0)
+        clipboardWindow.UpdateClipboardOpenState()
+        this.Assert(!clipboardWindow.ClipboardOpenButton.Enabled,
+            "Clipboard Open did not return to disabled for a text item.")
         clipboardWindow.ShowHome()
         this.Assert(clipboardWindow.DesiredLogicalHeight = 286,
             "Clipboard page changed the compact home-shell height.")

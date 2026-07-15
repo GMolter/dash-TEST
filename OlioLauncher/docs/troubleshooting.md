@@ -1,4 +1,4 @@
-# Milestone 2 troubleshooting
+# Milestone 3 troubleshooting
 
 ## The Copilot key does not toggle the panel
 
@@ -11,6 +11,13 @@ does not elevate itself.
 Confirm the Milestone 0 probe is not running with an old pass-through hook. The Milestone
 1 Focus Key uses a non-pass-through AutoHotkey hotkey and suppresses F23 before Windows
 receives the complete chord.
+
+## A rapid double press does not start Screenshot
+
+Release the Copilot/Focus Key fully between presses and make the second press within
+350 ms. One press toggles the panel after that short decision window. Holding the key down
+is deliberately treated as one press so Windows key-repeat cannot start an unexpected capture. If a
+capture is already active, more presses are ignored and cannot create another overlay.
 
 ## A second panel or process appears
 
@@ -40,22 +47,91 @@ Milestone 1 feature needs administrator access.
 ## A copied item does not appear
 
 Open Clipboard History and check whether the status says capture is paused, excluded, or
-oversized. Select Resume if capture is paused. Copies from a process listed in
-`sensitiveApplications` are intentionally ignored when Windows exposes that process as
-the clipboard owner. Text over 1 MiB and image data over 16 MiB are not retained.
+oversized. The compact approved page intentionally has no visible Pause or Resume control;
+pause behavior remains available through the `clipboardPaused` setting. Only stop the
+launcher to change that setting if you accept that its memory-only history will be cleared.
+Copies from a process listed in `sensitiveApplications` are intentionally ignored when
+Windows exposes that process as the clipboard owner. Text over 1 MiB and image data over
+16 MiB are not retained.
 
-Windows does not always identify the clipboard-owner application. In that case the Source
-column displays `Unknown`; this is expected and the launcher does not guess from content
-or window titles.
+Windows does not always identify the clipboard-owner application. In that case an
+exclusion cannot be applied; this is expected. Source metadata remains internal and is
+never displayed, and the launcher does not guess from content or window titles.
 
 ## Paste returns to the application but inserts nothing
 
-Try Copy, then paste manually with Ctrl+V. A standard-user launcher cannot send input into
-an administrator-elevated target. The launcher does not elevate itself to bypass this
-Windows protection.
+Activate the clipboard card, then paste manually with Ctrl+V. A standard-user launcher
+cannot send input into an administrator-elevated target. The launcher does not elevate
+itself to bypass this Windows protection.
 
 ## Clipboard History vanished after exit
 
 This is the intended privacy behavior. History lives only in process memory. Exiting from
 the tray or restarting Windows destroys every retained text string, image buffer, and
 preview bitmap.
+
+## Open is greyed out in Clipboard History
+
+That is expected when a text card is selected. Open becomes available only for image
+cards. Use the mouse or Up/Down to select an image, then choose Open or focus it with Tab
+and press Enter. The preview remains in memory only and closes with Escape.
+
+## An image preview does not open or appears blank
+
+Confirm the selected card says **Image** and was not removed by Clear all or the ten-item
+limit. Close the preview with Escape and try the card again. The launcher does not create
+a fallback image file, invoke Paint, or start another process. Do not include the image
+pixels when reporting a problem.
+
+## Direct screenshot closed the launcher or image preview
+
+This is a defect. A rapid double press of the Copilot/Focus Key must leave both windows in
+place behind the selection overlay and restore the same foreground window afterward. Only
+choosing the Screenshot tile inside the launcher should hide launcher-owned windows.
+
+## Screenshot selection does not start
+
+Open the launcher and select the enabled **Screenshot** tile. A capture already in
+progress ignores additional Focus Key presses and activation requests so duplicate
+overlays cannot appear. Press Escape once, then try again. Do not start Windows Snipping
+Tool; Olio Launcher does not depend on it.
+
+## The selected screenshot is not on the clipboard
+
+Another application may be holding the Windows clipboard open. Olio Launcher retries
+briefly; if contention continues, it releases the captured bitmap, restores focus, and
+shows a safe error. Wait a moment and select Screenshot again. Do not close or restart a
+resident launcher just to retry, because restarting clears its memory-only history.
+
+Very large virtual desktops may also exhaust available GDI memory. Select a smaller area
+and try again. The failed capture is not saved to a file or cache.
+
+## The screenshot is on the clipboard but not in Clipboard History
+
+Clipboard publication remains successful even if history is paused or the captured image
+exceeds the existing 16 MiB in-memory retention limit. Resume capture through the
+`clipboardPaused` setting or choose a smaller harmless area. A retained screenshot should
+appear exactly once; repeated copies indicate a defect and should be reported without
+including the screen pixels.
+
+## Escape changed or cleared the clipboard
+
+This is a defect. Cancellation is handled before `OpenClipboard` or `EmptyClipboard` and
+must preserve every prior format exactly. Avoid copying sensitive content while
+investigating. Record only the launcher version, display scaling, monitor arrangement,
+and whether cancellation occurred before or during a drag—never record the clipboard
+contents or screen pixels.
+
+## The selection border is misplaced on a scaled or secondary monitor
+
+Confirm Windows display scaling is set to a supported 100%, 125%, or 150% value and that
+the monitors are arranged correctly in **Settings > System > Display**. Olio Launcher uses
+physical virtual-desktop coordinates under Per-Monitor V2 awareness, including negative
+coordinates. Sign out and back in only if Windows itself asks after a scaling change; do
+not restart the launcher merely for troubleshooting because that clears Clipboard History.
+
+## No image file appeared after capture
+
+That is expected. Dynamic Screenshot places an in-memory bitmap on the clipboard only.
+Paste it into Paint with Ctrl+V if you want to save it manually. Olio Launcher never
+creates PNG, JPEG, BMP, thumbnail, preview, cache, or temporary image files.

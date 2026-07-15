@@ -55,6 +55,24 @@ class TileRenderer {
         DllCall("InvalidateRect", "ptr", hwnd, "ptr", 0, "int", true)
     }
 
+    static SetEnabled(control, enabled) {
+        hwnd := IsObject(control) ? control.Hwnd : control
+        if !this.Tiles.Has(hwnd)
+            return
+        enabled := !!enabled
+        this.Tiles[hwnd].Enabled := enabled
+        DllCall("EnableWindow", "ptr", hwnd, "int", enabled)
+        DllCall("InvalidateRect", "ptr", hwnd, "ptr", 0, "int", true)
+    }
+
+    static Unregister(control) {
+        hwnd := IsObject(control) ? control.Hwnd : control
+        if this.Tiles.Has(hwnd)
+            this.Tiles.Delete(hwnd)
+        if this.HoveredHwnd = hwnd
+            this.HoveredHwnd := 0
+    }
+
     static RefreshAll() {
         for hwnd in this.Tiles
             DllCall("RedrawWindow", "ptr", hwnd, "ptr", 0, "ptr", 0,
@@ -130,6 +148,8 @@ class TileRenderer {
                     this.DrawSettings2(hdc, iconLeft, iconTop, iconSize, iconColor)
                 case "arrow-left":
                     this.DrawArrowLeft(hdc, iconLeft, iconTop, iconSize, iconColor)
+                case "x":
+                    this.DrawX(hdc, iconLeft, iconTop, iconSize, iconColor)
             }
             if tile.DrawLabel {
                 labelFont := this.CreateFont(9, 600, dpi)
@@ -251,6 +271,21 @@ class TileRenderer {
         DllCall("MoveToEx", "ptr", hdc, "int", px(12), "int", py(19), "ptr", 0)
         DllCall("LineTo", "ptr", hdc, "int", px(5), "int", py(12))
         DllCall("LineTo", "ptr", hdc, "int", px(12), "int", py(5))
+        DllCall("SelectObject", "ptr", hdc, "ptr", oldPen)
+        DllCall("DeleteObject", "ptr", pen)
+    }
+
+    static DrawX(hdc, left, top, size, rgb) {
+        scale := size / 24
+        px := (value) => Round(left + value * scale)
+        py := (value) => Round(top + value * scale)
+        pen := DllCall("CreatePen", "int", 0, "int", Max(2, Round(2 * scale)),
+            "uint", this.ColorRef(rgb), "ptr")
+        oldPen := DllCall("SelectObject", "ptr", hdc, "ptr", pen, "ptr")
+        DllCall("MoveToEx", "ptr", hdc, "int", px(6), "int", py(6), "ptr", 0)
+        DllCall("LineTo", "ptr", hdc, "int", px(18), "int", py(18))
+        DllCall("MoveToEx", "ptr", hdc, "int", px(18), "int", py(6), "ptr", 0)
+        DllCall("LineTo", "ptr", hdc, "int", px(6), "int", py(18))
         DllCall("SelectObject", "ptr", hdc, "ptr", oldPen)
         DllCall("DeleteObject", "ptr", pen)
     }

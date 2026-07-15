@@ -2,33 +2,48 @@ class OlioApp {
     static Window := 0
     static Settings := 0
     static Clipboard := 0
+    static Screenshot := 0
     static PendingActivation := false
     static FocusCallback := 0
+    static FocusReleaseCallback := 0
+    static FocusGesture := 0
+    static PendingFocusToggleCallback := 0
 
     static Start(mode := "") {
         activation := (*) => this.OnSecondaryActivation()
-        instanceNamespace := mode = "--visual-test" ? ".VisualTest" : ""
+        measurementMode := mode = "--measure-m3"
+        instanceNamespace := mode = "--visual-test" ? ".VisualTest"
+            : measurementMode ? ".M3Measurement" : ""
         if !InstanceCoordinator.BecomePrimary(activation, instanceNamespace)
             ExitApp(0)
 
-        this.Settings := SettingsManager.Load()
-        RedactedLogger.Configure(this.Settings["loggingEnabled"])
+        this.Settings := measurementMode ? SettingsManager.Defaults() : SettingsManager.Load()
+        RedactedLogger.Configure(measurementMode ? false : this.Settings["loggingEnabled"])
         RedactedLogger.Write("app-start", "primary")
         for warning in SettingsManager.Warnings
             RedactedLogger.Write("settings-warning", warning)
 
-        startup := StartupManager.Apply(this.Settings["startWithWindows"])
+        startup := measurementMode
+            ? {Ok: true, Status: "measurement-no-system-change"}
+            : StartupManager.Apply(this.Settings["startWithWindows"])
         RedactedLogger.Write("startup-registration", startup.Status)
 
         this.Clipboard := ClipboardManager(this.Settings)
+        this.Screenshot := ScreenshotManager(this.Clipboard,
+            (status, previous, result) => this.OnScreenshotFinished(status, previous, result))
         this.Window := LauncherWindow(this.Settings, (key) => this.OnNavigate(key),
             mode = "--visual-test", this.Clipboard)
         this.Clipboard.ChangedCallback := (status) => this.Window.OnClipboardHistoryChanged(status)
         this.Clipboard.Start()
-        this.FocusCallback := (*) => this.Toggle()
-        hotkeyResult := HotkeyManager.Register(this.Settings["focusKey"], this.FocusCallback)
+        this.FocusGesture := FocusKeyGesture(350)
+        this.PendingFocusToggleCallback := (*) => this.CommitPendingFocusToggle()
+        this.FocusCallback := (*) => this.OnFocusKeyPressed()
+        this.FocusReleaseCallback := (*) => this.OnFocusKeyReleased()
+        hotkeyResult := HotkeyManager.Register(this.Settings["focusKey"],
+            this.FocusCallback, this.FocusReleaseCallback)
         if !hotkeyResult.Ok && this.Settings["focusKey"] != "#+F23" {
-            fallback := HotkeyManager.Register("#+F23", this.FocusCallback)
+            fallback := HotkeyManager.Register("#+F23", this.FocusCallback,
+                this.FocusReleaseCallback)
             if fallback.Ok
                 hotkeyResult := {Ok: true, Status: "Configured Focus Key failed; using #+F23"}
         }
@@ -41,30 +56,102 @@ class OlioApp {
         RedactedLogger.Write("focus-key-registration", hotkeyResult.Ok ? "ok" : "error")
         this.ConfigureTray()
 
-        if mode != "--background" || this.PendingActivation
+        if (mode != "--background" && mode != "--measure-m3") || this.PendingActivation
             this.Window.Show()
     }
 
     static OnSecondaryActivation(*) {
-        if IsObject(this.Window)
+        if IsObject(this.Window) {
+            this.CancelPendingFocusToggle(true)
             this.Toggle()
-        else
+        } else
             this.PendingActivation := true
         return 0
     }
 
     static Toggle(*) {
+        if IsObject(this.Screenshot) && this.Screenshot.Active
+            return
         if IsObject(this.Window)
             this.Window.Toggle()
     }
 
+    static OnFocusKeyPressed(*) {
+        if IsObject(this.Screenshot) && this.Screenshot.Active
+            return
+        if !IsObject(this.FocusGesture)
+            this.FocusGesture := FocusKeyGesture(350)
+        if this.FocusGesture.Press() {
+            this.CancelPendingFocusToggle(false)
+            this.BeginScreenshot(false)
+            return
+        }
+        if this.FocusGesture.LastResult = "first"
+            SetTimer(this.PendingFocusToggleCallback,
+                -this.FocusGesture.MaxIntervalMs)
+    }
+
+    static OnFocusKeyReleased(*) {
+        if IsObject(this.FocusGesture)
+            this.FocusGesture.Release()
+    }
+
+    static CommitPendingFocusToggle() {
+        if IsObject(this.Screenshot) && this.Screenshot.Active
+            return
+        this.Toggle()
+    }
+
+    static CancelPendingFocusToggle(resetGesture := false) {
+        if IsObject(this.PendingFocusToggleCallback)
+            try SetTimer(this.PendingFocusToggleCallback, 0)
+        if resetGesture && IsObject(this.FocusGesture)
+            this.FocusGesture.Reset()
+    }
+
+    static ImmediateToggle(*) {
+        this.CancelPendingFocusToggle(true)
+        this.Toggle()
+    }
+
+    static BeginScreenshot(hideLauncher := true) {
+        if !IsObject(this.Window) || !IsObject(this.Screenshot)
+            return false
+        if this.Screenshot.Active
+            return false
+        this.CancelPendingFocusToggle(hideLauncher)
+        previous := this.Window.PrepareScreenshotCapture(hideLauncher)
+        return this.Screenshot.Begin(previous)
+    }
+
     static OnNavigate(key) {
+        if key = "screenshot"
+            this.BeginScreenshot(true)
         try {
             SettingsManager.Update("lastSelected", key)
             RedactedLogger.Write("navigation", key)
         } catch as settingsError {
             RedactedLogger.Write("settings-write", "error")
             this.Window.SetStatus("Settings write failed; defaults remain active")
+        }
+    }
+
+    static OnScreenshotFinished(status, previous, result) {
+        RedactedLogger.Write("screenshot", status)
+        if !IsObject(this.Window)
+            return
+        this.Window.RestoreAfterScreenshot(previous)
+        switch status {
+            case "clipboard-busy":
+                this.Window.SetStatus("Screenshot could not access the clipboard; try again")
+                try TrayTip("Screenshot was not copied. Try again in a moment.",
+                    "Olio Launcher", 0x2)
+            case "capture-failed", "overlay-failed", "selection-failed":
+                this.Window.SetStatus("Screenshot stopped safely; no clipboard change was made")
+                try TrayTip("Screenshot stopped safely. Please try again.",
+                    "Olio Launcher", 0x2)
+            case "invalid-selection":
+                try TrayTip("Drag to select a non-empty area.", "Olio Launcher", 0x1)
         }
     }
 
@@ -77,7 +164,7 @@ class OlioApp {
                 TraySetIcon(LauncherWindow.BrandIconPath())
         }
         A_TrayMenu.Delete()
-        A_TrayMenu.Add("Open / Hide", (*) => this.Toggle())
+        A_TrayMenu.Add("Open / Hide", (*) => this.ImmediateToggle())
         A_TrayMenu.Add()
         A_TrayMenu.Add("Exit", (*) => this.Shutdown())
         A_TrayMenu.Default := "Open / Hide"
@@ -85,6 +172,9 @@ class OlioApp {
 
     static Shutdown(*) {
         RedactedLogger.Write("app-stop", "user")
+        this.CancelPendingFocusToggle(true)
+        if IsObject(this.Screenshot)
+            this.Screenshot.Shutdown(false)
         if IsObject(this.Clipboard)
             this.Clipboard.Shutdown()
         HotkeyManager.Unregister()

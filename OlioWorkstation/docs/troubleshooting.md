@@ -1,0 +1,33 @@
+# Olio Workstation troubleshooting
+
+## Quick Pastes will not load
+
+Confirm that the account is signed in, the browser is online, the public Supabase URL and
+anon key are configured, and the Milestone 4 migration exists in the target environment.
+Choose **Try again** in the error notice after correcting the problem. Existing rows remain
+unchanged when loading fails.
+
+## A create or edit will not save
+
+Title and content are required. The limits are 120 characters for title, 20,000 for
+content, and 60 for an optional category. The form keeps the draft open after a recoverable
+save failure so it can be retried. Do not paste the content into bug reports or logs.
+
+## Reorder controls are disabled
+
+Clear the search box and choose **All categories**. Reorder requires the complete private
+collection so a filtered list cannot overwrite positions for hidden rows. The first item
+cannot move up and the last item cannot move down.
+
+## Local database tests cannot start
+
+The database suite needs the Supabase CLI, Docker, and an isolated local stack. Install
+those tools using your approved development process, then run the commands in
+[setup.md](setup.md). Do not substitute a production or shared remote project merely to
+make the test run.
+
+## Reporting a problem safely
+
+Record the action, generic error message, browser version, and whether retry succeeded.
+Never include Quick Paste content, database response bodies, authentication tokens, or
+screenshots showing sensitive snippets.

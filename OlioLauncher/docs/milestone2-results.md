@@ -1,8 +1,10 @@
 # Milestone 2 Clipboard History results
 
-Status: **Implementation complete; exit criteria pass; ready for product-owner review.**
+Status: **Approved by the product owner; exit criteria pass. Milestone 3 has not begun.**
 
 Run date: 2026-07-15 (America/Indianapolis)
+
+Approval date: 2026-07-15 (America/Indianapolis)
 
 ## Implemented scope
 
@@ -17,8 +19,11 @@ Run date: 2026-07-15 (America/Indianapolis)
   not displayed
 - Text and image restoration by click or Enter, with in-place promotion and no duplicate;
   the compact launcher remains open
-- A scrollable ten-entry card viewport, Delete, clear-with-confirmation, and keyboard
-  activation; pause and pin behavior remain covered at the in-memory model level
+- A scrollable ten-entry card viewport, image-only Open immediately left of Delete,
+  clear-with-confirmation, and keyboard activation; pause and pin behavior remain covered
+  at the in-memory model level
+- Owned native image preview using a copied memory-only DIB and `StretchDIBits`; Open is
+  disabled for text and the preview closes with Escape without changing the clipboard
 - Case-insensitive sensitive-application exclusions
 - Bounded text/image allocation with content-free oversized status messages
 - Explicit release of DIB buffers, global-memory allocations, preview `HBITMAP` handles,
@@ -32,7 +37,7 @@ action or network code.
 
 | Check | Result |
 | --- | --- |
-| Milestone 1 regression suite | Pass: 76 assertions |
+| Milestone 1 regression suite | Pass: 85 assertions |
 | Milestone 2 focused suite | Pass: 63 assertions |
 | Maximum history length | Pass: newest ten unpinned entries retained in correct order |
 | Unicode and legacy plain text | Pass: external-process `CF_UNICODETEXT` and `CF_TEXT` callbacks captured accurately |
@@ -48,6 +53,7 @@ action or network code.
 | Rapid model changes | Pass: 500 unique captures in 16 ms, final length ten |
 | Rapid Windows events | Pass: 40 external clipboard writes handled in 1,078 ms, latest ten retained |
 | GDI cleanup | Pass: one selected-image preview created and cleared; before/after delta 0 |
+| Image Open preview | Pass: 44 isolated assertions for text/image enablement, themed borderless chrome, compact owner-drawn header close, no metadata line, exact native scan-line painting, direct-capture preservation, independent DIB lifetime, and repeated cleanup without GDI/USER growth |
 | Payload file/log scan | Pass: a runtime-only marker was absent from repository, settings, logs, and test output |
 | Test process cleanup | Pass: no test or helper process remains after each suite |
 
@@ -107,20 +113,25 @@ sensitive information for this checklist.
 3. Open the launcher again. Confirm the text appears first, shows **Text**, and has a time.
 4. In Paint, make a small colored drawing, select it, and press Ctrl+C. Confirm an **Image**
    row and a thumbnail appear in the launcher.
-5. Click the Notepad card. Confirm it moves to the top, the launcher stays open, and no
+5. Select the text card and confirm **Open** is greyed out. Select the image card, choose
+   **Open**, and confirm a larger preview appears with the Olio header, a compact header
+   close control, and no pixel dimensions or “Memory only” line. Press Escape and confirm
+   Clipboard History regains focus. Confirm no PNG, JPEG, BMP, thumbnail, cache, or
+   temporary file was created.
+6. Click the Notepad card. Confirm it moves to the top, the launcher stays open, and no
    duplicate card appears. Back in Notepad, press Ctrl+V and confirm the text is exact.
-6. Copy eleven different harmless lines. Confirm only the latest ten appear, then use the
+7. Copy eleven different harmless lines. Confirm only the latest ten appear, then use the
    mouse wheel and Up/Down to scroll through them without the launcher freezing.
-7. If you use one of the default excluded password managers, copy only a harmless dummy
+8. If you use one of the default excluded password managers, copy only a harmless dummy
    value from it and confirm it is ignored. Never use a real credential for testing.
-8. Select a row and choose **Delete**. Confirm only that row disappears.
-9. Choose **Clear all**. First choose **No** and confirm nothing changes. Open it again,
+9. Select a row and choose **Delete**. Confirm only that row disappears.
+10. Choose **Clear all**. First choose **No** and confirm nothing changes. Open it again,
     choose **Yes**, and confirm the list becomes empty.
-10. Copy one harmless item, exit Olio Launcher from its tray icon, restart it, and confirm
+11. Copy one harmless item, exit Olio Launcher from its tray icon, restart it, and confirm
     history is empty because it is memory-only.
-11. Navigate using only arrows, Tab, Shift+Tab, Enter, and Escape. Confirm focus is visibly
+12. Navigate using only arrows, Tab, Shift+Tab, Enter, and Escape. Confirm focus is visibly
     outlined and every Clipboard action is reachable.
-12. Confirm **Send to Phone** and **Network Analyzer** are still dimmed and cannot be opened.
+13. Confirm **Send to Phone** and **Network Analyzer** are still dimmed and cannot be opened.
 
 ## Exit gate
 

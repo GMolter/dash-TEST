@@ -56,6 +56,25 @@ switch mode {
                 DllCall("DeleteObject", "ptr", bitmap)
         }
         Sleep(100)
+    case "hold":
+        eventName := A_Args.Length > 1 ? A_Args[2] : ""
+        holdMs := A_Args.Length > 2 ? Integer(A_Args[3]) : 150
+        if !DllCall("OpenClipboard", "ptr", A_ScriptHwnd)
+            ExitApp(7)
+        eventHandle := 0
+        try {
+            if eventName {
+                eventHandle := DllCall("OpenEventW", "uint", 0x2, "int", false,
+                    "str", eventName, "ptr")
+                if eventHandle
+                    DllCall("SetEvent", "ptr", eventHandle)
+            }
+            Sleep(holdMs)
+        } finally {
+            if eventHandle
+                DllCall("CloseHandle", "ptr", eventHandle)
+            DllCall("CloseClipboard")
+        }
     default:
         ExitApp(1)
 }

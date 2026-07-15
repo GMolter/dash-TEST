@@ -1,11 +1,12 @@
 # Olio Launcher architecture decisions
 
-Status: **Milestones 0 and 1 approved; Milestone 2 Clipboard History implemented and
-ready for review.**
+Status: **Milestones 0, 1, and 2 approved. Milestone 3 Dynamic Screenshot is
+implemented and ready for product-owner review.**
 
-This document records the architecture choices supported by the Milestone 0 prototypes.
-It does not define production feature UI and does not authorize Quick Pastes, Send to
-Phone, Network Analyzer, database, or Workstation changes.
+This document records the native architecture choices established by Milestone 0 and
+preserved through the Milestone 3 implementation. It does not authorize Quick Pastes,
+account connection, Send to Phone, Network Analyzer, packaging, database, or Workstation
+changes.
 
 ## Decision summary
 
@@ -43,9 +44,58 @@ Win32 ownership rules are explicit:
 - Cancelling a selection occurs before any call to `EmptyClipboard`, leaving the prior
   clipboard unchanged.
 
-The production screenshot milestone must add retry handling for transient clipboard
-contention and repeated mixed-monitor pixel-bound tests, while preserving these ownership
-rules.
+The production screenshot implementation adds bounded retry handling for transient
+clipboard contention and instrumented mixed-monitor pixel-bound tests while preserving
+these ownership rules.
+
+## Milestone 3 screenshot lifecycle
+
+`ScreenshotManager` remains an AutoHotkey include in the resident process. Selecting the
+native Screenshot tile hides the launcher before creating one borderless, topmost overlay
+whose rectangle is the physical Windows virtual desktop (`SM_XVIRTUALSCREEN`,
+`SM_YVIRTUALSCREEN`, `SM_CXVIRTUALSCREEN`, and `SM_CYVIRTUALSCREEN`). The process is
+Per-Monitor V2 aware and the overlay disables AutoHotkey GUI scaling, then applies the
+virtual rectangle with `SetWindowPos`. Negative origins and monitor-spanning rectangles
+therefore remain physical screen pixels instead of logical or primary-monitor-relative
+coordinates.
+
+The overlay paints a translucent Olio Workstation surface, readable instructions, a cyan
+selection border, and live pixel dimensions. `WM_SETCURSOR` supplies the shared Windows
+crosshair cursor. Mouse capture keeps reverse-direction and cross-monitor drags coherent;
+`WM_KEYDOWN` handles Escape without installing a temporary global keyboard hook. Empty
+rectangles are rejected before clipboard access. Rapid activation is idempotent while a
+selection is active, and the Focus Key cannot open a second launcher over the overlay. A
+small release-aware gesture state machine recognizes two Focus Key presses within 350 ms;
+held-key repeat is ignored because a physical key-up event must occur between presses. The
+first press schedules, rather than immediately performs, the single-toggle action. A rapid
+second press cancels that pending toggle, so direct capture does not change any existing
+launcher or preview window state. Click-away close is suspended only until direct capture
+finishes; the Screenshot tile retains the hide-before-capture path.
+
+On success, the overlay is destroyed before capture. A screen DC, compatible memory DC,
+and compatible bitmap are created in process; `BitBlt` uses `SRCCOPY | CAPTUREBLT`; the
+original selected GDI object is restored; and both DCs are released. Clipboard opening is
+retried for bounded transient contention. A successful `SetClipboardData(CF_BITMAP)`
+transfers the bitmap to Windows; every unsuccessful bitmap remains launcher-owned and is
+deleted. Before ownership transfer, Clipboard History copies the bitmap into its existing
+bounded in-memory DIB model. That prepared entry is committed only after clipboard
+publication succeeds. Clipboard History mutation depth and the resulting sequence number
+suppress the launcher-generated callback, so the one deliberate screenshot entry is not
+recursively inserted or duplicated. Paused history and existing image limits remain in
+force.
+
+Cancellation destroys the overlay and releases mouse capture before any clipboard API is
+called, so every prior clipboard format and byte remains unchanged. Completion returns the
+saved pre-launch foreground window to `LauncherWindow`; if it no longer exists, the
+launcher is shown instead. Failure status is content-free, restores focus, and is reported
+without pixels, coordinates, window text, or clipboard data.
+
+No screenshot code calls a file, encoder, stream, shell, browser, network, database,
+Snipping Tool, or external-process API. Screenshot pixels exist only in GDI memory and on
+the Windows clipboard. The focused suite snapshots launcher files, scans a unique runtime
+clipboard marker, and statically rejects file/network/shell paths in `ScreenshotManager`.
+The isolated measurement mode uses a separate single-instance namespace, default in-memory
+settings, disabled logging, and no startup-registration mutation.
 
 ## Milestone 2 clipboard lifecycle
 
@@ -68,6 +118,13 @@ Resource ownership is explicit:
   clear, and exit.
 - Only the selected image receives a temporary `HBITMAP` preview. Re-selection, leaving
   the page, deletion, clear, and shutdown call `DeleteObject` before dropping the handle.
+- The image-only Open action copies the selected DIB into a separately owned process-memory
+  buffer before showing an owned native preview window. `WM_PAINT` scales that buffer with
+  `StretchDIBits`; no file, encoder, shell, clipboard mutation, or retained preview bitmap
+  is involved. The preview uses a borderless Olio header, compact owner-drawn header close
+  control, and no dimensions or storage-status line. Escape, the header close control,
+  launcher hide, repeated open, and process exit destroy the window, remove its paint
+  registration, and release the copied buffer.
 - `CF_BITMAP` normalization pairs `GetDC` with `ReleaseDC`; clipboard access closes in a
   `finally` block; every `GlobalLock` is paired with `GlobalUnlock`.
 - Pinned entries are exempt from the ten-unpinned eviction rule, but a separate ten-pin
@@ -90,7 +147,9 @@ process as clipboard owner. The corresponding callback is suppressed so selectin
 entry does not duplicate it. Selection restores the entry, promotes that same in-memory
 object to the top, and leaves the compact launcher open. The owner-drawn native list box
 shows roughly three cards at once and provides mouse-wheel and keyboard scrolling through
-all ten retained unpinned entries.
+all ten retained unpinned entries. A native Open button immediately left of Delete tracks
+list selection notifications: text disables it, while an image enables a keyboard-reachable
+owned preview. Closing that preview returns focus to the launcher.
 
 ## Focus Key and Copilot key
 
@@ -115,6 +174,14 @@ but F23 is suppressed before Windows receives the complete chord. Repeat reliabi
 native-action suppression still need ten presses in normal, elevated-target, post-sleep,
 and post-resume states. The configurable Focus Key remains the fallback if Windows or OEM
 software consumes the Copilot event in any state.
+
+Production Focus Key registration owns both the down and up edges. One press toggles the
+launcher after the 350 ms double-press decision window. A second down edge inside that
+window starts Dynamic Screenshot directly only when an up edge occurred after the first
+press, preventing Windows key-repeat from opening capture mode. The pending single toggle
+is cancelled, and existing launcher and image-preview windows remain visible and unmoved
+behind the overlay. Completing a gesture resets it; presses outside the interval begin a
+new single-press sequence.
 
 ## DPI and window placement algorithm
 
@@ -150,6 +217,13 @@ high-speed-camera or presentation-feedback measurement can be added if a later c
 approaches the budget. Until real usage data replaces them, Milestone 1 should treat
 50 ms p95 Focus-Key-to-painted-window, 500 ms cold start, 35 MiB resident working set,
 and 0.1% idle CPU as regression ceilings on comparable hardware.
+
+The Milestone 3 post-feature sample remains inside those budgets: 0.0000% idle CPU over
+10 seconds, 17,489,920-byte working set, 4,894,720 private bytes, and zero normal-operation
+helper processes. A warmed full-virtual-desktop overlay painted in 24.253 ms; 320 × 180
+and 1600 × 900 captures reached clipboard completion in 26.700 ms and 50.643 ms. Full
+details and the unavailable hardware cases are recorded in
+[`milestone3-results.md`](milestone3-results.md).
 
 ## First-run and removal behavior
 

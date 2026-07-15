@@ -1,4 +1,4 @@
-# Milestone 2 setup and operation
+# Milestone 3 setup and operation
 
 ## Requirements
 
@@ -29,7 +29,8 @@ to the existing process and exits the new process immediately.
 
 ## Controls
 
-- Copilot key / default Focus Key: `LWin+LShift+F23`
+- Copilot key / default Focus Key: press `LWin+LShift+F23` once to show or hide the panel;
+  press and release it twice within 350 ms to open Dynamic Screenshot directly
 - Up/Down: move between enabled navigation buttons
 - Enter: select the focused button
 - Escape: hide the panel and restore the prior foreground window
@@ -41,13 +42,47 @@ On the Clipboard History page:
 - Use the mouse wheel or Up/Down to scroll through as many as ten clipboard cards.
 - Click a card or focus it and press Enter to restore it to the clipboard. The same entry
   moves to the top without creating a duplicate, and the launcher stays open.
-- Tab and Shift+Tab move through Clear all, the card list, Delete, and Back. Enter
+- Tab and Shift+Tab move through Clear all, the card list, Open, Delete, and Back. Enter
   activates the focused action.
+- Open is greyed out for text. For an image, select its card and choose Open to show a
+  larger native preview. Press Escape or use the compact header close control to return to
+  Clipboard History. The preview intentionally omits pixel dimensions and storage text.
 - Delete removes the selected card.
 - Clear all always asks for confirmation, with No selected by default.
 
 Send to Phone and Network Analyzer are disabled controls. Dynamic Screenshot and Quick
-Pastes remain placeholders and execute no feature code.
+Pastes remain separate: Dynamic Screenshot is active; Quick Pastes remains a placeholder
+and executes no synchronization, account, browser, or network code.
+
+## Dynamic Screenshot
+
+1. Open Olio Launcher and select **Screenshot** with the mouse, or focus it with the
+   arrow keys and press Enter.
+2. The launcher hides and the complete Windows desktop dims. The pointer becomes a
+   crosshair.
+3. Hold the left mouse button, drag around the harmless screen area you want, and release.
+   Dragging left, right, up, down, or across monitors is supported.
+4. Paste the result into Paint or another image-capable application with Ctrl+V.
+5. Press Escape before releasing to cancel. Cancellation does not change any clipboard
+   format or content.
+
+After a successful capture, open Clipboard History to see the image as the newest
+memory-only item. The screenshot is added once even though Windows also reports a
+clipboard-change event. Existing pause and image-size limits still apply. You can also
+start at step 2 without opening the panel: press and release the Copilot/Focus Key twice
+within 350 ms. This direct path leaves the launcher and an open image preview exactly where
+they are behind the selection overlay. Selecting Screenshot from the launcher remains the
+only path that hides the launcher before selection.
+
+The capture is a native in-memory Windows bitmap. Olio Launcher does not start Snipping
+Tool, encode an image, create a thumbnail or preview file, save to a temporary folder,
+or transmit pixels. If another program temporarily locks the clipboard, the launcher
+retries briefly and then reports a safe, content-free error. Empty selections are ignored.
+The prior application regains focus after success, cancellation, or failure.
+
+For a nontechnical safety checklist covering reverse dragging, multiple monitors, DPI
+scaling, repeated captures, keyboard use, Paint, and no-file verification, see
+[milestone3-results.md](milestone3-results.md#simple-manual-test-checklist).
 
 ## Settings
 

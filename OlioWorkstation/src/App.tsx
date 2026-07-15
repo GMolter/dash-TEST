@@ -5,6 +5,7 @@ import { URLShortener } from './components/URLShortener';
 import { SecretSharing } from './components/SecretSharing';
 import { QRCodeGenerator } from './components/QRCodeGenerator';
 import { Pastebin } from './components/Pastebin';
+import { QuickPastes } from './components/QuickPastes';
 import { URLRedirect } from './pages/URLRedirect';
 import { SecretView } from './pages/SecretView';
 import { PasteView } from './pages/PasteView';
@@ -294,6 +295,7 @@ function App() {
     { id: 'shortener', label: 'URL Shortener', icon: '✂️', desc: 'Shorten URLs' },
     { id: 'secrets', label: 'Secret Sharing', icon: '🔒', desc: 'One-time links' },
     { id: 'qr', label: 'QR Generator', icon: '📱', desc: 'Generate QR codes' },
+    { id: 'quick-pastes', label: 'Quick Pastes', icon: '📋', desc: 'Manage private reusable text' },
     { id: 'pastebin', label: 'Pastebin', icon: '📝', desc: 'Share code/text' },
   ];
 
@@ -346,6 +348,7 @@ function App() {
           {view.tool === 'shortener' && <URLShortener />}
           {view.tool === 'secrets' && <SecretSharing />}
           {view.tool === 'qr' && <QRCodeGenerator />}
+          {view.tool === 'quick-pastes' && <QuickPastes />}
           {view.tool === 'pastebin' && <Pastebin />}
         </div>
       );
