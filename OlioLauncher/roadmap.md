@@ -1,5 +1,17 @@
 # Olio Launcher Roadmap
 
+> [!IMPORTANT]
+> **Directive for future AI agents and developers:** While developing Olio Launcher, act
+> as a professional Windows application developer. Follow established Windows desktop
+> application practices for lifecycle management, hotkeys, window focus, DPI awareness,
+> accessibility, resource ownership, credential storage, error handling, and cleanup.
+> Treat startup time, input latency, memory use, and reliability as product requirements,
+> not optional polish. Preserve the native AutoHotkey v2 architecture unless a documented
+> technical limitation requires a change. Do not replace the launcher with Electron or
+> another heavyweight browser-runtime application. Apply least-privilege Windows design:
+> elevation is allowed when a feature genuinely requires it, but the complete launcher
+> must not run as administrator merely for convenience.
+
 ## 1. Product objective
 
 Olio Launcher is a compact Windows tool panel opened by the laptop's Copilot key or a
@@ -9,6 +21,11 @@ memory-only screen capture, and Quick Pastes synchronized with Olio Workstation.
 The application will be written for AutoHotkey v2 and optimized for Windows 11. It must
 remain useful without an internet connection; only synchronized services such as Quick
 Pastes require an Olio Workstation connection.
+
+The distributed application must be a standalone executable that does not require
+AutoHotkey to be installed on destination devices. It should feel effectively instant:
+the resident process should respond to the Focus Key without launching a second runtime,
+browser, terminal, or helper process for normal operations.
 
 ## 2. Scope rules
 
@@ -30,6 +47,8 @@ Pastes require an Olio Workstation connection.
 - Cloud synchronization of Clipboard History.
 - Automatic persistence of clipboard contents to disk.
 - macOS, Linux, Android, and non-Windows desktop support.
+- Electron or a similar heavyweight embedded browser runtime.
+- A mandatory MSI, MSIX, or third-party installer.
 
 Send to Phone must complete a separate product and security planning process before any
 implementation begins. Network Analyzer must be the last feature planned and built.
@@ -85,6 +104,56 @@ authorization, and revocation.
 
 The launcher should be a single-instance application. Pressing the configured key must
 toggle the existing process instead of starting another process.
+
+### Portable executable and first-run behavior
+
+The release artifact should be a single compiled `OlioLauncher.exe`. AutoHotkey v2 and
+all compile-time source includes must be bundled so another Windows device does not need
+AutoHotkey installed.
+
+Running the executable should also provide the necessary first-run setup without being
+marketed as a traditional installer. This self-provisioning flow must:
+
+- Run without elevation when only per-user setup is requested.
+- Request UAC elevation during first-run setup when the user selects a machine-level
+  option that genuinely requires administrator access.
+- Create the per-user settings and logs directories only when needed.
+- Offer to start Olio Launcher when the user signs in.
+- Register startup through a per-user mechanism.
+- Explain whether startup points to the current portable executable or copies it to a
+  stable per-user location such as `%LOCALAPPDATA%\OlioLauncher\`.
+- Avoid silently copying, relocating, or deleting the executable.
+- Support clean removal of startup registration and locally generated data.
+- Keep account credentials and device-specific settings outside the executable.
+
+The architecture must support copying the same release executable to multiple Windows
+devices. Each device creates its own settings, registers its own Focus Key, and receives
+its own independently revocable Olio Workstation credential.
+
+### Privilege and elevation strategy
+
+Windows elevation applies to a running process; approving UAC once does not permanently
+grant a portable executable administrator rights on future launches. Embedding a
+`requireAdministrator` manifest in the main launcher would normally produce a UAC prompt
+each time it starts and would make automatic sign-in startup less reliable.
+
+The main `OlioLauncher.exe` should therefore run at standard-user integrity for normal
+clipboard, screenshot, Quick Paste, settings, and Focus Key operations. If a future
+approved feature requires administrator access, use one of these patterns:
+
+1. Elevate a short-lived, narrowly scoped helper only when the user invokes the action.
+2. During an explicit elevated setup flow, install a narrowly scoped Windows service or
+   privileged helper with authenticated local IPC and a minimal command surface.
+
+The first option is preferred for infrequent administrative actions. A service is only
+appropriate for a feature that requires continuous privileged operation. Any helper or
+service must remain part of the private Olio Launcher release, validate every request,
+perform only documented operations, and be removable from launcher settings.
+
+Network Analyzer planning must determine whether elevation, a packet-capture driver such
+as Npcap, or a Windows service is actually necessary. No privileged component should be
+installed before that design is approved. The inactive Network Analyzer placeholder
+must never request elevation.
 
 Runtime data locations:
 
@@ -146,6 +215,13 @@ Tasks:
 - Decide whether the launcher UI will use native AutoHotkey controls or a packaged
   WebView2 layer. Prefer native controls unless the spike proves they cannot provide the
   required interaction and appearance.
+- Measure cold start, resident memory, Focus Key-to-visible-window latency, and idle CPU
+  use so later milestones have a performance baseline.
+- Decide and document the first-run choice between true in-place portable startup and an
+  explicit user-approved copy to a stable per-user location.
+- Confirm which initial features, if any, truly require elevation and document the
+  standard-user/elevated process boundary. The expected answer for the initial local
+  launcher features is that no elevation is required.
 - Record decisions in `docs/architecture.md` before proceeding.
 
 Exit criteria:
@@ -154,6 +230,7 @@ Exit criteria:
 - Panel positioning works at 100%, 125%, and 150% scaling.
 - A bitmap can be captured and copied without file-system output.
 - No unresolved technical choice blocks the foundation milestone.
+- The performance baseline and first-run deployment behavior are documented.
 
 ### Milestone 1 — Application foundation
 
@@ -386,21 +463,28 @@ Goal: create a repeatable, supportable release.
 
 Tasks:
 
-- Decide between distributing the `.ahk` source and an AutoHotkey-compiled executable.
+- Compile the application and all source includes into one standalone executable; the
+  destination devices must not require AutoHotkey.
 - Pin and document the supported AutoHotkey v2 version.
 - Add application icon, version metadata, and license notices for dependencies.
-- Document installation, updating, uninstalling, and startup removal.
+- Implement and document first-run self-provisioning, portable copying, updating, local
+  data removal, and startup removal.
+- Document every operation that can request UAC elevation, why it is required, which
+  executable is elevated, and how any privileged component is removed.
 - Define a versioning and release-note process.
-- Add integrity/signing guidance; evaluate code signing before public distribution.
-- Run the complete manual test matrix on a clean Windows account.
+- Run the complete manual test matrix on every privately supported Windows device class.
 - Verify that uninstall instructions remove startup registration, settings, credentials,
   logs, and any optional cache.
+- Re-measure cold start, Focus Key response, idle CPU, and resident memory against the
+  Milestone 0 baseline.
 
 Exit criteria:
 
-- A clean machine can install, run, update, and remove the launcher using documentation.
+- A Windows device without AutoHotkey can run, configure, update, and remove the launcher
+  using the documentation.
 - Release artifacts are reproducible from committed files.
 - No development secrets or personal data exist in the release package.
+- Normal Focus Key activation does not launch a second process or heavyweight runtime.
 
 ### Milestone 9 — Send to Phone planning only
 
@@ -463,7 +547,9 @@ Every applicable milestone must cover:
 
 Windows security prevents a normal-privilege launcher from reliably sending input to an
 elevated application. The launcher must run without administrator rights by default and
-explain this limitation instead of silently elevating itself.
+explain this limitation instead of silently elevating itself. If pasting into elevated
+applications becomes a required workflow, it must receive a dedicated design and threat
+review rather than causing the entire launcher to run elevated by default.
 
 ## 8. Quality gates
 

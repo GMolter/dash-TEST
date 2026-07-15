@@ -1,0 +1,11 @@
+{
+  "focusKey": "#+F23",
+  "startWithWindows": false,
+  "panelWidth": 360,
+  "alwaysOnTop": true,
+  "closeOnFocusLost": false,
+  "loggingEnabled": false,
+  "lastSelected": "clipboard",
+  "openingMonitor": "active",
+  "openingPosition": "right"
+}
