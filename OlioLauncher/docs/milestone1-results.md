@@ -1,9 +1,9 @@
 # Milestone 1 foundation results
 
-Status: **Implementation complete; ready for user review. No Milestone 2 feature work has
-begun.**
+Status: **Approved. These foundation checks remain the regression baseline for Milestone
+2 and later work.**
 
-Run date: 2026-07-13 (America/Indianapolis)
+Run date: 2026-07-15 (America/Indianapolis)
 
 ## Implemented scope
 
@@ -24,7 +24,7 @@ Run date: 2026-07-13 (America/Indianapolis)
 | Check | Result |
 | --- | --- |
 | Entry-point AutoHotkey syntax | Pass on AutoHotkey 2.0.26 |
-| Focused foundation test suite | Pass; 41 assertions |
+| Focused foundation test suite | Pass; 58 assertions |
 | JSON strings, Booleans, numbers, trailing-data rejection | Pass |
 | Invalid field and malformed-document recovery | Pass |
 | Same-directory atomic settings replacement | Pass |
@@ -39,11 +39,14 @@ Run date: 2026-07-13 (America/Indianapolis)
 | Hidden-resident idle sample | 0.0000% CPU over 5 seconds; 16,076,800-byte working set; 3,735,552 private bytes |
 | Modern grid shell visual QA | Pass; two-column dark native tiles, distinct cyan/violet/green/amber/slate accent rails, selected/focus outlines, and subdued disabled tiles |
 | Tile accessibility | Pass; all six tools remain native buttons with accessible names and disabled state |
-| Tile keyboard and mouse input | Pass; Up/Down focus, Enter activation through `BM_CLICK`, and mouse activation verified in the rendered app |
+| Tile keyboard and mouse input | Pass; spatial Left/Right/Up/Down focus, Enter activation through `BM_CLICK`, and mouse activation verified in the rendered app |
 | Compact Workstation theme | Pass; `#020617` base, slate cards/borders, rounded controls, 286-pixel normal panel height, minimal labels, and a themed utility pill using Lucide `settings-2` geometry |
 | Opening position | Pass; right-edge x-position retained and y-position centered within the active monitor work area |
 | Initial and reopen focus | Pass; Clipboard receives focus, including after the launcher was closed from Settings |
 | Focus preservation on close | Pass; the saved pre-launch window is restored only while the launcher still owns focus, so a newly focused window remains current |
+| Click-away close | Pass; activating another application hides the visible launcher automatically |
+| Workstation branding | Pass; the Workstation `O|` favicon and `Launcher` title render in the header, and the same artwork supplies the source-mode and compiled tray/application icon |
+| Placeholder page routing | Pass; Clipboard, Screenshot, Quick Pastes, and Settings open distinct native page shells; Back and Escape return home without feature execution |
 
 The activation test originally exposed duplicate delivery to AutoHotkey's hidden window
 and visible GUI. Activation is now deduplicated by secondary-process ID; direct Win32
@@ -57,7 +60,7 @@ while allowing the modern card treatment.
 
 ## Deferred by design
 
-- Clipboard History data and UI — Milestone 2
+- Clipboard History data and UI — implemented in the separately reviewed Milestone 2
 - Product screenshot selection UI and capture action — Milestone 3
 - Quick Pastes data, authentication, networking, or UI — later approved milestones
 - Send to Phone — planning only

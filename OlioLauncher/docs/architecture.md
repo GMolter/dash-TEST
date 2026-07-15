@@ -1,6 +1,7 @@
 # Olio Launcher architecture decisions
 
-Status: **Milestone 0 approved; Milestone 1 foundation implemented and under review.**
+Status: **Milestones 0 and 1 approved; Milestone 2 Clipboard History implemented and
+ready for review.**
 
 This document records the architecture choices supported by the Milestone 0 prototypes.
 It does not define production feature UI and does not authorize Quick Pastes, Send to
@@ -16,6 +17,7 @@ Phone, Network Analyzer, database, or Workstation changes.
 | DPI model | Per-Monitor V2 awareness set before GUI creation | Use `SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2)`, physical virtual-screen coordinates, `MonitorFromWindow`, `GetMonitorInfoW`, `GetDpiForWindow`, and the suggested rectangle from `WM_DPICHANGED`. |
 | Monitor choice | Monitor containing the foreground window | Position against `rcWork`, not monitor bounds, so the taskbar is respected. Negative virtual coordinates are valid and must not be clamped to zero. |
 | Clipboard observation | Event-driven `OnClipboardChange` | Inspect format presence only in the callback and copy supported payloads later. Never log content. Text and bitmap callbacks were both observed by the automated spike. |
+| Clipboard history | In-process `ClipboardHistoryModel` containing text strings or copied DIB buffers | No payload, preview, comparison value, or source field is serialized. Ten unpinned and at most ten pinned entries bound memory use. Consecutive equivalence is checked directly in memory without retaining a hash. |
 | Screen capture | GDI screen DC to compatible in-memory bitmap, then `CF_BITMAP` | `BitBlt` copies selected pixels directly to an `HBITMAP`; `SetClipboardData` transfers ownership to Windows. There is no image encoder, stream, cache, temporary path, or image-file operation. All DC and untransferred bitmap handles are released. |
 | First run | Default to an explicit, user-approved copy to `%LOCALAPPDATA%\OlioLauncher\`; also allow an explicit in-place portable choice | Never silently relocate or delete the executable. Explain both choices before mutation. The stable per-user copy is recommended for reliable sign-in startup and updates. Startup uses a per-user mechanism and points to the selected location. |
 | Elevation | No initial launcher feature requires elevation | Focus-key handling, native UI, clipboard callbacks, GDI capture, settings, per-user startup, and later restricted network access all run at standard-user integrity. Do not embed `requireAdministrator`. Pasting into elevated targets remains blocked by Windows integrity rules and must not trigger silent elevation. |
@@ -44,6 +46,51 @@ Win32 ownership rules are explicit:
 The production screenshot milestone must add retry handling for transient clipboard
 contention and repeated mixed-monitor pixel-bound tests, while preserving these ownership
 rules.
+
+## Milestone 2 clipboard lifecycle
+
+`ClipboardManager` registers one `OnClipboardChange` callback in the resident launcher.
+The callback reads only the current sequence number, supported-format availability, and
+clipboard-owner process name. A one-shot timer performs the bounded copy outside the
+callback; there is no polling loop. Stale sequence numbers are discarded rather than
+capturing a different clipboard value.
+
+Supported input formats are `CF_UNICODETEXT`, legacy `CF_TEXT`, `CF_DIBV5`, `CF_DIB`, and
+`CF_BITMAP`. Text becomes an AutoHotkey Unicode string. DIB data is copied into an
+AutoHotkey `Buffer`; `CF_BITMAP` is normalized to a 32-bit DIB with `GetDIBits`. Restoring
+an entry allocates a moveable global-memory block and transfers it to Windows through
+`SetClipboardData`. Windows owns a successfully transferred block; every failed transfer
+is freed locally.
+
+Resource ownership is explicit:
+
+- History entries own only their string or DIB buffer and release it on delete, eviction,
+  clear, and exit.
+- Only the selected image receives a temporary `HBITMAP` preview. Re-selection, leaving
+  the page, deletion, clear, and shutdown call `DeleteObject` before dropping the handle.
+- `CF_BITMAP` normalization pairs `GetDC` with `ReleaseDC`; clipboard access closes in a
+  `finally` block; every `GlobalLock` is paired with `GlobalUnlock`.
+- Pinned entries are exempt from the ten-unpinned eviction rule, but a separate ten-pin
+  ceiling prevents unbounded image retention.
+
+The current safety limits are 1 MiB for a text clipboard allocation and 16 MiB for a DIB
+allocation, with image dimensions capped at 8,192 pixels per side and 32 million pixels.
+The first exceeded limit rejects the entry, releases any temporary object, and reports a
+content-free status in the UI. No rejected bytes are retained.
+
+The default sensitive-application exclusion list contains `KeePass.exe`,
+`KeePassXC.exe`, `1Password.exe`, and `Bitwarden.exe`. Matching is case-insensitive against
+the clipboard-owner executable name. Windows does not always provide a live owner window;
+when it does not, an owner-name exclusion cannot be applied. Source metadata remains
+internal and is not rendered in the Clipboard History UI; identity is never inferred from
+window titles or clipboard content.
+
+Launcher restores mark the resulting clipboard sequence and also recognize the current
+process as clipboard owner. The corresponding callback is suppressed so selecting an
+entry does not duplicate it. Selection restores the entry, promotes that same in-memory
+object to the top, and leaves the compact launcher open. The owner-drawn native list box
+shows roughly three cards at once and provides mouse-wheel and keyboard scrolling through
+all ten retained unpinned entries.
 
 ## Focus Key and Copilot key
 
@@ -123,8 +170,11 @@ settings/logs and credentials. The running executable must never silently delete
 ## Security and privacy boundaries
 
 - The normal process runs at medium integrity and follows least privilege.
-- No clipboard text, image pixels, Quick Paste content, credentials, pairing codes, or
-  access tokens enter logs.
+- No clipboard text, image pixels, previews, comparison data, source application fields,
+  Quick Paste content, credentials, pairing codes, or access tokens enter logs, settings,
+  caches, crash reports, databases, or test-result files.
+- Clipboard History has no file, database, cache, crash-report, or network writer. Its
+  data lifetime ends with the process.
 - Milestone 0 contains no credentials, databases, network requests, synchronization,
   packet inspection, device discovery, or feature placeholders.
 - A medium-integrity process cannot reliably inject input into an elevated target. Show

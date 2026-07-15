@@ -7,8 +7,10 @@
 #Include ..\src\WindowsInterop.ahk
 #Include ..\src\HotkeyManager.ahk
 #Include ..\src\StartupManager.ahk
+#Include ..\src\ClipboardManager.ahk
 #Include ..\src\Navigation.ahk
 #Include ..\src\TileRenderer.ahk
+#Include ..\src\ClipboardRenderer.ahk
 #Include ..\src\LauncherWindow.ahk
 
 class Milestone1Tests {
@@ -30,6 +32,10 @@ class Milestone1Tests {
         this.Assert(defaults["focusKey"] = "#+F23", "Unexpected default Focus Key.")
         this.Assert(defaults["startWithWindows"] = false, "Startup must default off.")
         this.Assert(defaults["loggingEnabled"] = false, "Logging must default off.")
+        this.Assert(defaults["closeOnFocusLost"] = true, "Click-away close must default on.")
+        this.Assert(defaults["clipboardPaused"] = false, "Clipboard capture must default active.")
+        this.Assert(InStr(defaults["sensitiveApplications"], "KeePass.exe"),
+            "Sensitive-application defaults are missing.")
 
         SettingsManager.Warnings := []
         invalid := Map("panelWidth", 9999, "focusKey", "", "alwaysOnTop", "yes")
@@ -43,6 +49,10 @@ class Milestone1Tests {
         roundTrip := FlatJson.Parse(serialized)
         this.Assert(roundTrip["openingMonitor"] = "active", "Settings round trip failed.")
         this.Assert(roundTrip["panelWidth"] = 360, "Numeric round trip failed.")
+        this.Assert(roundTrip["clipboardPaused"] = false,
+            "Clipboard pause setting did not round trip.")
+        this.Assert(roundTrip["sensitiveApplications"] = defaults["sensitiveApplications"],
+            "Sensitive-application setting did not round trip.")
         trailingRejected := false
         try FlatJson.Parse("{} unexpected")
         catch
@@ -105,6 +115,9 @@ class Milestone1Tests {
         settings := SettingsManager.Defaults()
         window := LauncherWindow(settings, (*) => 0)
         this.Assert(!window.IsVisible(), "Launcher must be hidden before Show.")
+        this.Assert(window.Wordmark.Text = "Launcher", "Launcher header title is incorrect.")
+        this.Assert(FileExist(LauncherWindow.BrandIconPath()), "Launcher brand icon is missing.")
+        this.Assert(window.AutoCloseOnDeactivate, "Launcher must close when another window is activated.")
         this.Assert(window.Buttons["sendToPhone"].Enabled = false, "Send to Phone must be disabled.")
         this.Assert(window.Buttons["networkAnalyzer"].Enabled = false, "Network Analyzer must be disabled.")
         this.Assert(window.Buttons["clipboard"].Enabled = true, "Foundation navigation must be enabled.")
@@ -124,10 +137,32 @@ class Milestone1Tests {
         settingsTile := TileRenderer.Tiles[window.Buttons["settings"].Hwnd]
         this.Assert(settingsTile.IconKind = "settings-2", "Settings must use Lucide settings-2 geometry.")
         this.Assert(settingsTile.Title = "Settings", "Settings pill must retain its visible label.")
+        this.Assert(window.SettingsLabel.Text = "Settings", "Settings overlay label is missing.")
+        settingsStyle := DllCall("User32\GetWindowLongW", "ptr",
+            window.Buttons["settings"].Hwnd, "int", -16, "uint")
+        this.Assert(settingsStyle & 0x04000000,
+            "Settings button must clip the overlay label sibling during redraw.")
+        this.Assert(window.BackLabel.Text = "Back", "Back overlay label is missing.")
+        backStyle := DllCall("User32\GetWindowLongW", "ptr",
+            window.BackButton.Hwnd, "int", -16, "uint")
+        this.Assert(backStyle & 0x04000000,
+            "Back button must clip the overlay label sibling during redraw.")
         this.Assert(LauncherWindow.ShouldRestoreFocus(window.Buttons["clipboard"].Hwnd, window.Gui.Hwnd),
             "Launcher-owned focus was not recognized.")
         this.Assert(!LauncherWindow.ShouldRestoreFocus(0, window.Gui.Hwnd),
             "Unrelated foreground focus must not trigger restoration.")
+        this.Assert(window.Navigation.FindDirectional(window.Buttons["clipboard"], 0, 1).Hwnd
+            = window.Buttons["quickPastes"].Hwnd,
+            "Down from Clipboard must move to Quick Pastes.")
+        this.Assert(window.Navigation.FindDirectional(window.Buttons["screenshot"], 0, 1).Hwnd
+            = window.Buttons["quickPastes"].Hwnd,
+            "Down from Screenshot must move to Quick Pastes.")
+        this.Assert(window.Navigation.FindDirectional(window.Buttons["clipboard"], 1, 0).Hwnd
+            = window.Buttons["screenshot"].Hwnd,
+            "Right from Clipboard must move to Screenshot.")
+        this.Assert(window.Navigation.FindDirectional(window.Buttons["screenshot"], 0, -1).Hwnd
+            = window.Buttons["settings"].Hwnd,
+            "Up from Screenshot must move to Settings.")
         buttonStyle := DllCall("User32\GetWindowLongW", "ptr", window.Buttons["clipboard"].Hwnd, "int", -16, "uint")
         this.Assert((buttonStyle & 0xF) = 0xB,
             "Tool tile is not using BS_OWNERDRAW; style=" Format("0x{:X}", buttonStyle) ".")
@@ -137,7 +172,70 @@ class Milestone1Tests {
         this.Assert(TileRenderer.LastDrawError = "", "Tile draw failed: " TileRenderer.LastDrawError)
         window.OnCommand(0, window.Buttons["quickPastes"].Hwnd, 0, window.Gui.Hwnd)
         this.Assert(window.CurrentView = "quickPastes", "Native tile WM_COMMAND did not activate its view.")
+        this.Assert(window.PageKey = "quickPastes", "Quick Pastes tile did not open its page.")
+        this.Assert(window.PageTitle.Text = "Quick Pastes", "Quick Pastes page title is incorrect.")
+        this.Assert(window.BackLabel.Visible, "Back label is not visible on a tool page.")
+        this.Assert(!window.Buttons["clipboard"].Visible, "Home tiles remained visible on a tool page.")
+        window.OnCommand(0, window.BackButton.Hwnd, 0, window.Gui.Hwnd)
+        this.Assert(window.PageKey = "" && window.Buttons["clipboard"].Visible,
+            "Back did not restore the launcher home page.")
         window.Gui.Destroy()
+
+        historyManager := ClipboardManager(settings)
+        Loop 10
+            historyManager.CaptureText("Milestone 1 regression entry " A_Index, "Regression.exe")
+        clipboardWindow := LauncherWindow(settings, (*) => 0, false, historyManager)
+        clipboardWindow.AutoCloseOnDeactivate := false
+        clipboardWindow.Gui.Show("NA x-10000 y-10000 w360 h500")
+        clipboardWindow.ShowPage("clipboard")
+        this.Assert(clipboardWindow.PageKey = "clipboard", "Clipboard page did not open.")
+        clientRect := Buffer(16, 0)
+        DllCall("GetClientRect", "ptr", clipboardWindow.Gui.Hwnd, "ptr", clientRect)
+        clientHeight := NumGet(clientRect, 12, "int") - NumGet(clientRect, 4, "int")
+        windowDpi := DllCall("GetDpiForWindow", "ptr", clipboardWindow.Gui.Hwnd, "uint")
+        maximumCompactHeight := Ceil(500 * (windowDpi ? windowDpi : 96) / 96)
+        this.Assert(clientHeight <= maximumCompactHeight,
+            "Clipboard page exceeded its compact DPI-scaled height.")
+        listCount := DllCall("SendMessageW", "ptr", clipboardWindow.ClipboardList.Hwnd,
+            "uint", 0x018B, "uptr", 0, "ptr", 0, "ptr")
+        this.Assert(listCount = 10,
+            "Clipboard page did not render all ten in-memory entries.")
+        listStyle := DllCall("GetWindowLongW", "ptr", clipboardWindow.ClipboardList.Hwnd,
+            "int", -16, "uint")
+        this.Assert(listStyle & 0x10,
+            "Clipboard history is not using owner-drawn card rows.")
+        this.Assert(!clipboardWindow.HasOwnProp("ClipboardPasteButton"),
+            "The removed Clipboard Paste button still exists.")
+        clipboardWindow.PageTitle.GetPos(&titleX, &titleY, &titleWidth, &titleHeight)
+        clipboardWindow.ClipboardClearButton.GetPos(&clearX, &clearY, &clearWidth, &clearHeight)
+        this.Assert(clearX > titleX && clearY = titleY,
+            "Clear all is not positioned beside the Clipboard History title.")
+        this.Assert(!clipboardWindow.HasOwnProp("ClipboardPauseButton"),
+            "The removed Clipboard Pause button still exists.")
+        this.Assert(!clipboardWindow.HasOwnProp("ClipboardCopyButton")
+            && !clipboardWindow.HasOwnProp("ClipboardPinButton"),
+            "Removed Clipboard Copy or Pin controls still exist.")
+        this.Assert(clipboardWindow.ClipboardClearButton.Enabled,
+            "Clipboard Clear all is not a keyboard-accessible native control.")
+        this.Assert(listStyle & 0x00200000,
+            "Clipboard history does not expose native vertical scrolling.")
+        DllCall("SendMessageW", "ptr", clipboardWindow.ClipboardList.Hwnd,
+            "uint", 0x0197, "uptr", 9, "ptr", 0) ; LB_SETTOPINDEX
+        topIndex := DllCall("SendMessageW", "ptr", clipboardWindow.ClipboardList.Hwnd,
+            "uint", 0x018E, "uptr", 0, "ptr", 0, "ptr") ; LB_GETTOPINDEX
+        this.Assert(topIndex >= 7,
+            "Clipboard list could not scroll far enough to reach the tenth item.")
+        clipboardWindow.ActivateClipboardSelection(10)
+        this.Assert(clipboardWindow.IsVisible(),
+            "Selecting a Clipboard entry unexpectedly closed the launcher.")
+        this.Assert(!clipboardWindow.Buttons["sendToPhone"].Enabled
+            && !clipboardWindow.Buttons["networkAnalyzer"].Enabled,
+            "Deferred placeholders became interactive on the Clipboard page.")
+        clipboardWindow.ShowHome()
+        this.Assert(clipboardWindow.DesiredLogicalHeight = 286,
+            "Clipboard page changed the compact home-shell height.")
+        clipboardWindow.Gui.Destroy()
+        historyManager.Shutdown()
 
         settings["lastSelected"] := "settings"
         settingsWindow := LauncherWindow(settings, (*) => 0)
@@ -150,15 +248,13 @@ class Milestone1Tests {
     }
 
     static WriteResult(status, detail) {
-        resultDir := A_ScriptDir "\results"
-        DirCreate(resultDir)
-        FileAppend(FormatTime(, "yyyy-MM-dd'T'HH:mm:ss") "`t" status "`t" detail "`n",
-            resultDir "\milestone1-tests.tsv", "UTF-8")
+        FileAppend("MILESTONE1_TEST`t" status "`t" detail "`n", "*", "UTF-8")
     }
 }
 
 try Milestone1Tests.Run()
 catch as testError {
-    Milestone1Tests.WriteResult("FAIL", SubStr(RegExReplace(testError.Message, "[\r\n\t]", " "), 1, 200))
+    detail := testError.Message " @ " testError.File ":" testError.Line
+    Milestone1Tests.WriteResult("FAIL", SubStr(RegExReplace(detail, "[\r\n\t]", " "), 1, 200))
     ExitApp(1)
 }

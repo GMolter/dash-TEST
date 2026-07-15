@@ -17,16 +17,23 @@ class TileRenderer {
         this.Initialize()
         this.Tiles[control.Hwnd] := {
             Title: title, Subtitle: subtitle, Accent: accentRgb,
-            Enabled: enabled, Selected: false, Icon: false, Glyph: ""
+            Enabled: enabled, Selected: false, Icon: false, IconKind: ""
         }
         control.Enabled := enabled
     }
 
     static RegisterSettingsButton(control, accentRgb := 0xFBBF24, enabled := true) {
+        return this.RegisterUtilityButton(control, "Settings", "settings-2",
+            accentRgb, enabled, false)
+    }
+
+    static RegisterUtilityButton(control, title, iconKind, accentRgb,
+        enabled := true, drawLabel := true) {
         this.Initialize()
         this.Tiles[control.Hwnd] := {
-            Title: "Settings", Subtitle: "", Accent: accentRgb,
-            Enabled: enabled, Selected: false, Icon: true, IconKind: "settings-2"
+            Title: title, Subtitle: "", Accent: accentRgb,
+            Enabled: enabled, Selected: false, Icon: true, IconKind: iconKind,
+            DrawLabel: drawLabel
         }
         control.Enabled := enabled
     }
@@ -41,6 +48,13 @@ class TileRenderer {
         }
     }
 
+    static SetTitle(hwnd, title) {
+        if !this.Tiles.Has(hwnd) || this.Tiles[hwnd].Title = title
+            return
+        this.Tiles[hwnd].Title := title
+        DllCall("InvalidateRect", "ptr", hwnd, "ptr", 0, "int", true)
+    }
+
     static RefreshAll() {
         for hwnd in this.Tiles
             DllCall("RedrawWindow", "ptr", hwnd, "ptr", 0, "ptr", 0,
@@ -48,7 +62,10 @@ class TileRenderer {
     }
 
     static OnDrawItem(wParam, lParam, msg, hwnd) {
-        try return this.DrawItem(lParam)
+        try {
+            result := this.DrawItem(lParam)
+            return result ? result : ClipboardRenderer.DrawItem(lParam)
+        }
         catch as drawError {
             this.LastDrawError := Type(drawError) ": " drawError.Message
             return false
@@ -85,6 +102,8 @@ class TileRenderer {
                 : tile.Selected ? 0x241E0C
                 : hovered ? 0x172033
                 : 0x0B1220
+        if (tile.IconKind = "settings-2" || tile.IconKind = "arrow-left") && !disabled
+            background := 0x0B1220
         parentBackground := 0x020617
 
         this.FillRect(hdc, left, top, right, bottom, parentBackground)
@@ -106,14 +125,19 @@ class TileRenderer {
             iconLeft := left + Round(11 * dpi / 96)
             iconTop := top + Round(8 * dpi / 96)
             iconSize := Round(20 * dpi / 96)
-            this.DrawSettings2(hdc, iconLeft, iconTop, iconSize, iconColor)
-            labelFont := this.CreateFont(9, 600, dpi)
-            try this.DrawText(hdc, tile.Title, labelFont,
-                disabled ? 0x64748B : 0xF8FAFC,
-                left + Round(40 * dpi / 96), top,
-                right - Round(10 * dpi / 96), bottom,
-                0x00000004 | 0x00000020 | 0x00000800)
-            finally DllCall("DeleteObject", "ptr", labelFont)
+            switch tile.IconKind {
+                case "settings-2":
+                    this.DrawSettings2(hdc, iconLeft, iconTop, iconSize, iconColor)
+                case "arrow-left":
+                    this.DrawArrowLeft(hdc, iconLeft, iconTop, iconSize, iconColor)
+            }
+            if tile.DrawLabel {
+                labelFont := this.CreateFont(9, 600, dpi)
+                try this.DrawUtilityLabel(hdc, tile.Title, labelFont,
+                    disabled ? 0x64748B : 0xF8FAFC,
+                    left + Round(40 * dpi / 96), top, dpi)
+                finally DllCall("DeleteObject", "ptr", labelFont)
+            }
             if focused && !disabled
                 this.StrokeRounded(hdc, left + 1, top + 1, right - 1, bottom - 1,
                     radius, tile.Accent, Max(1, Round(2 * dpi / 96)))
@@ -215,6 +239,22 @@ class TileRenderer {
         DllCall("DeleteObject", "ptr", pen)
     }
 
+    static DrawArrowLeft(hdc, left, top, size, rgb) {
+        scale := size / 24
+        px := (value) => Round(left + value * scale)
+        py := (value) => Round(top + value * scale)
+        pen := DllCall("CreatePen", "int", 0, "int", Max(2, Round(2 * scale)),
+            "uint", this.ColorRef(rgb), "ptr")
+        oldPen := DllCall("SelectObject", "ptr", hdc, "ptr", pen, "ptr")
+        DllCall("MoveToEx", "ptr", hdc, "int", px(19), "int", py(12), "ptr", 0)
+        DllCall("LineTo", "ptr", hdc, "int", px(5), "int", py(12))
+        DllCall("MoveToEx", "ptr", hdc, "int", px(12), "int", py(19), "ptr", 0)
+        DllCall("LineTo", "ptr", hdc, "int", px(5), "int", py(12))
+        DllCall("LineTo", "ptr", hdc, "int", px(12), "int", py(5))
+        DllCall("SelectObject", "ptr", hdc, "ptr", oldPen)
+        DllCall("DeleteObject", "ptr", pen)
+    }
+
     static BlendRgb(foreground, background, amount) {
         red := Round(((foreground >> 16) & 0xFF) * amount
             + ((background >> 16) & 0xFF) * (1 - amount))
@@ -233,6 +273,19 @@ class TileRenderer {
         NumPut("int", left, rect, 0), NumPut("int", top, rect, 4)
         NumPut("int", right, rect, 8), NumPut("int", bottom, rect, 12)
         DllCall("DrawTextW", "ptr", hdc, "str", text, "int", -1, "ptr", rect, "uint", flags)
+        DllCall("SetTextColor", "ptr", hdc, "uint", oldColor)
+        DllCall("SetBkMode", "ptr", hdc, "int", oldMode)
+        DllCall("SelectObject", "ptr", hdc, "ptr", oldFont)
+    }
+
+    static DrawUtilityLabel(hdc, text, font, rgb, left, top, dpi) {
+        oldFont := DllCall("SelectObject", "ptr", hdc, "ptr", font, "ptr")
+        oldMode := DllCall("SetBkMode", "ptr", hdc, "int", 1, "int")
+        oldColor := DllCall("SetTextColor", "ptr", hdc,
+            "uint", this.ColorRef(rgb), "uint")
+        textY := top + Round(11 * dpi / 96)
+        DllCall("gdi32\TextOutW", "ptr", hdc, "int", left, "int", textY,
+            "str", text, "int", StrLen(text))
         DllCall("SetTextColor", "ptr", hdc, "uint", oldColor)
         DllCall("SetBkMode", "ptr", hdc, "int", oldMode)
         DllCall("SelectObject", "ptr", hdc, "ptr", oldFont)

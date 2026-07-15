@@ -1,12 +1,14 @@
 class OlioApp {
     static Window := 0
     static Settings := 0
+    static Clipboard := 0
     static PendingActivation := false
     static FocusCallback := 0
 
     static Start(mode := "") {
         activation := (*) => this.OnSecondaryActivation()
-        if !InstanceCoordinator.BecomePrimary(activation)
+        instanceNamespace := mode = "--visual-test" ? ".VisualTest" : ""
+        if !InstanceCoordinator.BecomePrimary(activation, instanceNamespace)
             ExitApp(0)
 
         this.Settings := SettingsManager.Load()
@@ -18,7 +20,11 @@ class OlioApp {
         startup := StartupManager.Apply(this.Settings["startWithWindows"])
         RedactedLogger.Write("startup-registration", startup.Status)
 
-        this.Window := LauncherWindow(this.Settings, (key) => this.OnNavigate(key), mode = "--visual-test")
+        this.Clipboard := ClipboardManager(this.Settings)
+        this.Window := LauncherWindow(this.Settings, (key) => this.OnNavigate(key),
+            mode = "--visual-test", this.Clipboard)
+        this.Clipboard.ChangedCallback := (status) => this.Window.OnClipboardHistoryChanged(status)
+        this.Clipboard.Start()
         this.FocusCallback := (*) => this.Toggle()
         hotkeyResult := HotkeyManager.Register(this.Settings["focusKey"], this.FocusCallback)
         if !hotkeyResult.Ok && this.Settings["focusKey"] != "#+F23" {
@@ -64,6 +70,12 @@ class OlioApp {
 
     static ConfigureTray() {
         A_IconTip := "Olio Launcher"
+        try {
+            if A_IsCompiled
+                TraySetIcon(A_ScriptFullPath, 1)
+            else
+                TraySetIcon(LauncherWindow.BrandIconPath())
+        }
         A_TrayMenu.Delete()
         A_TrayMenu.Add("Open / Hide", (*) => this.Toggle())
         A_TrayMenu.Add()
@@ -73,6 +85,8 @@ class OlioApp {
 
     static Shutdown(*) {
         RedactedLogger.Write("app-stop", "user")
+        if IsObject(this.Clipboard)
+            this.Clipboard.Shutdown()
         HotkeyManager.Unregister()
         ExitApp(0)
     }

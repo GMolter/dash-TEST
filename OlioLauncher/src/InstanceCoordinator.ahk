@@ -6,15 +6,16 @@ class InstanceCoordinator {
     static LastSenderPid := 0
     static LastActivationTick := 0
 
-    static BecomePrimary(callback) {
-        this.ActivationMessage := DllCall("RegisterWindowMessageW", "str", "OlioLauncher.Toggle.v1", "uint")
+    static BecomePrimary(callback, namespaceSuffix := "") {
+        this.ActivationMessage := DllCall("RegisterWindowMessageW", "str",
+            "OlioLauncher.Toggle.v1" namespaceSuffix, "uint")
         if !this.ActivationMessage
             throw OSError()
         this.ActivationCallback := callback
         this.MessageHandler := ObjBindMethod(this, "HandleActivation")
         OnMessage(this.ActivationMessage, this.MessageHandler)
         this.MutexHandle := DllCall("CreateMutexW", "ptr", 0, "int", false,
-            "str", "Local\OlioLauncher.SingleInstance.v1", "ptr")
+            "str", "Local\OlioLauncher.SingleInstance.v1" namespaceSuffix, "ptr")
         if !this.MutexHandle
             throw OSError()
         alreadyRunning := A_LastError = 183

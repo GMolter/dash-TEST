@@ -11,8 +11,10 @@ class SettingsManager {
             "startWithWindows", false,
             "panelWidth", 360,
             "alwaysOnTop", true,
-            "closeOnFocusLost", false,
+            "closeOnFocusLost", true,
             "loggingEnabled", false,
+            "clipboardPaused", false,
+            "sensitiveApplications", "KeePass.exe;KeePassXC.exe;1Password.exe;Bitwarden.exe",
             "lastSelected", "clipboard",
             "openingMonitor", "active",
             "openingPosition", "right"
@@ -51,6 +53,8 @@ class SettingsManager {
         this.AcceptBoolean(candidate, result, "alwaysOnTop")
         this.AcceptBoolean(candidate, result, "closeOnFocusLost")
         this.AcceptBoolean(candidate, result, "loggingEnabled")
+        this.AcceptBoolean(candidate, result, "clipboardPaused")
+        this.AcceptString(candidate, result, "sensitiveApplications", 0, 512)
         this.AcceptEnum(candidate, result, "lastSelected", ["clipboard", "screenshot", "quickPastes", "settings"])
         this.AcceptEnum(candidate, result, "openingMonitor", ["active", "primary"])
         this.AcceptEnum(candidate, result, "openingPosition", ["right"])
@@ -148,6 +152,8 @@ class SettingsManager {
             . "  " FlatJson.Quote("alwaysOnTop") ": " boolean(values["alwaysOnTop"]) ",`n"
             . "  " FlatJson.Quote("closeOnFocusLost") ": " boolean(values["closeOnFocusLost"]) ",`n"
             . "  " FlatJson.Quote("loggingEnabled") ": " boolean(values["loggingEnabled"]) ",`n"
+            . "  " FlatJson.Quote("clipboardPaused") ": " boolean(values["clipboardPaused"]) ",`n"
+            . "  " FlatJson.Quote("sensitiveApplications") ": " FlatJson.Quote(values["sensitiveApplications"]) ",`n"
             . "  " FlatJson.Quote("lastSelected") ": " FlatJson.Quote(values["lastSelected"]) ",`n"
             . "  " FlatJson.Quote("openingMonitor") ": " FlatJson.Quote(values["openingMonitor"]) ",`n"
             . "  " FlatJson.Quote("openingPosition") ": " FlatJson.Quote(values["openingPosition"]) "`n"

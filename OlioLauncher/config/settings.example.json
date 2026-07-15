@@ -5,6 +5,8 @@
   "alwaysOnTop": true,
   "closeOnFocusLost": false,
   "loggingEnabled": false,
+  "clipboardPaused": false,
+  "sensitiveApplications": "KeePass.exe;KeePassXC.exe;1Password.exe;Bitwarden.exe",
   "lastSelected": "clipboard",
   "openingMonitor": "active",
   "openingPosition": "right"
