@@ -1,4 +1,6 @@
 class LauncherEndpoint {
+    static ProductionOrigin := "https://olio.one"
+
     static Normalize(value) {
         value := Trim(String(value), " `t`r`n/")
         if !RegExMatch(value,
@@ -104,6 +106,12 @@ class LauncherConnection {
         browserRunner := 0) {
         this.Settings := settings
         this.ChangedCallback := changedCallback
+        this.Origin := LauncherEndpoint.ProductionOrigin
+        if settings.Has("workstationUrl") {
+            overrideOrigin := LauncherEndpoint.Normalize(settings["workstationUrl"])
+            if overrideOrigin
+                this.Origin := overrideOrigin
+        }
         this.EnsureIdentity()
         this.CredentialStore := IsObject(credentialStoreOverride) ? credentialStoreOverride
             : CredentialStore("." this.Settings["deviceId"])
@@ -140,32 +148,28 @@ class LauncherConnection {
             SettingsManager.UpdateMany(changed)
     }
 
-    Configure(deviceName, workstationUrl) {
+    Configure(deviceName) {
         safeName := RegExReplace(Trim(deviceName), "\s+", " ")
-        origin := LauncherEndpoint.Normalize(workstationUrl)
         if StrLen(safeName) < 1 || StrLen(safeName) > 80 || RegExMatch(safeName, "[\x00-\x1F\x7F]")
             return {Ok: false, Message: "Enter a device name from 1 to 80 characters."}
-        if !origin
-            return {Ok: false, Message: "Enter the configured Olio Workstation HTTPS address."}
         this.Settings["deviceName"] := safeName
-        this.Settings["workstationUrl"] := origin
-        SettingsManager.UpdateMany(Map("deviceName", safeName, "workstationUrl", origin))
+        SettingsManager.UpdateMany(Map("deviceName", safeName))
         return {Ok: true, Message: ""}
     }
 
-    StartPairing(deviceName := "", workstationUrl := "") {
+    StartPairing(deviceName := "") {
         if this.State = "connected" || this.RequestBusy
             return false
-        if deviceName || workstationUrl {
-            configured := this.Configure(deviceName, workstationUrl)
+        if deviceName {
+            configured := this.Configure(deviceName)
             if !configured.Ok {
                 this.SetState("configuration-error", configured.Message)
                 return false
             }
         }
-        origin := LauncherEndpoint.Normalize(this.Settings["workstationUrl"])
+        origin := LauncherEndpoint.Normalize(this.Origin)
         if !origin {
-            this.SetState("configuration-error", "Configure the Olio Workstation HTTPS address first.")
+            this.SetState("configuration-error", "The built-in Olio Workstation address is invalid. Update the launcher.")
             return false
         }
         this.StopPolling()
@@ -190,7 +194,7 @@ class LauncherConnection {
         data := result.Data
         requestId := this.Value(data, "request_id")
         displayCode := this.Value(data, "display_code")
-        approvalUrl := LauncherEndpoint.ApprovalUrl(this.Settings["workstationUrl"], requestId,
+        approvalUrl := LauncherEndpoint.ApprovalUrl(this.Origin, requestId,
             displayCode)
         if !approvalUrl {
             this.ClearPairing()
@@ -363,9 +367,9 @@ class LauncherConnection {
         for key, value in values
             body[key] := value
         json := this.Serialize(body)
-        url := LauncherEndpoint.ApiUrl(this.Settings["workstationUrl"])
+        url := LauncherEndpoint.ApiUrl(this.Origin)
         if !url {
-            this.SetState("configuration-error", "Configure the Olio Workstation HTTPS address first.")
+            this.SetState("configuration-error", "The built-in Olio Workstation address is invalid. Update the launcher.")
             return false
         }
         this.RequestBusy := true
@@ -400,6 +404,8 @@ class LauncherConnection {
         state := this.ResponseState(result)
         if state = "rate_limited"
             this.SetState("error", "Too many attempts. Wait a few minutes before retrying.")
+        else if IsObject(result) && result.Status = 400
+            this.SetState("error", "Olio account connection is not ready on this Workstation deployment.")
         else if !IsObject(result) || !result.Ok
             this.SetState("offline", "Olio Workstation is unavailable. Try again.")
         else

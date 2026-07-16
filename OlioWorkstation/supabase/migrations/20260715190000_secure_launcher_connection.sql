@@ -590,3 +590,5 @@ comment on column public.launcher_devices.scopes is
   'Milestone 5 permits connection status only. Quick Paste access requires a separate Milestone 6 design and migration.';
 comment on function public.cleanup_launcher_connections() is
   'Marks active expired pairings, deletes pairing records after 24 hours, and removes stale rate-limit buckets; invoke from an approved server schedule.';
+
+notify pgrst, 'reload schema';

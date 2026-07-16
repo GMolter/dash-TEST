@@ -533,7 +533,7 @@ class ScreenshotManager {
         height := -DllCall("MulDiv", "int", points, "int", dpi, "int", 72, "int")
         return DllCall("CreateFontW", "int", height, "int", 0, "int", 0,
             "int", 0, "int", weight, "uint", 0, "uint", 0, "uint", 0,
-            "uint", 1, "uint", 0, "uint", 5, "uint", 0,
+            "uint", 1, "uint", 0, "uint", 0, "uint", 5, "uint", 0,
             "str", "Segoe UI Variable Text", "ptr")
     }
 

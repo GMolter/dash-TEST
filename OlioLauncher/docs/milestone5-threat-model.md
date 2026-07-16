@@ -24,7 +24,7 @@ is outside this milestone and no device scope grants access to it.
 | Pairing-request theft | A request ID and display code can open only an approval screen. Exchange also requires the launcher's independent 256-bit pairing secret and matching stable device identifier. Requests expire after 10 minutes and are single-use. |
 | User-code guessing | Codes use 10 characters from an unambiguous 32-character alphabet, are collision-checked by a unique active-code hash, expire with the request, and are subject to per-request, source, and authenticated-user rate limits. A correct code cannot obtain a credential without the pairing secret. |
 | Replay | Approval and exchange lock the request row and perform one atomic state transition. Only `approved` may exchange, and successful exchange changes it to `exchanged`. Repeated, concurrent, malformed, denied, cancelled, expired, or unknown exchanges return the same content-free failure. |
-| Approval-link manipulation | The launcher constructs the URL from its configured, validated HTTPS origin and fixed path. Only an opaque request UUID and display code are in the URL. Device name, owner, pairing secret, credential, session, and keys are absent. The server validates both values before showing safe metadata. |
+| Approval-link manipulation | The launcher constructs the URL from the built-in, validated `https://olio.one` origin and fixed path. Only an opaque request UUID and display code are in the URL. Device name, owner, pairing secret, credential, session, and keys are absent. The server validates both values before showing safe metadata. |
 | Credential theft | Credentials are independent 256-bit random values returned once in an HTTPS response body and stored as a Windows Credential Manager generic credential scoped to the current Windows user. They never enter settings, URLs, command lines, logs, diagnostics, or browser storage. A stolen credential is limited to its one device and can be revoked individually. |
 | Database disclosure | Only fixed-length hashes are stored for pairing secrets, codes, device credentials, and rate-limit actors. High-entropy tokens resist offline guessing. RLS, column-minimizing RPCs, explicit grants, fixed search paths, and server-only mutation functions prevent raw security metadata from reaching clients. |
 | Device loss | Account settings list each named device and allow confirmed revocation. Revocation is checked on every device-authenticated operation and immediately blocks later status checks or future authorized operations. |
@@ -40,7 +40,7 @@ is outside this milestone and no device scope grants access to it.
    HTTPS JSON request body. The server hashes it before storage.
 2. The server returns a short-lived request UUID, display code, and expiration. The
    launcher constructs the approval URL and validates that its origin exactly matches the
-   configured HTTPS origin.
+   built-in production HTTPS origin.
 3. Workstation requires the existing signed-in session, validates the request and code,
    and assigns ownership from the server-validated session identity.
 4. Polling authenticates the request with the device identifier and pairing secret.

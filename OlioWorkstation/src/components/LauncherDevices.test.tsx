@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { LauncherDevices } from './LauncherDevices';
 import type { LauncherDevice } from '../features/launcherDevices/model';
 import type { LauncherDeviceRepository } from '../features/launcherDevices/repository';
+import { LauncherDeviceDataError } from '../features/launcherDevices/repository';
 
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-a' } }) }));
 
@@ -42,6 +43,18 @@ describe('LauncherDevices', () => {
     expect(await screen.findByText('No Olio Launcher devices are connected.')).toBeInTheDocument();
   });
 
+  it('reports an unapplied launcher migration without backend detail', async () => {
+    const repository: LauncherDeviceRepository = {
+      list: vi.fn().mockRejectedValue(new LauncherDeviceDataError('setup')),
+      revoke: vi.fn(),
+    };
+    render(<LauncherDevices repository={repository} />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Launcher connections are not enabled on this Workstation deployment yet.',
+    );
+  });
+
   it('renders hostile names as text and requires destructive confirmation', async () => {
     const repository: LauncherDeviceRepository = { list: vi.fn(async () => [device]), revoke: vi.fn(async () => undefined) };
     const user = userEvent.setup();
@@ -60,4 +73,3 @@ describe('LauncherDevices', () => {
     expect(screen.getByRole('button', { name: 'Revoke' })).toBeDisabled();
   });
 });
-

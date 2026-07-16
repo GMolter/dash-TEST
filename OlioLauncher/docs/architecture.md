@@ -14,10 +14,10 @@ packaging, or a later milestone.
 `LauncherConnection` extends the single resident AutoHotkey process. It owns a small
 state machine (`disconnected`, `starting`, `waiting`, `exchanging`, `connected`, terminal
 and recoverable failure states), never owns an Olio password or Supabase session, and does
-not access Quick Pastes. Native Settings fields hold a safe device name and configured
-Workstation origin. Only the stable device UUID, device name, origin, connected display
-name, and connected time are non-sensitive settings. Pairing secrets and credentials are
-never serialized.
+not access Quick Pastes. Native Settings exposes only a safe device name; the production
+Workstation origin is fixed to `https://olio.one` and is not user-configurable. Only the
+stable device UUID, device name, connected display name, and connected time are
+non-sensitive settings. Pairing secrets and credentials are never serialized.
 
 Windows CNG (`BCryptGenRandom` with `BCRYPT_USE_SYSTEM_PREFERRED_RNG`) generates 256-bit
 pairing secrets and the version-4 stable device identifier. `WinHttpRequest` performs one

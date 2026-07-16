@@ -1,15 +1,17 @@
 # Milestone 5 troubleshooting
 
-## Connect reports that the Workstation address is invalid
+## Connect says account connection is not ready
 
-Enter only the operator-provided HTTPS origin, with no path, query, fragment, username,
-password, or embedded token. Cleartext HTTP and localhost are rejected. Do not work around
-validation by placing a secret in the URL or settings file.
+The launcher automatically uses `https://olio.one`; there is no address to enter. This
+message means the deployed Workstation database migration or server configuration is not
+ready. Apply the committed Milestone 5 Supabase migration to the intended project, verify
+the server-only Supabase variables in Vercel, then redeploy. Never place a service-role
+key, session, credential, or other secret in launcher settings.
 
 ## The browser does not open or the request expires
 
-Choose **Cancel authentication**, confirm the configured Workstation origin, and try
-again. The request lasts 10 minutes and is single-use. Do not share the display code or a
+Choose **Cancel authentication** and try again. The request lasts 10 minutes and is
+single-use. Do not share the display code or a
 screenshot of the authorization page. The code alone cannot obtain a credential, but it
 identifies a live approval request.
 

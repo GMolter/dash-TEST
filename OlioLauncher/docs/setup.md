@@ -130,8 +130,11 @@ Supported values are:
 - `openingPosition`: currently `right`
 - `deviceId`: non-secret stable version-4 UUID created with Windows CNG
 - `deviceName`: safe user-visible launcher name, 1 through 80 characters
-- `workstationUrl`: configured HTTPS Workstation origin; no path or credentials
 - `connectedDeviceName` and `connectedAt`: non-sensitive connection display metadata
+
+The production Workstation origin is built in as `https://olio.one`; users do not enter
+or store an API address. Isolated protocol tests may inject a non-production HTTPS origin
+in memory, but normal settings cannot override the product endpoint.
 
 Edit the file only while the launcher is stopped, then restart it. Invalid fields recover
 to documented defaults and the panel reports how many values recovered. Before a later

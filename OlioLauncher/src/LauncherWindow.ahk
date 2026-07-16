@@ -184,30 +184,21 @@ class LauncherWindow {
             this.Settings.Has("deviceName") ? this.Settings["deviceName"] : SubStr(A_ComputerName " Launcher", 1, 80))
         this.ConnectionControls.Push(this.ConnectionNameEdit)
         this.Gui.SetFont("s9 cCBD5E1", "Segoe UI Variable Text")
-        this.ConnectionEndpointLabel := this.Gui.AddText("x16 y166 w328 h22 Hidden",
-            "Olio Workstation HTTPS address")
-        this.ConnectionControls.Push(this.ConnectionEndpointLabel)
-        this.Gui.SetFont("s9 cF8FAFC", "Segoe UI Variable Text")
-        this.ConnectionEndpointEdit := this.Gui.AddEdit(
-            "x16 y188 w328 h30 Hidden Background0F172A cF8FAFC",
-            this.Settings.Has("workstationUrl") ? this.Settings["workstationUrl"] : "")
-        this.ConnectionControls.Push(this.ConnectionEndpointEdit)
-        this.Gui.SetFont("s9 cCBD5E1", "Segoe UI Variable Text")
         this.ConnectionStatus := this.Gui.AddText(
-            "x16 y230 w328 h68 +Wrap Hidden", "Disconnected")
+            "x16 y174 w328 h80 +Wrap Hidden", "Disconnected")
         this.ConnectionControls.Push(this.ConnectionStatus)
 
         this.ConnectionConnectButton := this.AddConnectionButton(
-            "x16 y312 w328 h42 Hidden", "Connect Olio Account", 0x22D3EE)
+            "x16 y270 w328 h42 Hidden", "Connect Olio Account", 0x22D3EE)
         this.ButtonKeysByHwnd[this.ConnectionConnectButton.Hwnd] := "__connection_connect"
         this.ConnectionCancelButton := this.AddConnectionButton(
-            "x16 y312 w328 h42 Hidden", "Cancel authentication", 0xF59E0B)
+            "x16 y270 w328 h42 Hidden", "Cancel authentication", 0xF59E0B)
         this.ButtonKeysByHwnd[this.ConnectionCancelButton.Hwnd] := "__connection_cancel"
         this.ConnectionRetryButton := this.AddConnectionButton(
-            "x16 y312 w160 h42 Hidden", "Retry status", 0x22D3EE)
+            "x16 y270 w160 h42 Hidden", "Retry status", 0x22D3EE)
         this.ButtonKeysByHwnd[this.ConnectionRetryButton.Hwnd] := "__connection_retry"
         this.ConnectionDisconnectButton := this.AddConnectionButton(
-            "x16 y312 w328 h42 Hidden", "Disconnect Olio Account", 0xF87171)
+            "x16 y270 w328 h42 Hidden", "Disconnect Olio Account", 0xF87171)
         this.ButtonKeysByHwnd[this.ConnectionDisconnectButton.Hwnd] := "__connection_disconnect"
     }
 
@@ -628,24 +619,23 @@ class LauncherWindow {
         this.ConnectionRetryButton.Visible := recoveryCredential || recoveryPairing
         this.ConnectionDisconnectButton.Visible := connected || recoveryCredential
         if recoveryPairing {
-            this.ConnectionRetryButton.Move(16, 312, 160, 42)
-            this.ConnectionCancelButton.Move(184, 312, 160, 42)
+            this.ConnectionRetryButton.Move(16, 270, 160, 42)
+            this.ConnectionCancelButton.Move(184, 270, 160, 42)
         } else {
-            this.ConnectionCancelButton.Move(16, 312, 328, 42)
-            this.ConnectionRetryButton.Move(16, 312, 160, 42)
+            this.ConnectionCancelButton.Move(16, 270, 328, 42)
+            this.ConnectionRetryButton.Move(16, 270, 160, 42)
         }
         if recoveryCredential
-            this.ConnectionDisconnectButton.Move(184, 312, 160, 42)
+            this.ConnectionDisconnectButton.Move(184, 270, 160, 42)
         else
-            this.ConnectionDisconnectButton.Move(16, 312, 328, 42)
+            this.ConnectionDisconnectButton.Move(16, 270, 328, 42)
         busy := IsObject(manager) && manager.RequestBusy
         TileRenderer.SetEnabled(this.ConnectionConnectButton, IsObject(manager) && !busy)
         TileRenderer.SetEnabled(this.ConnectionCancelButton, IsObject(manager) && !busy)
         TileRenderer.SetEnabled(this.ConnectionRetryButton, IsObject(manager) && !busy)
         TileRenderer.SetEnabled(this.ConnectionDisconnectButton, IsObject(manager) && !busy)
         this.ConnectionNameEdit.Enabled := !waiting && !connected
-        this.ConnectionEndpointEdit.Enabled := !waiting && !connected
-        controls := [this.BackButton, this.ConnectionNameEdit, this.ConnectionEndpointEdit]
+        controls := [this.BackButton, this.ConnectionNameEdit]
         for button in [this.ConnectionConnectButton, this.ConnectionCancelButton,
             this.ConnectionRetryButton, this.ConnectionDisconnectButton] {
             if button.Visible && button.Enabled
@@ -659,8 +649,7 @@ class LauncherWindow {
     StartConnection() {
         if !IsObject(this.ConnectionManager)
             return
-        this.ConnectionManager.StartPairing(this.ConnectionNameEdit.Value,
-            this.ConnectionEndpointEdit.Value)
+        this.ConnectionManager.StartPairing(this.ConnectionNameEdit.Value)
     }
 
     ConfirmDisconnect() {

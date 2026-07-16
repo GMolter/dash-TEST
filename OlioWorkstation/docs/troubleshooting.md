@@ -40,6 +40,15 @@ in form and then return automatically to the authorization request. Unknown, mal
 expired, cancelled, denied, or already-used requests intentionally reveal no device or
 account metadata.
 
+## Launcher devices reports an RPC 404
+
+A `404` for `rest/v1/rpc/list_launcher_devices` means the Milestone 5 database migration
+has not been applied to the Supabase project used by this Workstation deployment. Apply
+`supabase/migrations/20260715190000_secure_launcher_connection.sql` through the approved
+database deployment workflow, then redeploy or refresh Workstation. The migration reloads
+the PostgREST schema cache. Do not place a service-role key in browser code and do not send
+database credentials, sessions, or SQL-editor screenshots to support.
+
 ## A launcher device will not revoke
 
 Refresh **Profile Settings → Olio Launcher devices** and retry. A recoverable error leaves

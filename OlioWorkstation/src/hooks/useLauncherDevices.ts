@@ -3,6 +3,7 @@ import { useAuth } from './useAuth';
 import type { LauncherDevice } from '../features/launcherDevices/model';
 import {
   launcherDeviceRepository,
+  LauncherDeviceDataError,
   type LauncherDeviceRepository,
 } from '../features/launcherDevices/repository';
 
@@ -24,8 +25,10 @@ export function useLauncherDevices(repository: LauncherDeviceRepository = launch
     setError(null);
     try {
       setDevices(await repository.list());
-    } catch {
-      setError("We couldn't load your launcher devices. Check your connection and try again.");
+    } catch (failure) {
+      setError(failure instanceof LauncherDeviceDataError && failure.kind === 'setup'
+        ? 'Launcher connections are not enabled on this Workstation deployment yet.'
+        : "We couldn't load your launcher devices. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -55,4 +58,3 @@ export function useLauncherDevices(repository: LauncherDeviceRepository = launch
 
   return { devices, loading, busyId, error, success, reload, revoke };
 }
-

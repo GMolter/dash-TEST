@@ -19,5 +19,17 @@ describe('launcher device repository', () => {
     const repository = createLauncherDeviceRepository({ rpc: vi.fn(async () => ({ data: null, error: { message: 'sensitive backend detail' } })) } as never);
     await expect(repository.list()).rejects.toBeInstanceOf(LauncherDeviceDataError);
   });
-});
 
+  it('classifies a missing RPC without exposing backend response detail', async () => {
+    const repository = createLauncherDeviceRepository({ rpc: vi.fn(async () => ({
+      data: null,
+      error: { code: 'PGRST202', message: 'function internals' },
+    })) } as never);
+
+    await expect(repository.list()).rejects.toMatchObject({
+      name: 'LauncherDeviceDataError',
+      kind: 'setup',
+      message: 'Launcher device operation failed.',
+    });
+  });
+});

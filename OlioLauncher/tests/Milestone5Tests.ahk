@@ -12,6 +12,7 @@
 #Include ..\src\TileRenderer.ahk
 #Include ..\src\ClipboardRenderer.ahk
 #Include ..\src\ClipboardPreviewWindow.ahk
+#Include ..\src\ScreenshotManager.ahk
 #Include ..\src\LauncherWindow.ahk
 
 class M5MockCredentialStore {
@@ -85,6 +86,7 @@ class Milestone5Tests {
             SettingsManager.Values := settings
 
             this.TestCryptography()
+            this.TestFontInterop()
             this.TestEndpointValidation()
             this.TestPairingAndExchange(settings)
             this.TestTerminalAndRecoveryStates()
@@ -117,7 +119,28 @@ class Milestone5Tests {
             "CNG device identifier is not an RFC 4122 version-4 UUID.")
     }
 
+    static TestFontInterop() {
+        loop 64 {
+            screenshotFont := ScreenshotManager.CreateFont(10, 600, 96)
+            tileFont := TileRenderer.CreateFont(10, 600, 96)
+            this.Assert(screenshotFont != 0 && tileFont != 0,
+                "Win32 font creation returned a null handle.")
+            this.Assert(DllCall("DeleteObject", "ptr", screenshotFont),
+                "Screenshot font handle could not be deleted.")
+            this.Assert(DllCall("DeleteObject", "ptr", tileFont),
+                "Tile font handle could not be deleted.")
+        }
+    }
+
     static TestEndpointValidation() {
+        productionSettings := SettingsManager.Defaults()
+        productionManager := LauncherConnection(productionSettings, 0,
+            M5MockCredentialStore(), M5MockTransport(), M5MockBrowser())
+        this.Assert(productionManager.Origin = "https://olio.one",
+            "A normal launcher does not automatically use the Olio Workstation origin.")
+        this.Assert(!productionSettings.Has("workstationUrl"),
+            "The production Workstation origin remains a user-managed setting.")
+        productionManager.Shutdown()
         this.Assert(LauncherEndpoint.Normalize("https://Workstation.Example.com/")
             = "https://workstation.example.com", "HTTPS origin normalization failed.")
         for invalid in ["http://workstation.example.com", "https://user@workstation.example.com",
@@ -242,6 +265,15 @@ class Milestone5Tests {
         this.Assert(manager.State = "disconnected" && store.Value = "",
             "Disconnect did not clear a credential already revoked on the server.")
         manager.Shutdown()
+
+        settings := this.Settings(), transport := M5MockTransport()
+        manager := LauncherConnection(settings, 0, M5MockCredentialStore(), transport,
+            M5MockBrowser())
+        manager.StartPairing()
+        transport.Resolve(Map("state", "invalid"), 400, false)
+        this.Assert(manager.State = "error" && InStr(manager.Detail, "not ready"),
+            "Missing server setup was mislabeled as a network outage.")
+        manager.Shutdown()
     }
 
     static TestCredentialStoreRestart() {
@@ -274,8 +306,8 @@ class Milestone5Tests {
         window := LauncherWindow(settings, (*) => 0, true, 0, manager)
         try {
             window.ShowPage("settings")
-            this.Assert(window.ConnectionNameEdit.Visible && window.ConnectionEndpointEdit.Visible,
-                "Native Settings connection fields are not visible.")
+            this.Assert(window.ConnectionNameEdit.Visible,
+                "Native Settings device-name field is not visible.")
             this.Assert(window.ConnectionConnectButton.Visible,
                 "Disconnected Settings state has no Connect action.")
             this.Assert(window.ConnectionConnectButton.Text = "Connect Olio Account",
@@ -284,6 +316,9 @@ class Milestone5Tests {
                 && window.Buttons["networkAnalyzer"].Enabled = false,
                 "Deferred tiles were activated by Milestone 5.")
             source := FileRead(A_ScriptDir "\..\src\LauncherWindow.ahk", "UTF-8")
+            this.Assert(!InStr(source, "ConnectionEndpointEdit")
+                && !InStr(source, "Olio Workstation HTTPS address"),
+                "Native Settings still asks the user to configure the product endpoint.")
             this.Assert(InStr(source, "Disconnect this Olio Launcher?")
                 && InStr(source, "YesNo Icon! Default2"),
                 "Disconnect does not require an explicit default-cancel confirmation.")

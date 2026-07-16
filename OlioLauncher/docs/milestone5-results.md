@@ -30,7 +30,7 @@ elevation, or later-milestone feature was added.
 
 ## Authorization protocol
 
-1. The launcher validates its configured HTTPS Workstation origin, generates a 256-bit
+1. The launcher uses its built-in `https://olio.one` Workstation origin, generates a 256-bit
    pairing secret with Windows CNG, and posts it with the stable device UUID and safe name.
 2. The server stores SHA-256 hashes only and returns a request UUID, 10-character display
    code, and 10-minute expiry. The launcher constructs the fixed-origin approval URL; the
@@ -90,14 +90,14 @@ identities under one Windows account from sharing protected credentials.
 | Check | Result |
 | --- | --- |
 | Launcher parse-only gate | Pass; exits before app/instance startup |
-| Milestone 5 isolated launcher suite | Pass: 183 assertions |
+| Milestone 5 isolated launcher suite | Pass: 382 assertions |
 | Milestone 1 foundation regression | Pass: 85 assertions |
 | Milestone 2 Clipboard History regression | Pass: 63 assertions; rapid model 16 ms; events 1,094 ms; GDI delta 0 |
 | Milestone 3 Dynamic Screenshot regression | Pass: 205 assertions; GDI delta 0; handle/private/working-set deltas 0 |
 | Isolated image-preview regression | Pass: 44 assertions |
 | Milestone 3 logic-only geometry/gesture | Pass: 26 assertions |
-| Complete Workstation Vitest suite | Pass: 11 files, 48 tests |
-| Focused Milestone 5 Workstation tests | Pass: 6 files, 21 tests |
+| Complete Workstation Vitest suite | Pass: 12 files, 51 tests |
+| Focused Milestone 5 Workstation tests | Pass: 6 files, 23 tests |
 | Workstation test TypeScript check | Pass |
 | Server-only endpoint TypeScript check | Pass |
 | Focused Milestone 5 ESLint | Pass, no warnings |
