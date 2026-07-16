@@ -109,7 +109,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const cfg = readSupabaseConfig();
-    if (!cfg.ok) return res.status(503).json({ error: cfg.error, detail: cfg.detail || '' });
+    if (cfg.ok === false) return res.status(503).json({ error: cfg.error, detail: cfg.detail || '' });
 
     const projectLookupUrl = `${cfg.url}/rest/v1/projects?select=id&id=eq.${encodeURIComponent(projectId)}&limit=1`;
     const projectLookupRes = await fetch(projectLookupUrl, {

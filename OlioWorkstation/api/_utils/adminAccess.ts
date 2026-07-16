@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { isAuthed } from "./session";
-import { getSupabaseServiceConfig } from "./supabaseConfig";
+import { isAuthed } from "./session.js";
+import { getSupabaseServiceConfig } from "./supabaseConfig.js";
 
 type AccessResult =
   | { ok: true; userId: string; email: string | null }
@@ -15,7 +15,7 @@ function readBearerToken(req: any) {
 
 export async function resolveAppAdminFromRequest(req: any): Promise<AccessResult> {
   const cfg = getSupabaseServiceConfig();
-  if (!cfg.ok) {
+  if (cfg.ok === false) {
     return { ok: false, status: 403, error: "Unauthorized Account" };
   }
 

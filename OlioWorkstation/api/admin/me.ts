@@ -1,6 +1,6 @@
 export const config = { runtime: "nodejs" };
-import { isAuthed } from "../_utils/session";
-import { resolveAppAdminFromRequest } from "../_utils/adminAccess";
+import { isAuthed } from "../_utils/session.js";
+import { resolveAppAdminFromRequest } from "../_utils/adminAccess.js";
 
 export default async function handler(req: any, res: any) {
   try {
@@ -12,7 +12,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const access = await resolveAppAdminFromRequest(req);
-    if (!access.ok) {
+    if (access.ok === false) {
       return res.status(200).json({
         authed: true,
         appAdmin: false,

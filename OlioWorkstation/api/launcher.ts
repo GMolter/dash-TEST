@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { getSupabaseServiceConfig } from './_utils/supabaseConfig';
+import { getSupabaseServiceConfig } from './_utils/supabaseConfig.js';
 import {
   asBytea,
   formatDisplayCode,
@@ -15,7 +15,7 @@ import {
   sha256,
   sourceActor,
   userActor,
-} from './_utils/launcherProtocol';
+} from './_utils/launcherProtocol.js';
 
 type ServiceClient = {
   rpc: (name: string, arguments_?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
@@ -208,7 +208,7 @@ async function handleAuthorization(req: VercelRequest, res: VercelResponse, clie
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return send(res, 405, { state: 'invalid' });
   const config = getSupabaseServiceConfig();
-  if (!config.ok) return send(res, 503, { state: 'offline' });
+  if (config.ok === false) return send(res, 503, { state: 'offline' });
   const client = createClient(config.url, config.serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   }) as unknown as ServiceClient;

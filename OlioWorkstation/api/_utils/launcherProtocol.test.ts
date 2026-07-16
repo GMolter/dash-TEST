@@ -10,7 +10,7 @@ import {
   normalizeDisplayCode,
   safeState,
   sha256,
-} from './launcherProtocol';
+} from './launcherProtocol.js';
 
 describe('launcher authorization protocol primitives', () => {
   it('generates independent 256-bit secrets and valid opaque request identifiers', () => {

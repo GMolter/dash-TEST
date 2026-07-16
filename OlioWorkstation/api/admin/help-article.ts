@@ -1,8 +1,8 @@
 export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminAccess } from "../_utils/adminAccess";
-import { getSupabaseServiceConfig } from "../_utils/supabaseConfig";
+import { requireAdminAccess } from "../_utils/adminAccess.js";
+import { getSupabaseServiceConfig } from "../_utils/supabaseConfig.js";
 
 function toSlug(input: string) {
   return input
@@ -45,10 +45,10 @@ function toBoolean(value: any) {
 export default async function handler(req: any, res: any) {
   try {
     const access = await requireAdminAccess(req, { requirePasswordSession: true });
-    if (!access.ok) return res.status(access.status).json({ error: access.error });
+    if (access.ok === false) return res.status(access.status).json({ error: access.error });
 
     const cfg = getSupabaseServiceConfig();
-    if (!cfg.ok) {
+    if (cfg.ok === false) {
       return res.status(503).json({ error: cfg.error, detail: cfg.detail || "" });
     }
 
