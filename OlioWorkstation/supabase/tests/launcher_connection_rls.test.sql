@@ -47,6 +47,13 @@ select results_eq(
   $$values ('waiting'::text)$$,
   'pairing request creation succeeds with hash-only inputs'
 );
+select ok(
+  (select expires_at > created_at
+      and expires_at - created_at = interval '10 minutes'
+   from public.launcher_pairing_requests
+   where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'),
+  'pairing creation uses one timestamp and satisfies its exact ten-minute constraint'
+);
 select is(
   public.poll_launcher_pairing(
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',

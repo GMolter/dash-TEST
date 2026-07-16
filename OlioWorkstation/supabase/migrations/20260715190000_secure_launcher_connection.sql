@@ -182,7 +182,8 @@ security definer
 set search_path = ''
 as $$
 declare
-  expires_value timestamptz := clock_timestamp() + interval '10 minutes';
+  created_value timestamptz := clock_timestamp();
+  expires_value timestamptz := created_value + interval '10 minutes';
 begin
   if not public.consume_launcher_rate_limit('pair-create', p_actor_hash, 5, 600) then
     return query select 'rate_limited'::text, null::uuid, null::timestamptz;
@@ -207,10 +208,10 @@ begin
   begin
     insert into public.launcher_pairing_requests (
       id, device_identifier, device_name, pairing_secret_hash,
-      approval_code_hash, expires_at
+      approval_code_hash, created_at, expires_at
     ) values (
       p_request_id, p_device_identifier, btrim(p_device_name),
-      p_pairing_secret_hash, p_approval_code_hash, expires_value
+      p_pairing_secret_hash, p_approval_code_hash, created_value, expires_value
     );
   exception when unique_violation then
     return query select 'invalid'::text, null::uuid, null::timestamptz;

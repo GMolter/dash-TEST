@@ -5,8 +5,9 @@
 The launcher automatically uses `https://olio.one`; there is no address to enter. This
 message means the deployed Workstation database migration or server configuration is not
 ready. Apply the committed Milestone 5 Supabase migration to the intended project, verify
-the server-only Supabase variables in Vercel, then redeploy. Never place a service-role
-key, session, credential, or other secret in launcher settings.
+all later launcher migrations in timestamp order (including the pairing-expiry fix),
+verify the server-only Supabase variables in Vercel, then redeploy. Never place a
+service-role key, session, credential, or other secret in launcher settings.
 
 ## The browser does not open or the request expires
 

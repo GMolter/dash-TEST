@@ -96,8 +96,8 @@ identities under one Windows account from sharing protected credentials.
 | Milestone 3 Dynamic Screenshot regression | Pass: 205 assertions; GDI delta 0; handle/private/working-set deltas 0 |
 | Isolated image-preview regression | Pass: 44 assertions |
 | Milestone 3 logic-only geometry/gesture | Pass: 26 assertions |
-| Complete Workstation Vitest suite | Pass: 12 files, 51 tests |
-| Focused Milestone 5 Workstation tests | Pass: 6 files, 23 tests |
+| Complete Workstation Vitest suite | Pass: 12 files, 52 tests |
+| Focused Milestone 5 Workstation tests | Pass: 6 files, 24 tests |
 | Workstation test TypeScript check | Pass |
 | Server-only endpoint TypeScript check | Pass |
 | Focused Milestone 5 ESLint | Pass, no warnings |
@@ -130,12 +130,15 @@ recovery, hostile names, and content-free errors.
 
 - Authorization and device-management controls use native buttons, labels, status/alert
   semantics, keyboard-operable dialogs, Escape cancellation, initial confirmation focus,
-  disabled busy states, and visible `focus-visible` rings.
+  disabled busy states, and visible `focus-visible` rings. Approved and denied browser
+  tabs announce an eight-second auto-close countdown with a keyboard-operable stop action
+  and a manual-close fallback when browser policy blocks scripted closing.
 - The native launcher uses labeled Edit and owner-drawn native Button controls, Tab/Shift+
   Tab, Enter, Escape, and existing navigation. Editing fields retain normal arrow-key
   behavior. Disconnect defaults to No.
 - Automated tests verify keyboard activation, visible-focus classes, confirmation focus,
-  Escape, double-approval prevention, safe hostile text, and revoke disabling.
+  Escape, double-approval prevention, cancellable auto-close, safe hostile text, and
+  revoke disabling.
 
 ## Privacy and sensitive-output verification
 

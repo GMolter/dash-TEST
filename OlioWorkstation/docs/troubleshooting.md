@@ -45,9 +45,12 @@ account metadata.
 A `404` for `rest/v1/rpc/list_launcher_devices` means the Milestone 5 database migration
 has not been applied to the Supabase project used by this Workstation deployment. Apply
 `supabase/migrations/20260715190000_secure_launcher_connection.sql` through the approved
-database deployment workflow, then redeploy or refresh Workstation. The migration reloads
-the PostgREST schema cache. Do not place a service-role key in browser code and do not send
-database credentials, sessions, or SQL-editor screenshots to support.
+database deployment workflow, followed by later launcher migrations in timestamp order,
+then redeploy or refresh Workstation. A `launcher_pairing_expiry_valid` error from an
+already-applied base migration is corrected by
+`20260716053000_fix_launcher_pairing_expiry.sql`. The migrations reload the PostgREST
+schema cache. Do not place a service-role key in browser code and do not send database
+credentials, sessions, or SQL-editor screenshots to support.
 
 ## A launcher device will not revoke
 

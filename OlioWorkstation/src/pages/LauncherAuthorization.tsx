@@ -22,16 +22,32 @@ function mapState(value: unknown): AuthorizationState {
   return typeof value === 'string' && states.includes(value as AuthorizationState) ? value as AuthorizationState : 'error';
 }
 
-export function LauncherAuthorization({ requestId, displayCode, authorize = fetchLauncherAuthorization }: {
+function closeBrowserTab() {
+  window.close();
+  return window.closed;
+}
+
+export function LauncherAuthorization({
+  requestId,
+  displayCode,
+  authorize = fetchLauncherAuthorization,
+  closeTab = closeBrowserTab,
+  autoCloseSeconds = 8,
+}: {
   requestId: string;
   displayCode: string;
   authorize?: AuthorizationFetch;
+  closeTab?: () => boolean;
+  autoCloseSeconds?: number;
 }) {
   const { session } = useAuth();
   const [state, setState] = useState<AuthorizationState>('loading');
   const [deviceName, setDeviceName] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [busy, setBusy] = useState(false);
+  const [closeSeconds, setCloseSeconds] = useState<number | null>(null);
+  const [autoCloseStopped, setAutoCloseStopped] = useState(false);
+  const [closeBlocked, setCloseBlocked] = useState(false);
 
   const inspect = useCallback(async () => {
     if (!session?.access_token) return;
@@ -50,6 +66,25 @@ export function LauncherAuthorization({ requestId, displayCode, authorize = fetc
   }, [authorize, displayCode, requestId, session?.access_token]);
 
   useEffect(() => { void inspect(); }, [inspect]);
+
+  useEffect(() => {
+    if (state !== 'approved' && state !== 'denied') return;
+    setCloseSeconds(autoCloseSeconds);
+    setAutoCloseStopped(false);
+    setCloseBlocked(false);
+  }, [autoCloseSeconds, state]);
+
+  useEffect(() => {
+    if (closeSeconds === null || autoCloseStopped || closeBlocked) return;
+    if (closeSeconds <= 0) {
+      if (!closeTab()) setCloseBlocked(true);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setCloseSeconds((current) => current === null ? null : current - 1);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [autoCloseStopped, closeBlocked, closeSeconds, closeTab]);
 
   const decide = async (decision: 'approve' | 'deny') => {
     if (!session?.access_token || busy || state !== 'waiting') return;
@@ -106,7 +141,31 @@ export function LauncherAuthorization({ requestId, displayCode, authorize = fetc
             </div>
           </div>
         )}
-        {terminalCopy[state] && <div className="mt-8 rounded-xl border border-slate-700 bg-slate-950/70 p-5" role="status">{terminalCopy[state]}</div>}
+        {terminalCopy[state] && (
+          <div className="mt-8 rounded-xl border border-slate-700 bg-slate-950/70 p-5" role="status">
+            <p>{terminalCopy[state]}</p>
+            {(state === 'approved' || state === 'denied') && (
+              <div className="mt-4 border-t border-slate-700 pt-4 text-sm text-slate-300">
+                {closeBlocked ? (
+                  <p>Your browser kept this tab open. You can close it now.</p>
+                ) : autoCloseStopped ? (
+                  <p>Automatic closing stopped.</p>
+                ) : (
+                  <>
+                    <p>This tab will close automatically in {closeSeconds ?? autoCloseSeconds} seconds.</p>
+                    <button
+                      type="button"
+                      onClick={() => setAutoCloseStopped(true)}
+                      className="mt-3 rounded-lg border border-slate-600 px-4 py-2 font-medium text-slate-100 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                    >
+                      Keep this tab open
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

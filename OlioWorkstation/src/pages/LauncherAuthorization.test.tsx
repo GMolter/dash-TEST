@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { LauncherAuthorization } from './LauncherAuthorization';
@@ -50,6 +50,24 @@ describe('LauncherAuthorization', () => {
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     await user.click(await screen.findByRole('button', { name: 'Deny' }));
     expect(screen.getByRole('status')).toHaveTextContent('Denied');
+    expect(screen.getByRole('status')).toHaveTextContent('close automatically in 8 seconds');
+    await user.click(screen.getByRole('button', { name: 'Keep this tab open' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Automatic closing stopped');
+  });
+
+  it('automatically closes an approved or denied tab when the countdown ends', async () => {
+    const closeTab = vi.fn(() => true);
+    render(
+      <LauncherAuthorization
+        requestId={requestId}
+        displayCode={displayCode}
+        authorize={vi.fn(async () => ({ state: 'approved' }))}
+        closeTab={closeTab}
+        autoCloseSeconds={0}
+      />,
+    );
+
+    await waitFor(() => expect(closeTab).toHaveBeenCalledTimes(1));
   });
 
   it.each(['expired', 'cancelled', 'exchanged', 'invalid', 'rate_limited'])(
