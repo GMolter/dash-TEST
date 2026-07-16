@@ -49,3 +49,46 @@ its existing `olio-auth` key; Quick Paste rows and content are never added to th
 Do not use passwords, access tokens, private messages, financial data, or other sensitive
 information during manual testing. Quick Pastes is private by authorization, but it is not
 a password manager or encrypted secret-sharing system.
+
+## Secure launcher connection
+
+Pairing requests expire in 10 minutes. The display code is a 10-character value from an
+unambiguous alphabet and is unique among live requests; it is insufficient to poll or
+exchange a request. The launcher separately supplies a CNG-generated 256-bit pairing
+secret and stable device UUID in HTTPS bodies. SHA-256 hashes, never raw values, are
+stored in `launcher_pairing_requests`. Atomic row locks allow only `waiting → approved`
+or `waiting → denied`, then one `approved → exchanged` transition. Replay, wrong-secret,
+wrong-device, denied, expired, cancelled, malformed, and unknown operations return
+content-free states.
+
+The final credential is another 256-bit random value generated in server memory. Its hash
+is inserted atomically with the device row; only the winning exchange receives the raw
+value, once. `launcher_devices` constrains credential hashes and active stable identifiers
+to uniqueness, limits scope to `connection:status`, and timestamps approval, last use,
+revocation, and updates. Every device-authenticated operation binds credential hash and
+stable identifier and requires `revoked_at is null`.
+
+RLS is enabled on device, pairing, and rate tables. Authenticated users can directly
+select only safe columns from their own device rows. `list_launcher_devices()` and
+`revoke_launcher_device(uuid)` derive `auth.uid()` and cannot accept ownership. Pairing
+and device protocol functions are executable only by `service_role`; every security-
+definer function fixes `search_path = ''` and uses schema-qualified objects. The service
+role exists only in server deployment configuration. Approval ownership comes from
+`auth.getUser` on the presented browser session, never a request body.
+
+Creation, inspection, decisions, polling, exchange, and device status have separate
+database rate limits. Source and user rate actors are HMAC-SHA-256 values keyed by a
+server-only secret, so database disclosure does not reveal source addresses or stable
+user IDs. Stale active requests are marked expired during access; the documented cleanup
+function removes request history after 24 hours and stale rate buckets when invoked by an
+approved server schedule.
+
+Application code does not log request/response bodies, headers, codes, credentials,
+hashes, account IDs, or emails. The browser stores no launcher request or account data.
+The approval URL contains only the request UUID and insufficient display code; testers
+must still avoid sharing it or screenshots. The launcher credential is protected by
+Windows Credential Manager and is deleted after confirmed server disconnect or detected
+revocation.
+
+Milestone 5 explicitly has no Quick Paste device scope or endpoint. Authorization alone
+does not permit Quick Paste reads, synchronization, caching, display, copy, or paste.

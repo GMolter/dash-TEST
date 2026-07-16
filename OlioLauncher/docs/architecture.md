@@ -1,12 +1,51 @@
 # Olio Launcher architecture decisions
 
-Status: **Milestones 0, 1, and 2 approved. Milestone 3 Dynamic Screenshot is
-implemented and ready for product-owner review.**
+Status: **Milestones 0 through 4 are approved. Milestone 5 Secure Launcher
+Connection is implemented and locally verified; live database execution remains an
+environmental validation case.**
 
 This document records the native architecture choices established by Milestone 0 and
-preserved through the Milestone 3 implementation. It does not authorize Quick Pastes,
-account connection, Send to Phone, Network Analyzer, packaging, database, or Workstation
-changes.
+preserved through Milestone 5. Milestone 5 authorizes device connection only. It does not
+authorize Quick Paste synchronization, offline caching, Send to Phone, Network Analyzer,
+packaging, or a later milestone.
+
+## Milestone 5 secure connection
+
+`LauncherConnection` extends the single resident AutoHotkey process. It owns a small
+state machine (`disconnected`, `starting`, `waiting`, `exchanging`, `connected`, terminal
+and recoverable failure states), never owns an Olio password or Supabase session, and does
+not access Quick Pastes. Native Settings fields hold a safe device name and configured
+Workstation origin. Only the stable device UUID, device name, origin, connected display
+name, and connected time are non-sensitive settings. Pairing secrets and credentials are
+never serialized.
+
+Windows CNG (`BCryptGenRandom` with `BCRYPT_USE_SYSTEM_PREFERRED_RNG`) generates 256-bit
+pairing secrets and the version-4 stable device identifier. `WinHttpRequest` performs one
+asynchronous HTTPS POST at a time with bounded DNS, connect, send, receive, and overall
+timeouts. A 3-second timer polls only while approval is pending; every terminal state
+stops it. The response body is parsed in memory and is never passed to diagnostics. The
+launcher constructs both the fixed `/api/launcher` path and `/launcher/authorize` URL
+from one normalized HTTPS origin. Automatic HTTP redirects are disabled, so request or
+device authentication material cannot be forwarded to another host.
+
+The approval URL contains only an opaque request UUID and short-lived display code. Those
+values are insufficient to exchange the request; exchange also requires the independent
+pairing secret and stable device identifier. The final 256-bit credential is written as a
+generic credential through `CredWriteW`, read with `CredReadW`, and deleted with
+`CredDeleteW`. Windows Credential Manager scopes it to the current Windows user and
+protects it at rest; the target name includes the stable device UUID so two launcher
+identities under one Windows account do not share a credential. Confirmed disconnect
+revokes the server row before removing the local entry; a network failure leaves it
+intact for safe retry. An invalid previously
+working credential is treated as revocation, removed locally, and presented as a recovery
+state.
+
+The Workstation endpoint is the only network boundary. It keeps the Supabase service-role
+key server-side, derives approval ownership from a validated browser session, hashes all
+random secrets before database storage, and calls atomic fixed-search-path PostgreSQL
+functions. Device scope is exactly `connection:status`. There is no Quick Paste read
+scope, synchronization function, content endpoint, cache, or clipboard connection in
+Milestone 5. See [milestone5-threat-model.md](milestone5-threat-model.md).
 
 ## Decision summary
 

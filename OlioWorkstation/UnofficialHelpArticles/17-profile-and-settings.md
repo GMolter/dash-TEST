@@ -9,12 +9,13 @@ Sort Order: 17
 
 1. [Accessing Profile Settings](olio://help-anchor/accessing-profile-settings)
 2. [Account Information](olio://help-anchor/account-information)
-3. [Theme Customization](olio://help-anchor/theme-customization)
-4. [Themes Explained](olio://help-anchor/themes-explained)
-5. [Color Presets](olio://help-anchor/color-presets)
-6. [Leaving an Organization](olio://help-anchor/leaving-an-organization)
-7. [Deleting an Organization](olio://help-anchor/deleting-an-organization)
-8. [Signing Out](olio://help-anchor/signing-out)
+3. [Olio Launcher Devices](olio://help-anchor/olio-launcher-devices)
+4. [Theme Customization](olio://help-anchor/theme-customization)
+5. [Themes Explained](olio://help-anchor/themes-explained)
+6. [Color Presets](olio://help-anchor/color-presets)
+7. [Leaving an Organization](olio://help-anchor/leaving-an-organization)
+8. [Deleting an Organization](olio://help-anchor/deleting-an-organization)
+9. [Signing Out](olio://help-anchor/signing-out)
 
 ---
 
@@ -39,6 +40,31 @@ The Account section displays:
 - Your current **organization** and **role**
 
 Account details are currently read-only in the UI. Contact your system administrator if you need to update your email address.
+
+---
+
+## 💻 Olio Launcher Devices
+
+The **Olio Launcher devices** section lists launchers approved for your account. It shows
+only safe metadata: device name, connected time, last-used time, and connected or revoked
+status. Credential values, pairing codes, hashes, and internal security fields are never
+shown.
+
+To remove a device:
+
+1. Find its recognizable device name.
+2. Choose **Revoke**.
+3. Review the warning and choose **Revoke access**. Cancel if you selected the wrong
+   device.
+4. Refresh the list and confirm the status is **Revoked**.
+
+Revocation immediately prevents later authenticated launcher operations. Reconnect from
+launcher Settings if you still control the device. During Milestone 5, connection status
+does not make Quick Pastes appear in the launcher.
+
+Do not share pairing codes or screenshots containing account information. Support will
+never ask for your password, Supabase session, authorization header, device credential,
+access token, private messages, financial information, or other sensitive content.
 
 ---
 

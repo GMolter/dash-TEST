@@ -3,6 +3,7 @@ class OlioApp {
     static Settings := 0
     static Clipboard := 0
     static Screenshot := 0
+    static Connection := 0
     static PendingActivation := false
     static FocusCallback := 0
     static FocusReleaseCallback := 0
@@ -29,10 +30,14 @@ class OlioApp {
         RedactedLogger.Write("startup-registration", startup.Status)
 
         this.Clipboard := ClipboardManager(this.Settings)
+        this.Connection := (mode = "--measure-m3" || mode = "--visual-test")
+            ? 0 : LauncherConnection(this.Settings)
         this.Screenshot := ScreenshotManager(this.Clipboard,
             (status, previous, result) => this.OnScreenshotFinished(status, previous, result))
         this.Window := LauncherWindow(this.Settings, (key) => this.OnNavigate(key),
-            mode = "--visual-test", this.Clipboard)
+            mode = "--visual-test", this.Clipboard, this.Connection)
+        if IsObject(this.Connection)
+            this.Connection.ChangedCallback := (state, detail) => this.Window.OnConnectionChanged(state, detail)
         this.Clipboard.ChangedCallback := (status) => this.Window.OnClipboardHistoryChanged(status)
         this.Clipboard.Start()
         this.FocusGesture := FocusKeyGesture(350)
@@ -177,6 +182,8 @@ class OlioApp {
             this.Screenshot.Shutdown(false)
         if IsObject(this.Clipboard)
             this.Clipboard.Shutdown()
+        if IsObject(this.Connection)
+            this.Connection.Shutdown()
         HotkeyManager.Unregister()
         ExitApp(0)
     }

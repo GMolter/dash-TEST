@@ -1,8 +1,10 @@
 class LauncherWindow {
-    __New(settings, navigateCallback, visualTestMode := false, clipboardManager := 0) {
+    __New(settings, navigateCallback, visualTestMode := false, clipboardManager := 0,
+        connectionManager := 0) {
         this.Settings := settings
         this.NavigateCallback := navigateCallback
         this.ClipboardManager := clipboardManager
+        this.ConnectionManager := connectionManager
         this.PreviousForeground := 0
         ; Settings is a utility, not the launcher's default destination.
         this.CurrentView := settings["lastSelected"] = "settings"
@@ -76,8 +78,8 @@ class LauncherWindow {
         this.PageDefinitions := Map(
             "clipboard", {Title: "Clipboard History", Subtitle: "History will appear here.", Accent: 0x38BDF8},
             "screenshot", {Title: "Dynamic Screenshot", Subtitle: "Drag to select an area.", Accent: 0x8B5CF6},
-            "quickPastes", {Title: "Quick Pastes", Subtitle: "Connected pastes will appear here.", Accent: 0x34D399},
-            "settings", {Title: "Settings", Subtitle: "Launcher preferences will appear here.", Accent: 0xFBBF24}
+            "quickPastes", {Title: "Quick Pastes", Subtitle: "Launcher access begins in Milestone 6.", Accent: 0x34D399},
+            "settings", {Title: "Settings", Subtitle: "Connect without entering your Olio password.", Accent: 0xFBBF24}
         )
         this.BackButton := this.Gui.Add("Custom",
             "ClassButton x232 y14 w112 h36 Hidden 0x5401000B", "Back to tools")
@@ -95,6 +97,7 @@ class LauncherWindow {
         this.PageSubtitle := this.Gui.AddText("x16 y124 w328 h60 +Wrap Hidden", "")
         this.PageControls := [this.BackButton, this.BackLabel, this.PageTitle, this.PageSubtitle]
         this.CreateClipboardControls()
+        this.CreateConnectionControls()
 
         this.Gui.SetFont("s8 cFCA5A5", "Segoe UI Variable Text")
         this.StatusText := this.Gui.AddText("x16 y278 w328 h28 +Wrap Hidden", "")
@@ -102,8 +105,7 @@ class LauncherWindow {
         this.Gui.OnEvent("Close", (*) => this.Hide(true))
         this.Gui.OnEvent("Escape", (*) => this.HandleEscape())
         this.Navigation := Navigation(this.Gui, this.EnabledButtons, (*) => this.HandleEscape())
-        this.NavigationContext := (*) => WinActive("ahk_id " this.Gui.Hwnd)
-            && this.PageKey != "clipboard"
+        this.NavigationContext := (*) => this.IsNavigationContext()
         this.LeftHandler := (*) => this.Navigation.MoveDirectional(-1, 0)
         this.RightHandler := (*) => this.Navigation.MoveDirectional(1, 0)
         this.UpHandler := (*) => this.Navigation.MoveDirectional(0, -1)
@@ -170,6 +172,52 @@ class LauncherWindow {
         return button
     }
 
+    CreateConnectionControls() {
+        this.ConnectionControls := []
+        this.Gui.SetFont("s9 cCBD5E1", "Segoe UI Variable Text")
+        this.ConnectionNameLabel := this.Gui.AddText("x16 y106 w328 h22 Hidden",
+            "Launcher device name")
+        this.ConnectionControls.Push(this.ConnectionNameLabel)
+        this.Gui.SetFont("s9 cF8FAFC", "Segoe UI Variable Text")
+        this.ConnectionNameEdit := this.Gui.AddEdit(
+            "x16 y128 w328 h30 Hidden Background0F172A cF8FAFC",
+            this.Settings.Has("deviceName") ? this.Settings["deviceName"] : SubStr(A_ComputerName " Launcher", 1, 80))
+        this.ConnectionControls.Push(this.ConnectionNameEdit)
+        this.Gui.SetFont("s9 cCBD5E1", "Segoe UI Variable Text")
+        this.ConnectionEndpointLabel := this.Gui.AddText("x16 y166 w328 h22 Hidden",
+            "Olio Workstation HTTPS address")
+        this.ConnectionControls.Push(this.ConnectionEndpointLabel)
+        this.Gui.SetFont("s9 cF8FAFC", "Segoe UI Variable Text")
+        this.ConnectionEndpointEdit := this.Gui.AddEdit(
+            "x16 y188 w328 h30 Hidden Background0F172A cF8FAFC",
+            this.Settings.Has("workstationUrl") ? this.Settings["workstationUrl"] : "")
+        this.ConnectionControls.Push(this.ConnectionEndpointEdit)
+        this.Gui.SetFont("s9 cCBD5E1", "Segoe UI Variable Text")
+        this.ConnectionStatus := this.Gui.AddText(
+            "x16 y230 w328 h68 +Wrap Hidden", "Disconnected")
+        this.ConnectionControls.Push(this.ConnectionStatus)
+
+        this.ConnectionConnectButton := this.AddConnectionButton(
+            "x16 y312 w328 h42 Hidden", "Connect Olio Account", 0x22D3EE)
+        this.ButtonKeysByHwnd[this.ConnectionConnectButton.Hwnd] := "__connection_connect"
+        this.ConnectionCancelButton := this.AddConnectionButton(
+            "x16 y312 w328 h42 Hidden", "Cancel authentication", 0xF59E0B)
+        this.ButtonKeysByHwnd[this.ConnectionCancelButton.Hwnd] := "__connection_cancel"
+        this.ConnectionRetryButton := this.AddConnectionButton(
+            "x16 y312 w160 h42 Hidden", "Retry status", 0x22D3EE)
+        this.ButtonKeysByHwnd[this.ConnectionRetryButton.Hwnd] := "__connection_retry"
+        this.ConnectionDisconnectButton := this.AddConnectionButton(
+            "x16 y312 w328 h42 Hidden", "Disconnect Olio Account", 0xF87171)
+        this.ButtonKeysByHwnd[this.ConnectionDisconnectButton.Hwnd] := "__connection_disconnect"
+    }
+
+    AddConnectionButton(options, title, accent) {
+        button := this.Gui.Add("Custom", "ClassButton " options " 0x5001000B", title)
+        TileRenderer.Register(button, title, "", accent, true)
+        this.ConnectionControls.Push(button)
+        return button
+    }
+
     ApplyWorkstationWindowStyle() {
         try {
             cornerPreference := 2 ; DWMWCP_ROUND
@@ -185,6 +233,17 @@ class LauncherWindow {
         try return DllCall("IsWindowVisible", "ptr", this.Gui.Hwnd)
         catch
             return false
+    }
+
+    IsNavigationContext() {
+        if !WinActive("ahk_id " this.Gui.Hwnd) || this.PageKey = "clipboard"
+            return false
+        focused := DllCall("GetFocus", "ptr")
+        if !focused
+            return true
+        try return WinGetClass("ahk_id " focused) != "Edit"
+        catch
+            return true
     }
 
     static CenteredY(areaTop, areaBottom, height) {
@@ -215,6 +274,7 @@ class LauncherWindow {
         width := Round(this.Settings["panelWidth"] * area.Dpi / 96)
         workHeight := area.Bottom - area.Top
         requestedHeight := this.PageKey = "clipboard" ? 500
+            : this.PageKey = "settings" ? 380
             : (this.HasVisibleStatus ? 318 : this.DesiredLogicalHeight)
         height := Min(requestedHeight, workHeight)
         y := LauncherWindow.CenteredY(area.Top, area.Bottom, height)
@@ -301,6 +361,8 @@ class LauncherWindow {
             control.Visible := true
         for control in this.ClipboardControls
             control.Visible := false
+        for control in this.ConnectionControls
+            control.Visible := false
         this.PageKey := key
         if key = "clipboard" {
             this.PageSubtitle.Visible := false
@@ -312,6 +374,12 @@ class LauncherWindow {
                 this.ClipboardList.Focus()
             else
                 this.ClipboardClearButton.Focus()
+        } else if key = "settings" {
+            for control in this.ConnectionControls
+                control.Visible := true
+            this.RefreshConnectionControls()
+            if IsObject(this.ConnectionManager) && this.ConnectionManager.Credential
+                this.ConnectionManager.RefreshStatus()
         } else {
             this.Navigation.Controls := [this.BackButton]
             this.BackButton.Focus()
@@ -326,6 +394,8 @@ class LauncherWindow {
         if IsObject(this.ClipboardManager)
             this.ClipboardManager.ReleasePreviews()
         for control in this.ClipboardControls
+            control.Visible := false
+        for control in this.ConnectionControls
             control.Visible := false
         for control in this.PageControls
             control.Visible := false
@@ -351,6 +421,7 @@ class LauncherWindow {
             dpi := area.Dpi
         width := Round(this.Settings["panelWidth"] * dpi / 96)
         logicalHeight := this.PageKey = "clipboard" ? 500
+            : this.PageKey = "settings" ? 380
             : (this.HasVisibleStatus ? 318 : this.DesiredLogicalHeight)
         height := Min(logicalHeight, area.Bottom - area.Top)
         y := LauncherWindow.CenteredY(area.Top, area.Bottom, height)
@@ -535,6 +606,77 @@ class LauncherWindow {
             this.ClipboardManager.Delete(index)
     }
 
+    OnConnectionChanged(state, detail) {
+        if this.PageKey = "settings"
+            this.RefreshConnectionControls()
+    }
+
+    RefreshConnectionControls() {
+        manager := this.ConnectionManager
+        state := IsObject(manager) ? manager.State : "unavailable"
+        connectionDetail := IsObject(manager) ? manager.Detail
+            : "Connection controls are unavailable in this isolated mode."
+        this.ConnectionStatus.Text := connectionDetail
+        waiting := state = "starting" || state = "waiting" || state = "exchanging"
+        connected := state = "connected" || state = "checking" || state = "disconnecting"
+        hasCredential := IsObject(manager) && manager.Credential
+        hasPairing := IsObject(manager) && manager.RequestId && manager.PairingSecret
+        recoveryPairing := hasPairing && !waiting
+        recoveryCredential := hasCredential && !waiting && !connected
+        this.ConnectionConnectButton.Visible := !waiting && !connected && !hasCredential && !hasPairing
+        this.ConnectionCancelButton.Visible := waiting || recoveryPairing
+        this.ConnectionRetryButton.Visible := recoveryCredential || recoveryPairing
+        this.ConnectionDisconnectButton.Visible := connected || recoveryCredential
+        if recoveryPairing {
+            this.ConnectionRetryButton.Move(16, 312, 160, 42)
+            this.ConnectionCancelButton.Move(184, 312, 160, 42)
+        } else {
+            this.ConnectionCancelButton.Move(16, 312, 328, 42)
+            this.ConnectionRetryButton.Move(16, 312, 160, 42)
+        }
+        if recoveryCredential
+            this.ConnectionDisconnectButton.Move(184, 312, 160, 42)
+        else
+            this.ConnectionDisconnectButton.Move(16, 312, 328, 42)
+        busy := IsObject(manager) && manager.RequestBusy
+        TileRenderer.SetEnabled(this.ConnectionConnectButton, IsObject(manager) && !busy)
+        TileRenderer.SetEnabled(this.ConnectionCancelButton, IsObject(manager) && !busy)
+        TileRenderer.SetEnabled(this.ConnectionRetryButton, IsObject(manager) && !busy)
+        TileRenderer.SetEnabled(this.ConnectionDisconnectButton, IsObject(manager) && !busy)
+        this.ConnectionNameEdit.Enabled := !waiting && !connected
+        this.ConnectionEndpointEdit.Enabled := !waiting && !connected
+        controls := [this.BackButton, this.ConnectionNameEdit, this.ConnectionEndpointEdit]
+        for button in [this.ConnectionConnectButton, this.ConnectionCancelButton,
+            this.ConnectionRetryButton, this.ConnectionDisconnectButton] {
+            if button.Visible && button.Enabled
+                controls.Push(button)
+        }
+        this.Navigation.Controls := controls
+        TileRenderer.RefreshAll()
+        this.RaiseUtilityLabels()
+    }
+
+    StartConnection() {
+        if !IsObject(this.ConnectionManager)
+            return
+        this.ConnectionManager.StartPairing(this.ConnectionNameEdit.Value,
+            this.ConnectionEndpointEdit.Value)
+    }
+
+    ConfirmDisconnect() {
+        if !IsObject(this.ConnectionManager) || !this.ConnectionManager.Credential
+            return
+        previousAutoClose := this.AutoCloseOnDeactivate
+        this.AutoCloseOnDeactivate := false
+        this.Gui.Opt("+OwnDialogs")
+        try answer := MsgBox("Disconnect this Olio Launcher?`n`n"
+            "Workstation access will be revoked and the protected local credential removed.",
+            "Disconnect Olio account", "YesNo Icon! Default2")
+        finally this.AutoCloseOnDeactivate := previousAutoClose
+        if answer = "Yes"
+            this.ConnectionManager.Disconnect()
+    }
+
     RaiseUtilityLabels() {
         for label in [this.SettingsLabel, this.BackLabel] {
             if !label.Visible
@@ -587,6 +729,10 @@ class LauncherWindow {
                 case "__clip_clear": this.ConfirmClearClipboard()
                 case "__clip_open": this.OpenClipboardPreview()
                 case "__clip_delete": this.DeleteClipboardSelection()
+                case "__connection_connect": this.StartConnection()
+                case "__connection_cancel": this.ConnectionManager.CancelPairing()
+                case "__connection_retry": this.ConnectionManager.Retry()
+                case "__connection_disconnect": this.ConfirmDisconnect()
                 default:
                     if this.Buttons[key].Enabled
                         this.Activate(key)

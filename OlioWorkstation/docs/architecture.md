@@ -50,3 +50,27 @@ Quick Pastes and Pastebin share no data model or route:
 Milestone 4 introduces no launcher pairing, device approval, credentials, synchronization,
 polling, offline cache, Send to Phone, Network Analyzer, packaging, or launcher runtime
 change.
+
+## Secure Launcher Connection (Milestone 5)
+
+The browser route `/launcher/authorize` preserves its opaque request UUID and short-lived
+display code while signed-out users pass through the existing `Onboarding` sign-in flow.
+After sign-in, `LauncherAuthorization` sends the existing in-memory Supabase access token
+only as an Authorization header to `/api/launcher`. Request values are never copied to
+browser storage. The page shows only validated device name, display code, and expiry and
+requires explicit Approve or Deny.
+
+The Vercel server endpoint owns protocol validation, CSPRNG token/code generation,
+SHA-256 hashing, HMAC-protected rate-limit actors, content-free responses, and Supabase
+service access. It validates the browser session with Supabase Auth and derives `owner_id`
+from that result; no client ownership field is accepted. Public launcher calls carry
+their pairing secret or device credential only in an HTTPS request body. No request or
+response body is logged by application code.
+
+PostgreSQL owns the atomic state machine. `launcher_pairing_requests` stores short-lived
+hash-only requests; `launcher_devices` stores individually revocable hash-only device
+credentials; `launcher_rate_limits` stores HMAC actor hashes and fixed windows. Security-
+definer functions use `search_path = ''`, explicit roles, row locks, and one transition
+per transaction. Authenticated device-list/revoke RPCs derive `auth.uid()` and return only
+safe metadata. Device scope is constrained to `connection:status`; Milestone 6 must add a
+new reviewed authorization boundary before any Quick Paste access exists.

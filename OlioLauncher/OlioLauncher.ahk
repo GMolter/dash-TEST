@@ -9,6 +9,9 @@ DllCall("SetProcessDpiAwarenessContext", "ptr", -4, "ptr") ; PER_MONITOR_AWARE_V
 #Include src\FlatJson.ahk
 #Include src\Logging.ahk
 #Include src\SettingsManager.ahk
+#Include src\CryptoRandom.ahk
+#Include src\CredentialStore.ahk
+#Include src\LauncherConnection.ahk
 #Include src\WindowsInterop.ahk
 #Include src\InstanceCoordinator.ahk
 #Include src\HotkeyManager.ahk

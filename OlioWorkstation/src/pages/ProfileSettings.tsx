@@ -11,6 +11,7 @@ import {
 } from '../lib/appTheme';
 import { User, LogOut, Building2, AlertTriangle, ExternalLink, Palette, X } from 'lucide-react';
 import { AnimatedBackground } from '../components/AnimatedBackground';
+import { LauncherDevices } from '../components/LauncherDevices';
 
 type ProfileSettingsProps = {
   appBackgroundTheme: AppBackgroundTheme;
@@ -206,6 +207,8 @@ export function ProfileSettings({
             </div>
           </div>
         )}
+
+        <LauncherDevices />
 
         <div className="border-t border-slate-700 pt-6">
           <button

@@ -1,4 +1,4 @@
-# Milestone 3 setup and operation
+# Milestone 5 setup and operation
 
 ## Requirements
 
@@ -50,9 +50,29 @@ On the Clipboard History page:
 - Delete removes the selected card.
 - Clear all always asks for confirmation, with No selected by default.
 
-Send to Phone and Network Analyzer are disabled controls. Dynamic Screenshot and Quick
-Pastes remain separate: Dynamic Screenshot is active; Quick Pastes remains a placeholder
-and executes no synchronization, account, browser, or network code.
+Send to Phone and Network Analyzer are disabled controls. Dynamic Screenshot is active.
+Secure account connection is available from Settings, but Quick Pastes remains a
+placeholder and executes no synchronization, content fetch, display, copy, paste, or
+cache code.
+
+## Connect an Olio account
+
+1. Open **Settings** in the launcher.
+2. Enter a recognizable device name and the exact HTTPS origin supplied by the Olio
+   Workstation operator, such as `https://workstation.example.com`. Paths, HTTP, embedded
+   credentials, localhost names, and host changes are rejected.
+3. Choose **Connect Olio Account**. The launcher opens the authorization page in the
+   default browser and shows the same short display code.
+4. Sign in through the normal Workstation sign-in screen if necessary. Confirm the device
+   name and code, then explicitly approve or deny.
+5. Return to launcher Settings. Successful approval reports **Connected**. It does not
+   make Quick Pastes available during Milestone 5.
+
+The request expires after 10 minutes. Polling occurs at most every 3 seconds and stops on
+approval, denial, expiry, cancellation, failure, or success. **Cancel authentication**
+invalidates the pending request. **Disconnect Olio Account** requires confirmation,
+revokes the server device, and then deletes the protected local credential. Workstation
+Profile Settings provides a separate confirmed revoke action.
 
 ## Dynamic Screenshot
 
@@ -108,6 +128,10 @@ Supported values are:
 - `lastSelected`: `clipboard`, `screenshot`, `quickPastes`, or `settings`
 - `openingMonitor`: `active` or `primary`
 - `openingPosition`: currently `right`
+- `deviceId`: non-secret stable version-4 UUID created with Windows CNG
+- `deviceName`: safe user-visible launcher name, 1 through 80 characters
+- `workstationUrl`: configured HTTPS Workstation origin; no path or credentials
+- `connectedDeviceName` and `connectedAt`: non-sensitive connection display metadata
 
 Edit the file only while the launcher is stopped, then restart it. Invalid fields recover
 to documented defaults and the panel reports how many values recovered. Before a later
@@ -139,6 +163,11 @@ Diagnostics default off. When `loggingEnabled` is true, metadata-only logs are w
 Logs contain timestamps, event names, and short status tokens. They never contain
 clipboard data, captured pixels, Quick Paste content, credentials, pairing codes, or
 access tokens. The log rotates at 1 MiB.
+
+The device credential is not in `settings.json`. It is stored under the current Windows
+user's Windows Credential Manager as an Olio Launcher generic credential. Do not export,
+copy, screenshot, or include that entry in support diagnostics. Pairing secrets live only
+in process memory until the request reaches a terminal state.
 
 Clipboard History itself never creates a file. Its text, image buffers, previews, source
 application, and comparisons exist only in process memory and disappear when the launcher

@@ -23,6 +23,7 @@ import { OrganizationPage } from './pages/OrganizationPage';
 import { ProfileSettings } from './pages/ProfileSettings';
 import { HelpPage } from './pages/HelpPage';
 import { HelpArticlePage } from './pages/HelpArticlePage';
+import { LauncherAuthorization } from './pages/LauncherAuthorization';
 import { useAuth } from './hooks/useAuth';
 import { useOrg } from './hooks/useOrg';
 import {
@@ -40,6 +41,10 @@ import {
   setStoredAppBackgroundTheme,
 } from './lib/appTheme';
 import { AlertTriangle } from 'lucide-react';
+import {
+  launcherAuthorizationAccess,
+  parseLauncherAuthorizationLocation,
+} from './features/launcherDevices/authorizationRoute';
 
 type View =
   | { type: 'home' }
@@ -56,7 +61,8 @@ type View =
   | { type: 'paste'; code: string }
   | { type: 'paste-list' }
   | { type: 'projects-center' }
-  | { type: 'project-dashboard'; id: string };
+  | { type: 'project-dashboard'; id: string }
+  | { type: 'launcher-authorization'; requestId: string; displayCode: string };
 
 type BannerState = { enabled: boolean; text: string };
 
@@ -164,6 +170,16 @@ function App() {
     const resolve = () => {
       const path = window.location.pathname || '/';
       const cleanPath = path.replace(/\/+$/, '') || '/';
+
+      const launcherAuthorization = parseLauncherAuthorizationLocation(cleanPath, window.location.search);
+      if (launcherAuthorization) {
+        setView({
+          type: 'launcher-authorization',
+          requestId: launcherAuthorization.requestId,
+          displayCode: launcherAuthorization.displayCode,
+        });
+        return;
+      }
 
       if (cleanPath === '/projects') {
         setView({ type: 'projects-center' });
@@ -390,6 +406,15 @@ function App() {
       onNavigate={navigateTo}
     />
   ) : null;
+
+  if (view.type === 'launcher-authorization') {
+    const access = launcherAuthorizationAccess(authLoading, !!user, allowOnboarding);
+    if (access === 'loading') {
+      return <div className="min-h-screen bg-slate-950" role="status" aria-label="Checking sign-in status" />;
+    }
+    if (access === 'sign-in') return <Onboarding />;
+    return <LauncherAuthorization requestId={view.requestId} displayCode={view.displayCode} />;
+  }
 
   if (view.type === 'projects-center') {
     return (

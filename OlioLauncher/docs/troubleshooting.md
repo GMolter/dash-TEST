@@ -1,4 +1,37 @@
-# Milestone 3 troubleshooting
+# Milestone 5 troubleshooting
+
+## Connect reports that the Workstation address is invalid
+
+Enter only the operator-provided HTTPS origin, with no path, query, fragment, username,
+password, or embedded token. Cleartext HTTP and localhost are rejected. Do not work around
+validation by placing a secret in the URL or settings file.
+
+## The browser does not open or the request expires
+
+Choose **Cancel authentication**, confirm the configured Workstation origin, and try
+again. The request lasts 10 minutes and is single-use. Do not share the display code or a
+screenshot of the authorization page. The code alone cannot obtain a credential, but it
+identifies a live approval request.
+
+## Approval succeeds but the launcher stays waiting
+
+Keep Settings open for one polling interval, then use the safe retry action. Firewall,
+proxy, DNS, or server errors produce an offline/recoverable state without changing the
+protected credential. Never paste a request body, response body, authorization header,
+Supabase session, credential, or pairing value into a support report.
+
+## Workstation says the device is revoked
+
+The launcher deletes an invalid protected credential and reports a revoked recovery
+state. Choose **Connect Olio Account** to create a new short-lived request. Revocation is
+intentional and blocks every later device-authenticated operation; it does not delete
+Clipboard History or change Dynamic Screenshot.
+
+## Disconnect cannot reach Olio
+
+Nothing is deleted when server revocation cannot be confirmed. Restore connectivity and
+retry so server and local state cannot diverge. If the device is lost, revoke it from
+Workstation Profile Settings; the lost launcher will be rejected on its next status check.
 
 ## The Copilot key does not toggle the panel
 

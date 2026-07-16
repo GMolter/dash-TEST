@@ -31,3 +31,18 @@ make the test run.
 Record the action, generic error message, browser version, and whether retry succeeded.
 Never include Quick Paste content, database response bodies, authentication tokens, or
 screenshots showing sensitive snippets.
+
+## Launcher authorization page is unavailable
+
+Confirm the URL uses `/launcher/authorize` on the expected Workstation origin and that the
+request has not exceeded 10 minutes. Signed-out users must use the normal Workstation sign-
+in form and then return automatically to the authorization request. Unknown, malformed,
+expired, cancelled, denied, or already-used requests intentionally reveal no device or
+account metadata.
+
+## A launcher device will not revoke
+
+Refresh **Profile Settings → Olio Launcher devices** and retry. A recoverable error leaves
+the device unchanged. Do not send database output, authorization headers, request bodies,
+credentials, codes, account screenshots, or Supabase sessions to support. If revocation
+succeeds, every subsequent device-authenticated request is rejected immediately.

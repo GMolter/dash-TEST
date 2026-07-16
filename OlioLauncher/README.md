@@ -1,8 +1,8 @@
 # Olio Launcher
 
 Olio Launcher is a native AutoHotkey v2 Windows launcher. The current code implements
-the approved Milestone 1 foundation and Milestone 2 Clipboard History plus the Milestone
-3 Dynamic Screenshot candidate: one resident process, Focus Key activation, right-edge
+the approved Milestones 1–3 behavior plus Milestone 5 Secure Launcher Connection: one
+resident process, Focus Key activation, right-edge
 placement, native navigation, validated local settings, optional per-user startup,
 redacted diagnostics, memory-only clipboard history, and clipboard-only screen capture.
 
@@ -27,10 +27,19 @@ without changing the clipboard. A rapid double press of the Focus Key opens scre
 selection directly without moving or closing the launcher or an open image preview; using
 the Screenshot tile still hides the launcher first. No image encoder,
 image file, Snipping Tool, helper process, browser runtime, or network path is used.
-Quick Pastes synchronization is not implemented. Send to Phone and Network Analyzer
-remain disabled and execute no action.
+Settings can connect a named launcher to an Olio account through the user's normal
+browser without collecting an Olio password. The launcher uses short-lived one-time
+authorization, Windows CNG, bounded asynchronous HTTPS requests, and Windows Credential
+Manager. Workstation can list and revoke each device, and launcher disconnect requires
+confirmation. Connection status does not fetch, cache, display, copy, or paste Quick
+Pastes; that remains Milestone 6. Send to Phone and Network Analyzer remain disabled and
+execute no action.
 
 ## Run from source
+
+Double-click `Run-OlioLauncher.cmd` during development to close only launcher processes
+started from this folder and restart the current source. It does not terminate unrelated
+AutoHotkey scripts. Clipboard History is intentionally cleared by any launcher restart.
 
 Install AutoHotkey 2.0.26, then run from the repository root:
 
@@ -45,5 +54,6 @@ instead of creating another resident launcher. Exit completely from the tray ico
 
 See [setup.md](docs/setup.md) for settings and operation,
 [milestone2-results.md](docs/milestone2-results.md) for approved Clipboard History
-evidence, and [milestone3-results.md](docs/milestone3-results.md) for Dynamic Screenshot
-verification and the nontechnical manual checklist.
+evidence, [milestone3-results.md](docs/milestone3-results.md) for Dynamic Screenshot
+verification, and [milestone5-results.md](docs/milestone5-results.md) for authorization,
+isolation, privacy, and manual connection checks.

@@ -9,5 +9,10 @@
   "sensitiveApplications": "KeePass.exe;KeePassXC.exe;1Password.exe;Bitwarden.exe",
   "lastSelected": "clipboard",
   "openingMonitor": "active",
-  "openingPosition": "right"
+  "openingPosition": "right",
+  "deviceId": "",
+  "deviceName": "My PC Launcher",
+  "workstationUrl": "https://workstation.example.com",
+  "connectedDeviceName": "",
+  "connectedAt": ""
 }

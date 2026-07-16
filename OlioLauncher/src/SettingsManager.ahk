@@ -17,7 +17,12 @@ class SettingsManager {
             "sensitiveApplications", "KeePass.exe;KeePassXC.exe;1Password.exe;Bitwarden.exe",
             "lastSelected", "clipboard",
             "openingMonitor", "active",
-            "openingPosition", "right"
+            "openingPosition", "right",
+            "deviceId", "",
+            "deviceName", SubStr(A_ComputerName " Launcher", 1, 80),
+            "workstationUrl", "",
+            "connectedDeviceName", "",
+            "connectedAt", ""
         )
     }
 
@@ -58,6 +63,11 @@ class SettingsManager {
         this.AcceptEnum(candidate, result, "lastSelected", ["clipboard", "screenshot", "quickPastes", "settings"])
         this.AcceptEnum(candidate, result, "openingMonitor", ["active", "primary"])
         this.AcceptEnum(candidate, result, "openingPosition", ["right"])
+        this.AcceptString(candidate, result, "deviceId", 0, 36)
+        this.AcceptString(candidate, result, "deviceName", 1, 80)
+        this.AcceptString(candidate, result, "workstationUrl", 0, 255)
+        this.AcceptString(candidate, result, "connectedDeviceName", 0, 80)
+        this.AcceptString(candidate, result, "connectedAt", 0, 40)
         return result
     }
 
@@ -112,12 +122,17 @@ class SettingsManager {
     }
 
     static Update(key, value) {
+        this.UpdateMany(Map(key, value))
+    }
+
+    static UpdateMany(changes) {
         if !IsObject(this.Values)
             this.Load()
         candidate := Map()
         for currentKey, currentValue in this.Values
             candidate[currentKey] := currentValue
-        candidate[key] := value
+        for key, value in changes
+            candidate[key] := value
         validated := this.Validate(candidate)
         this.Values := validated
         this.Save()
@@ -156,7 +171,12 @@ class SettingsManager {
             . "  " FlatJson.Quote("sensitiveApplications") ": " FlatJson.Quote(values["sensitiveApplications"]) ",`n"
             . "  " FlatJson.Quote("lastSelected") ": " FlatJson.Quote(values["lastSelected"]) ",`n"
             . "  " FlatJson.Quote("openingMonitor") ": " FlatJson.Quote(values["openingMonitor"]) ",`n"
-            . "  " FlatJson.Quote("openingPosition") ": " FlatJson.Quote(values["openingPosition"]) "`n"
+            . "  " FlatJson.Quote("openingPosition") ": " FlatJson.Quote(values["openingPosition"]) ",`n"
+            . "  " FlatJson.Quote("deviceId") ": " FlatJson.Quote(values["deviceId"]) ",`n"
+            . "  " FlatJson.Quote("deviceName") ": " FlatJson.Quote(values["deviceName"]) ",`n"
+            . "  " FlatJson.Quote("workstationUrl") ": " FlatJson.Quote(values["workstationUrl"]) ",`n"
+            . "  " FlatJson.Quote("connectedDeviceName") ": " FlatJson.Quote(values["connectedDeviceName"]) ",`n"
+            . "  " FlatJson.Quote("connectedAt") ": " FlatJson.Quote(values["connectedAt"]) "`n"
             . "}`n"
     }
 }

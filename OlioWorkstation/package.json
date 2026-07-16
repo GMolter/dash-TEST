@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:quick-pastes": "vitest run src/features/quickPastes src/components/QuickPastes.test.tsx src/hooks/useQuickPastes.test.tsx test/quickPastesPrivacy.test.ts",
+    "test:launcher-connection": "vitest run api/_utils/launcherProtocol.test.ts src/features/launcherDevices src/components/LauncherDevices.test.tsx src/pages/LauncherAuthorization.test.tsx test/launcherConnectionPrivacy.test.ts",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
