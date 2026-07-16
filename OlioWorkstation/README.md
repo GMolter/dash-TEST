@@ -14,6 +14,11 @@ status only; it does not synchronize Quick Pastes to the launcher.
 
 ## Commands
 
+The Vercel Hobby deployment is intentionally limited to 12 production files under
+`api/`. Shared server helpers belong under `api/_utils`, and the automated function-budget
+test prevents an accidental thirteenth function. Admin help CRUD uses the consolidated
+`/api/admin/help-articles` route.
+
 ```powershell
 npm install
 npm run dev
