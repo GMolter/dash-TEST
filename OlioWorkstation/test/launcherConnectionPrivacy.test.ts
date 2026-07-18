@@ -19,11 +19,14 @@ describe('launcher connection privacy boundaries', () => {
     expect(source).not.toMatch(/localStorage|sessionStorage|indexedDB|caches\.open/);
   });
 
-  it('does not add Quick Paste synchronization to the device protocol', () => {
+  it('keeps the Milestone 5 base migration connection-only and adds Milestone 6 separately', () => {
     const migration = readFileSync(join(root, 'supabase/migrations/20260715190000_secure_launcher_connection.sql'), 'utf8');
+    const milestone6 = readFileSync(join(root, 'supabase/migrations/20260717090000_add_launcher_quick_paste_read_scope.sql'), 'utf8');
     const endpoint = readFileSync(join(root, 'api/launcher.ts'), 'utf8');
-    expect(endpoint).not.toMatch(/quick[_ -]?paste/i);
     expect(migration).not.toMatch(/from public\.quick_pastes|join public\.quick_pastes|grant .*quick_pastes/i);
     expect(migration).toContain("array['connection:status']");
+    expect(milestone6).toContain("'quick-pastes:read'");
+    expect(milestone6).not.toMatch(/update public\.launcher_devices\s+set scopes/i);
+    expect(endpoint).toContain("case 'quick-pastes'");
   });
 });

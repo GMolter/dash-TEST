@@ -84,10 +84,15 @@ export function userActor(userId: string, scope: string, serverKey: string) {
   return protectedActor(`${scope}:${userId}`, serverKey);
 }
 
+export function deviceActor(deviceId: string, scope: string, serverKey: string) {
+  return protectedActor(`${scope}:${deviceId}`, serverKey);
+}
+
 export function safeState(value: unknown): string {
   const allowed = new Set([
     'waiting', 'approved', 'denied', 'expired', 'cancelled', 'connected',
-    'disconnected', 'revoked', 'rate_limited', 'offline', 'invalid',
+    'disconnected', 'revoked', 'rate_limited', 'scope_required', 'too_large',
+    'offline', 'invalid',
   ]);
   return typeof value === 'string' && allowed.has(value) ? value : 'invalid';
 }

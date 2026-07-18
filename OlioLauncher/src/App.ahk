@@ -4,6 +4,7 @@ class OlioApp {
     static Clipboard := 0
     static Screenshot := 0
     static Connection := 0
+    static QuickPastes := 0
     static PendingActivation := false
     static FocusCallback := 0
     static FocusReleaseCallback := 0
@@ -32,12 +33,24 @@ class OlioApp {
         this.Clipboard := ClipboardManager(this.Settings)
         this.Connection := (mode = "--measure-m3" || mode = "--visual-test")
             ? 0 : LauncherConnection(this.Settings)
+        this.QuickPastes := IsObject(this.Connection)
+            ? QuickPastesClient(this.Connection) : 0
         this.Screenshot := ScreenshotManager(this.Clipboard,
             (status, previous, result) => this.OnScreenshotFinished(status, previous, result))
         this.Window := LauncherWindow(this.Settings, (key) => this.OnNavigate(key),
-            mode = "--visual-test", this.Clipboard, this.Connection)
-        if IsObject(this.Connection)
-            this.Connection.ChangedCallback := (state, detail) => this.Window.OnConnectionChanged(state, detail)
+            mode = "--visual-test", this.Clipboard, this.Connection, this.QuickPastes)
+        if IsObject(this.Connection) {
+            this.Connection.ChangedCallback := (state, detail) =>
+                this.OnConnectionChanged(state, detail)
+            this.Connection.CredentialClearedCallback := (reason) =>
+                this.QuickPastes.Clear(reason = "revoked" ? "revoked" : "disconnected",
+                    reason = "revoked"
+                        ? "This launcher was revoked. Connect again in Settings."
+                        : "Connect an Olio account in Settings.")
+        }
+        if IsObject(this.QuickPastes)
+            this.QuickPastes.ChangedCallback := (state, detail) =>
+                this.Window.OnQuickPastesChanged(state, detail)
         this.Clipboard.ChangedCallback := (status) => this.Window.OnClipboardHistoryChanged(status)
         this.Clipboard.Start()
         this.FocusGesture := FocusKeyGesture(350)
@@ -141,6 +154,21 @@ class OlioApp {
         }
     }
 
+    static OnConnectionChanged(state, detail) {
+        if IsObject(this.Window)
+            this.Window.OnConnectionChanged(state, detail)
+        if !IsObject(this.QuickPastes)
+            return
+        if state = "connected" && !this.QuickPastes.Items.Length
+            this.QuickPastes.SetState("connected", "Ready to synchronize.")
+        else if state = "revoked"
+            this.QuickPastes.Clear("revoked",
+                "This launcher was revoked. Connect again in Settings.")
+        else if state = "disconnected"
+            this.QuickPastes.Clear("disconnected",
+                "Connect an Olio account in Settings.")
+    }
+
     static OnScreenshotFinished(status, previous, result) {
         RedactedLogger.Write("screenshot", status)
         if !IsObject(this.Window)
@@ -180,6 +208,8 @@ class OlioApp {
         this.CancelPendingFocusToggle(true)
         if IsObject(this.Screenshot)
             this.Screenshot.Shutdown(false)
+        if IsObject(this.QuickPastes)
+            this.QuickPastes.Shutdown()
         if IsObject(this.Clipboard)
             this.Clipboard.Shutdown()
         if IsObject(this.Connection)

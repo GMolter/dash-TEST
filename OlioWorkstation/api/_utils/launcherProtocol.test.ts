@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatDisplayCode,
+  deviceActor,
   generateDisplayCode,
   generateRequestId,
   generateSecret,
@@ -42,6 +43,9 @@ describe('launcher authorization protocol primitives', () => {
     expect(sha256(secret)).toMatch(/^[0-9a-f]{64}$/);
     expect(sha256(secret)).not.toBe(secret);
     expect(safeState('connected')).toBe('connected');
+    expect(safeState('scope_required')).toBe('scope_required');
     expect(safeState('owner@example.invalid')).toBe('invalid');
+    expect(deviceActor('device-a', 'quick-pastes', secret))
+      .toMatch(/^\\x[0-9a-f]{64}$/);
   });
 });

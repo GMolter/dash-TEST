@@ -1,10 +1,11 @@
 # Olio Launcher
 
 Olio Launcher is a native AutoHotkey v2 Windows launcher. The current code implements
-the approved Milestones 1–3 behavior plus Milestone 5 Secure Launcher Connection: one
+the approved Milestones 1–6 behavior: one
 resident process, Focus Key activation, right-edge
 placement, native navigation, validated local settings, optional per-user startup,
-redacted diagnostics, memory-only clipboard history, and clipboard-only screen capture.
+redacted diagnostics, memory-only clipboard history, clipboard-only screen capture, a
+secure Olio account connection, and private read-only Quick Pastes.
 
 The shell uses a compact Workstation-themed grid of owner-drawn native Windows button
 controls, with slate surfaces, spatial keyboard focus, a compact settings pill, and the
@@ -31,9 +32,11 @@ Settings can connect a named launcher to an Olio account through the user's norm
 browser without collecting an Olio password. The launcher uses short-lived one-time
 authorization, Windows CNG, bounded asynchronous HTTPS requests, and Windows Credential
 Manager. Workstation can list and revoke each device, and launcher disconnect requires
-confirmation. Connection status does not fetch, cache, display, copy, or paste Quick
-Pastes; that remains Milestone 6. Send to Phone and Network Analyzer remain disabled and
-execute no action.
+confirmation. A newly approved device receives the reviewed `quick-pastes:read` scope
+and can synchronize only its owner's Quick Pastes into process memory. Search, category,
+favorites, refresh, copy, and explicit paste are available natively; management remains
+in Workstation. No offline Quick Paste cache exists. Send to Phone and Network Analyzer
+remain disabled and execute no action.
 
 ## Run from source
 
@@ -56,4 +59,6 @@ See [setup.md](docs/setup.md) for settings and operation,
 [milestone2-results.md](docs/milestone2-results.md) for approved Clipboard History
 evidence, [milestone3-results.md](docs/milestone3-results.md) for Dynamic Screenshot
 verification, and [milestone5-results.md](docs/milestone5-results.md) for authorization,
-isolation, privacy, and manual connection checks.
+isolation, privacy, and manual connection checks. Milestone 6 authorization, test
+evidence, and its nontechnical checklist are in
+[milestone6-results.md](docs/milestone6-results.md).

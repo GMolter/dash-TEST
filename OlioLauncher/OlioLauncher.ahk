@@ -12,6 +12,7 @@ DllCall("SetProcessDpiAwarenessContext", "ptr", -4, "ptr") ; PER_MONITOR_AWARE_V
 #Include src\CryptoRandom.ahk
 #Include src\CredentialStore.ahk
 #Include src\LauncherConnection.ahk
+#Include src\QuickPastesClient.ahk
 #Include src\WindowsInterop.ahk
 #Include src\InstanceCoordinator.ahk
 #Include src\HotkeyManager.ahk
@@ -22,6 +23,7 @@ DllCall("SetProcessDpiAwarenessContext", "ptr", -4, "ptr") ; PER_MONITOR_AWARE_V
 #Include src\Navigation.ahk
 #Include src\TileRenderer.ahk
 #Include src\ClipboardRenderer.ahk
+#Include src\QuickPastesRenderer.ahk
 #Include src\ClipboardPreviewWindow.ahk
 #Include src\LauncherWindow.ahk
 #Include src\App.ahk

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServiceConfig } from './_utils/supabaseConfig.js';
 import {
   asBytea,
+  deviceActor,
   formatDisplayCode,
   generateDisplayCode,
   generateRequestId,
@@ -27,9 +28,80 @@ type ServiceClient = {
   };
 };
 
+type LauncherQuickPaste = {
+  id: string;
+  title: string;
+  content: string;
+  category: string | null;
+  sort_order: number;
+  is_favorite: boolean;
+};
+
+export const LAUNCHER_QUICK_PASTE_LIMITS = {
+  items: 100,
+  titleCharacters: 120,
+  contentCharacters: 20_000,
+  categoryCharacters: 60,
+  aggregateContentCharacters: 500_000,
+  responseBytes: 1_048_576,
+} as const;
+
 function firstRow(value: unknown): Record<string, unknown> | null {
   if (!Array.isArray(value) || !value[0] || typeof value[0] !== 'object') return null;
   return value[0] as Record<string, unknown>;
+}
+
+function characterLength(value: string) {
+  return Array.from(value).length;
+}
+
+function validQuickPasteText(value: unknown, maximum: number, requireNonblank: boolean): value is string {
+  return typeof value === 'string'
+    && !value.includes('\0')
+    && characterLength(value) <= maximum
+    && (!requireNonblank || value.trim().length > 0);
+}
+
+export function validateLauncherQuickPasteItems(value: unknown): LauncherQuickPaste[] | null {
+  if (!Array.isArray(value) || value.length > LAUNCHER_QUICK_PASTE_LIMITS.items) return null;
+  const ids = new Set<string>();
+  const items: LauncherQuickPaste[] = [];
+  let aggregateContentCharacters = 0;
+  let priorSortOrder = -1;
+
+  for (const candidate of value) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
+    const item = candidate as Record<string, unknown>;
+    const category = item.category;
+    if (!isUuid(item.id)
+      || ids.has(item.id)
+      || !validQuickPasteText(item.title, LAUNCHER_QUICK_PASTE_LIMITS.titleCharacters, true)
+      || !validQuickPasteText(item.content, LAUNCHER_QUICK_PASTE_LIMITS.contentCharacters, true)
+      || !(category === null
+        || validQuickPasteText(category, LAUNCHER_QUICK_PASTE_LIMITS.categoryCharacters, true))
+      || !Number.isSafeInteger(item.sort_order)
+      || Number(item.sort_order) < 0
+      || Number(item.sort_order) < priorSortOrder
+      || typeof item.is_favorite !== 'boolean') {
+      return null;
+    }
+
+    aggregateContentCharacters += characterLength(item.content);
+    if (aggregateContentCharacters > LAUNCHER_QUICK_PASTE_LIMITS.aggregateContentCharacters) {
+      return null;
+    }
+    ids.add(item.id);
+    priorSortOrder = Number(item.sort_order);
+    items.push({
+      id: item.id,
+      title: item.title,
+      content: item.content,
+      category: category === null ? null : String(category),
+      sort_order: Number(item.sort_order),
+      is_favorite: item.is_favorite,
+    });
+  }
+  return items;
 }
 
 function send(res: VercelResponse, status: number, body: Record<string, unknown>) {
@@ -37,6 +109,16 @@ function send(res: VercelResponse, status: number, body: Record<string, unknown>
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   return res.status(status).json(body);
+}
+
+function sendBoundedQuickPastes(
+  res: VercelResponse,
+  body: { state: 'connected'; synchronized_at: string; items: LauncherQuickPaste[] },
+) {
+  if (Buffer.byteLength(JSON.stringify(body), 'utf8') > LAUNCHER_QUICK_PASTE_LIMITS.responseBytes) {
+    return send(res, 413, { state: 'too_large' });
+  }
+  return send(res, 200, body);
 }
 
 function bodyOf(req: VercelRequest): Record<string, unknown> {
@@ -160,6 +242,47 @@ async function handleDeviceStatus(req: VercelRequest, res: VercelResponse, clien
   });
 }
 
+export async function handleQuickPastes(
+  req: VercelRequest,
+  res: VercelResponse,
+  client: ServiceClient,
+  actorKey: string,
+) {
+  const body = bodyOf(req);
+  if (!isUuid(body.device_id) || !isSecret(body.credential)) {
+    return send(res, 400, { state: 'invalid' });
+  }
+
+  const { data, error } = await client.rpc('fetch_launcher_quick_pastes', {
+    p_device_identifier: body.device_id,
+    p_credential_hash: asBytea(sha256(body.credential)),
+    p_source_actor_hash: sourceActor(req, 'quick-pastes-source', actorKey),
+    p_device_actor_hash: deviceActor(body.device_id, 'quick-pastes-device', actorKey),
+  });
+  const result = !error ? firstRow(data) : null;
+  const state = safeState(result?.outcome);
+  if (!result || state !== 'connected') {
+    if (state === 'rate_limited') return send(res, 429, { state });
+    if (state === 'scope_required') return send(res, 403, { state });
+    if (state === 'too_large') return send(res, 413, { state });
+    return send(res, 401, { state: 'invalid' });
+  }
+
+  const items = validateLauncherQuickPasteItems(result.quick_paste_items);
+  const synchronizedAt = result.synchronized_at;
+  if (!items
+    || typeof synchronizedAt !== 'string'
+    || synchronizedAt.length > 40
+    || Number.isNaN(new Date(synchronizedAt).valueOf())) {
+    return send(res, 502, { state: 'invalid' });
+  }
+  return sendBoundedQuickPastes(res, {
+    state: 'connected',
+    synchronized_at: synchronizedAt,
+    items,
+  });
+}
+
 async function handleDisconnect(req: VercelRequest, res: VercelResponse, client: ServiceClient) {
   const body = bodyOf(req);
   if (!isUuid(body.device_id) || !isSecret(body.credential)) {
@@ -220,6 +343,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'exchange': return await handleExchange(req, res, client, config.serviceKey);
       case 'cancel': return await handleCancel(req, res, client);
       case 'device-status': return await handleDeviceStatus(req, res, client, config.serviceKey);
+      case 'quick-pastes': return await handleQuickPastes(req, res, client, config.serviceKey);
       case 'disconnect': return await handleDisconnect(req, res, client);
       case 'inspect':
       case 'approve':

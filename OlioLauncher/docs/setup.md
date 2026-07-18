@@ -1,4 +1,4 @@
-# Milestone 5 setup and operation
+# Milestone 6 setup and operation
 
 ## Requirements
 
@@ -51,9 +51,8 @@ On the Clipboard History page:
 - Clear all always asks for confirmation, with No selected by default.
 
 Send to Phone and Network Analyzer are disabled controls. Dynamic Screenshot is active.
-Secure account connection is available from Settings, but Quick Pastes remains a
-placeholder and executes no synchronization, content fetch, display, copy, paste, or
-cache code.
+Secure account connection and read-only Quick Pastes are available. Quick Paste creation,
+editing, deletion, reordering, and other management remain in Workstation.
 
 ## Connect an Olio account
 
@@ -65,14 +64,39 @@ cache code.
    default browser and shows the same short display code.
 4. Sign in through the normal Workstation sign-in screen if necessary. Confirm the device
    name and code, then explicitly approve or deny.
-5. Return to launcher Settings. Successful approval reports **Connected**. It does not
-   make Quick Pastes available during Milestone 5.
+5. Return to launcher Settings. Successful approval reports **Connected** and enables
+   the device's reviewed `quick-pastes:read` scope.
 
 The request expires after 10 minutes. Polling occurs at most every 3 seconds and stops on
 approval, denial, expiry, cancellation, failure, or success. **Cancel authentication**
 invalidates the pending request. **Disconnect Olio Account** requires confirmation,
 revokes the server device, and then deletes the protected local credential. Workstation
 Profile Settings provides a separate confirmed revoke action.
+
+Existing devices approved before the Milestone 6 migration retain only
+`connection:status`; they are not silently broadened. If Quick Pastes reports that a new
+approval is required, disconnect and approve that launcher again.
+
+## Quick Pastes
+
+1. Connect the launcher, then open **Quick Pastes**. Opening the page starts
+   synchronization directly; it is asynchronous and the native panel remains responsive.
+2. Type in **Search**, choose a saved category, or choose **Favorites** from the same
+   Category selector. Searching for “favorite” also finds favorited items.
+   Filters operate only on the current in-memory list and never change Workstation data.
+3. Select an item with the mouse or arrow keys. Enter copies it. **Copy** also places only
+   the selected content on the clipboard using Clipboard History's existing duplicate-
+   suppression path.
+4. **Paste** copies the selected content and sends Ctrl+V only to the application that
+   was active immediately before the launcher. If focus or Windows integrity rules
+   prevent that, the content remains copied for manual paste.
+5. Choose **Refresh** for explicit synchronization. The panel displays the last successful
+   synchronization time.
+
+A temporary network failure may leave the last in-memory list visible with a stale/error
+label and retry action. Revocation, confirmed disconnect, or launcher exit immediately
+clears the list. Quick Paste rows, contents, last-sync state, search text, and categories
+are not written to settings, logs, files, or an offline cache.
 
 ## Dynamic Screenshot
 
@@ -132,6 +156,8 @@ Supported values are:
 - `deviceName`: safe user-visible launcher name, 1 through 80 characters
 - `connectedDeviceName` and `connectedAt`: non-sensitive connection display metadata
 
+Quick Paste data and synchronization timestamps are deliberately absent from this file.
+
 The production Workstation origin is built in as `https://olio.one`; users do not enter
 or store an API address. Isolated protocol tests may inject a non-production HTTPS origin
 in memory, but normal settings cannot override the product endpoint.
@@ -176,3 +202,8 @@ Clipboard History itself never creates a file. Its text, image buffers, previews
 application, and comparisons exist only in process memory and disappear when the launcher
 exits. The current limits are 1 MiB per text allocation and 16 MiB per image allocation;
 oversized content is skipped with a content-free status message.
+
+Synchronized Quick Pastes likewise exist only in process memory. The endpoint returns at
+most 100 items, 20,000 content characters per item, 120 title characters, 60 category
+characters, and 500,000 aggregate content characters in a response no larger than 1 MiB.
+The launcher performs a second validation before replacing its current list.

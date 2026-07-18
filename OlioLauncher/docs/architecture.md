@@ -1,13 +1,44 @@
 # Olio Launcher architecture decisions
 
-Status: **Milestones 0 through 4 are approved. Milestone 5 Secure Launcher
-Connection is implemented and locally verified; live database execution remains an
-environmental validation case.**
+Status: **Milestones 0 through 6 are approved and implemented; live database execution
+remains an environmental validation case.**
 
 This document records the native architecture choices established by Milestone 0 and
-preserved through Milestone 5. Milestone 5 authorizes device connection only. It does not
-authorize Quick Paste synchronization, offline caching, Send to Phone, Network Analyzer,
-packaging, or a later milestone.
+preserved through Milestone 6. Milestone 6 adds only read-only Quick Paste
+synchronization and local use. It does not add offline caching, Send to Phone, Network
+Analyzer, organization sharing, packaging, or later milestone work.
+
+## Milestone 6 Quick Pastes
+
+`QuickPastesClient` owns one bounded asynchronous synchronization request and a validated,
+memory-only collection. It authenticates with stable device UUID plus the unique
+Credential Manager secret in an HTTPS POST body. The server hashes the credential,
+matches one unrevoked device with `quick-pastes:read`, derives the owner from that row,
+and returns only `id`, `title`, `content`, `category`, `sort_order`, and `is_favorite`.
+No launcher-supplied owner or account value exists in the protocol.
+
+The response is bounded to 100 items, 20,000 content characters per item, 500,000
+aggregate content characters, and 1 MiB of JSON. The launcher validates type, length,
+uniqueness, stable order, control characters, and the same limits before an atomic list
+replacement. Search, category, and favorites are local projections over that list.
+Manual refresh and the last successful synchronization time also remain memory-only. A
+transient failure may preserve the current list only with an explicit stale label.
+Revocation, disconnect, and process exit cancel work and release every retained item.
+There is intentionally no plaintext or encrypted offline cache; a future cache requires
+a separate product and threat-model decision.
+
+`LauncherWindow` provides native search, category, favorite, refresh, list, Copy, Paste,
+and Settings-route controls with labels, Tab order, arrow selection, Enter activation,
+owner-drawn visible focus, and literal rendering of untrusted text. It exposes no edit or
+management action. Copy calls `ClipboardManager.PublishText`, reusing its sequence/owner
+suppression so the launcher publication is not captured twice. Paste first copies through
+that same path, then `WindowsInterop.PasteClipboardToWindow` verifies and focuses only
+the saved previous foreground root window before sending Ctrl+V. Focus loss, window
+destruction, or Windows integrity restrictions fail safely without elevation; the text
+remains copied for manual paste. Dynamic Screenshot uses its existing independent path.
+
+The reviewed authorization boundary and migration implications are specified in
+[milestone6-authorization.md](milestone6-authorization.md).
 
 ## Milestone 5 secure connection
 

@@ -58,9 +58,11 @@ To remove a device:
    device.
 4. Refresh the list and confirm the status is **Revoked**.
 
-Revocation immediately prevents later authenticated launcher operations. Reconnect from
-launcher Settings if you still control the device. During Milestone 5, connection status
-does not make Quick Pastes appear in the launcher.
+Revocation immediately prevents later authenticated launcher operations and clears
+Quick Pastes when the launcher observes the revoked credential. Reconnect from launcher
+Settings if you still control the device. A newly approved launcher may read your private
+Quick Pastes; an older connection may require disconnect and fresh approval because its
+access is not silently broadened.
 
 Do not share pairing codes or screenshots containing account information. Support will
 never ask for your password, Supabase session, authorization header, device credential,

@@ -41,7 +41,7 @@ export function LauncherDevices({ repository }: { repository?: LauncherDeviceRep
         </button>
       </div>
       <p className="mt-2 text-sm text-slate-400">
-        Each launcher is independently revocable. Milestone 5 does not give the launcher access to Quick Pastes.
+        Each launcher is independently revocable. Newly approved launchers can read your private Quick Pastes but cannot manage or share them.
       </p>
 
       {state.loading && <div className="mt-4 text-sm text-slate-300" role="status">Loading launcher devices…</div>}
@@ -111,4 +111,3 @@ export function LauncherDevices({ repository }: { repository?: LauncherDeviceRep
     </section>
   );
 }
-

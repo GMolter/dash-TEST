@@ -33,6 +33,36 @@ class WindowsInterop {
             DllCall("SetForegroundWindow", "ptr", hwnd)
     }
 
+    static PasteClipboardToWindow(hwnd) {
+        target := this.RootWindow(hwnd)
+        if !target || !DllCall("IsWindow", "ptr", target)
+            return false
+        if !DllCall("SetForegroundWindow", "ptr", target)
+            return false
+        Sleep(25)
+        if this.RootWindow(DllCall("GetForegroundWindow", "ptr")) != target
+            return false
+
+        inputSize := A_PtrSize = 8 ? 40 : 28
+        unionOffset := A_PtrSize = 8 ? 8 : 4
+        flagsOffset := unionOffset + 4
+        inputs := Buffer(inputSize * 4, 0)
+        keys := [
+            {Vk: 0x11, Flags: 0},
+            {Vk: 0x56, Flags: 0},
+            {Vk: 0x56, Flags: 0x2},
+            {Vk: 0x11, Flags: 0x2}
+        ]
+        for index, key in keys {
+            offset := (index - 1) * inputSize
+            NumPut("uint", 1, inputs, offset)
+            NumPut("ushort", key.Vk, inputs, offset + unionOffset)
+            NumPut("uint", key.Flags, inputs, offset + flagsOffset)
+        }
+        return DllCall("SendInput", "uint", keys.Length, "ptr", inputs,
+            "int", inputSize, "uint") = keys.Length
+    }
+
     static RootWindow(hwnd) {
         return hwnd ? DllCall("GetAncestor", "ptr", hwnd, "uint", 2, "ptr") : 0
     }

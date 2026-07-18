@@ -4,39 +4,19 @@ class FlatJson {
             text := SubStr(text, 2)
         index := 1
         this.SkipWhitespace(text, &index)
-        this.Expect(text, &index, "{")
-        result := Map()
-        this.SkipWhitespace(text, &index)
-        if SubStr(text, index, 1) = "}" {
-            index += 1
-            this.SkipWhitespace(text, &index)
-            if index <= StrLen(text)
-                throw ValueError("Unexpected data after the JSON object.")
-            return result
-        }
-        loop {
-            this.SkipWhitespace(text, &index)
-            key := this.ParseString(text, &index)
-            this.SkipWhitespace(text, &index)
-            this.Expect(text, &index, ":")
-            this.SkipWhitespace(text, &index)
-            result[key] := this.ParseScalar(text, &index)
-            this.SkipWhitespace(text, &index)
-            char := SubStr(text, index, 1)
-            if char = "}" {
-                index += 1
-                break
-            }
-            this.Expect(text, &index, ",")
-        }
+        result := this.ParseValue(text, &index)
         this.SkipWhitespace(text, &index)
         if index <= StrLen(text)
-            throw ValueError("Unexpected data after the JSON object.")
+            throw ValueError("Unexpected data after the JSON value.")
         return result
     }
 
-    static ParseScalar(text, &index) {
+    static ParseValue(text, &index) {
         char := SubStr(text, index, 1)
+        if char = "{"
+            return this.ParseObject(text, &index)
+        if char = "["
+            return this.ParseArray(text, &index)
         if char = Chr(34)
             return this.ParseString(text, &index)
         remainder := SubStr(text, index)
@@ -48,12 +28,64 @@ class FlatJson {
             index += 5
             return false
         }
+        if SubStr(remainder, 1, 4) = "null" {
+            index += 4
+            return ""
+        }
         if RegExMatch(remainder, "^-?(?:0|[1-9]\d*)(?:\.\d+)?", &match) {
             token := match[0]
             index += StrLen(token)
             return InStr(token, ".") ? Float(token) : Integer(token)
         }
-        throw ValueError("Only string, Boolean, and number values are supported.")
+        throw ValueError("Unsupported JSON value.")
+    }
+
+    static ParseObject(text, &index) {
+        this.Expect(text, &index, "{")
+        result := Map()
+        this.SkipWhitespace(text, &index)
+        if SubStr(text, index, 1) = "}" {
+            index += 1
+            return result
+        }
+        loop {
+            this.SkipWhitespace(text, &index)
+            key := this.ParseString(text, &index)
+            this.SkipWhitespace(text, &index)
+            this.Expect(text, &index, ":")
+            this.SkipWhitespace(text, &index)
+            result[key] := this.ParseValue(text, &index)
+            this.SkipWhitespace(text, &index)
+            char := SubStr(text, index, 1)
+            if char = "}" {
+                index += 1
+                break
+            }
+            this.Expect(text, &index, ",")
+        }
+        return result
+    }
+
+    static ParseArray(text, &index) {
+        this.Expect(text, &index, "[")
+        result := []
+        this.SkipWhitespace(text, &index)
+        if SubStr(text, index, 1) = "]" {
+            index += 1
+            return result
+        }
+        loop {
+            this.SkipWhitespace(text, &index)
+            result.Push(this.ParseValue(text, &index))
+            this.SkipWhitespace(text, &index)
+            char := SubStr(text, index, 1)
+            if char = "]" {
+                index += 1
+                break
+            }
+            this.Expect(text, &index, ",")
+        }
+        return result
     }
 
     static ParseString(text, &index) {

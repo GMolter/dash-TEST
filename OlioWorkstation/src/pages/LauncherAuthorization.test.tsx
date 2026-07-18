@@ -11,7 +11,7 @@ const requestId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
 const displayCode = '23456-789AB';
 
 describe('LauncherAuthorization', () => {
-  it('shows safe request metadata and explains the limited Milestone 5 permission', async () => {
+  it('shows safe request metadata and explains the limited read-only permission', async () => {
     render(<LauncherAuthorization requestId={requestId} displayCode={displayCode} authorize={vi.fn(async () => ({
       state: 'waiting',
       device_name: '<img src=x onerror=alert(1)>',
@@ -20,7 +20,8 @@ describe('LauncherAuthorization', () => {
     expect(await screen.findByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
     expect(document.querySelector('img')).toBeNull();
     expect(screen.getByText(displayCode)).toBeInTheDocument();
-    expect(screen.getByText(/Quick Paste synchronization is not active/)).toBeInTheDocument();
+    expect(screen.getByText(/read-only access to your private Quick Pastes/)).toBeInTheDocument();
+    expect(screen.getByText(/cannot create, edit, delete, reorder, favorite, or share/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Approve launcher' }).className).toContain('focus-visible:ring-2');
   });
 

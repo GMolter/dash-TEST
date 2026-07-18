@@ -1,10 +1,14 @@
 class LauncherWindow {
     __New(settings, navigateCallback, visualTestMode := false, clipboardManager := 0,
-        connectionManager := 0) {
+        connectionManager := 0, quickPastesManager := 0) {
         this.Settings := settings
         this.NavigateCallback := navigateCallback
         this.ClipboardManager := clipboardManager
         this.ConnectionManager := connectionManager
+        this.QuickPastesManager := quickPastesManager
+        this.QuickVisibleItems := []
+        this.QuickLastFeedback := ""
+        this.PasteRunner := (hwnd) => WindowsInterop.PasteClipboardToWindow(hwnd)
         this.PreviousForeground := 0
         ; Settings is a utility, not the launcher's default destination.
         this.CurrentView := settings["lastSelected"] = "settings"
@@ -98,6 +102,7 @@ class LauncherWindow {
         this.PageControls := [this.BackButton, this.BackLabel, this.PageTitle, this.PageSubtitle]
         this.CreateClipboardControls()
         this.CreateConnectionControls()
+        this.CreateQuickPastesControls()
 
         this.Gui.SetFont("s8 cFCA5A5", "Segoe UI Variable Text")
         this.StatusText := this.Gui.AddText("x16 y278 w328 h28 +Wrap Hidden", "")
@@ -123,6 +128,12 @@ class LauncherWindow {
         this.ClipboardEnterHandler := (*) => this.ActivateClipboardFocused()
         HotIf(this.ClipboardEnterContext)
         Hotkey("Enter", this.ClipboardEnterHandler)
+        HotIf()
+        this.QuickEnterContext := (*) => WinActive("ahk_id " this.Gui.Hwnd)
+            && this.PageKey = "quickPastes"
+        this.QuickEnterHandler := (*) => this.ActivateQuickPasteFocused()
+        HotIf(this.QuickEnterContext)
+        Hotkey("Enter", this.QuickEnterHandler)
         HotIf()
         this.Activate(this.CurrentView, false)
 
@@ -209,6 +220,66 @@ class LauncherWindow {
         return button
     }
 
+    CreateQuickPastesControls() {
+        this.QuickPastesControls := []
+        this.Gui.SetFont("s9 c94A3B8", "Segoe UI Variable Text")
+        this.QuickStatus := this.Gui.AddText(
+            "x16 y102 w328 h28 +0x200 Hidden", "Connect an Olio account in Settings.")
+        this.QuickPastesControls.Push(this.QuickStatus)
+
+        this.QuickRefreshButton := this.AddQuickPasteButton(
+            "x238 y62 w106 h34 Hidden", "Refresh", 0x34D399)
+        this.ButtonKeysByHwnd[this.QuickRefreshButton.Hwnd] := "__quick_refresh"
+
+        this.Gui.SetFont("s8 c94A3B8", "Segoe UI Variable Text")
+        this.QuickSearchLabel := this.Gui.AddText(
+            "x16 y132 w184 h16 Hidden", "Search")
+        this.QuickPastesControls.Push(this.QuickSearchLabel)
+        this.QuickCategoryLabel := this.Gui.AddText(
+            "x208 y132 w136 h16 Hidden", "Category")
+        this.QuickPastesControls.Push(this.QuickCategoryLabel)
+        this.Gui.SetFont("s9 cF8FAFC", "Segoe UI Variable Text")
+        this.QuickSearchEdit := this.Gui.AddEdit(
+            "x16 y148 w184 h30 Hidden Background0F172A cF8FAFC",
+            "")
+        this.QuickSearchEdit.OnEvent("Change", (*) => this.RefreshQuickPasteList())
+        this.QuickPastesControls.Push(this.QuickSearchEdit)
+
+        this.Gui.SetFont("s9 cF8FAFC", "Segoe UI Variable Text")
+        this.QuickCategoryList := this.Gui.AddDropDownList(
+            "x208 y148 w136 h30 Hidden", ["All", "Favorites"])
+        this.QuickCategoryList.OnEvent("Change", (*) => this.RefreshQuickPasteList())
+        this.QuickPastesControls.Push(this.QuickCategoryList)
+
+        this.QuickPasteList := this.Gui.Add("Custom",
+            "ClassListBox x16 y184 w328 h230 Hidden Background020617 cE2E8F0 0x50211051")
+        QuickPastesRenderer.Register(this.QuickPasteList, this)
+        this.QuickPastesControls.Push(this.QuickPasteList)
+
+        this.Gui.SetFont("s8 c94A3B8", "Segoe UI Variable Text")
+        this.QuickFooter := this.Gui.AddText(
+            "x16 y416 w328 h18 +0x200 Hidden", "Waiting for first sync")
+        this.QuickPastesControls.Push(this.QuickFooter)
+
+        this.QuickCopyButton := this.AddQuickPasteButton(
+            "x128 y438 w104 h42 Hidden", "Copy", 0x38BDF8)
+        this.ButtonKeysByHwnd[this.QuickCopyButton.Hwnd] := "__quick_copy"
+        this.QuickPasteButton := this.AddQuickPasteButton(
+            "x240 y438 w104 h42 Hidden", "Paste", 0x34D399)
+        this.ButtonKeysByHwnd[this.QuickPasteButton.Hwnd] := "__quick_paste"
+        this.QuickSettingsButton := this.AddQuickPasteButton(
+            "x16 y438 w328 h42 Hidden", "Open Settings", 0xFBBF24)
+        this.ButtonKeysByHwnd[this.QuickSettingsButton.Hwnd] := "__quick_settings"
+
+    }
+
+    AddQuickPasteButton(options, title, accent) {
+        button := this.Gui.Add("Custom", "ClassButton " options " 0x5001000B", title)
+        TileRenderer.Register(button, title, "", accent, true)
+        this.QuickPastesControls.Push(button)
+        return button
+    }
+
     ApplyWorkstationWindowStyle() {
         try {
             cornerPreference := 2 ; DWMWCP_ROUND
@@ -227,7 +298,8 @@ class LauncherWindow {
     }
 
     IsNavigationContext() {
-        if !WinActive("ahk_id " this.Gui.Hwnd) || this.PageKey = "clipboard"
+        if !WinActive("ahk_id " this.Gui.Hwnd)
+            || this.PageKey = "clipboard" || this.PageKey = "quickPastes"
             return false
         focused := DllCall("GetFocus", "ptr")
         if !focused
@@ -265,6 +337,7 @@ class LauncherWindow {
         width := Round(this.Settings["panelWidth"] * area.Dpi / 96)
         workHeight := area.Bottom - area.Top
         requestedHeight := this.PageKey = "clipboard" ? 500
+            : this.PageKey = "quickPastes" ? 500
             : this.PageKey = "settings" ? 380
             : (this.HasVisibleStatus ? 318 : this.DesiredLogicalHeight)
         height := Min(requestedHeight, workHeight)
@@ -354,6 +427,8 @@ class LauncherWindow {
             control.Visible := false
         for control in this.ConnectionControls
             control.Visible := false
+        for control in this.QuickPastesControls
+            control.Visible := false
         this.PageKey := key
         if key = "clipboard" {
             this.PageSubtitle.Visible := false
@@ -371,6 +446,21 @@ class LauncherWindow {
             this.RefreshConnectionControls()
             if IsObject(this.ConnectionManager) && this.ConnectionManager.Credential
                 this.ConnectionManager.RefreshStatus()
+        } else if key = "quickPastes" {
+            this.PageSubtitle.Visible := false
+            for control in this.QuickPastesControls
+                control.Visible := true
+            if IsObject(this.QuickPastesManager)
+                this.QuickPastesManager.Refresh()
+            this.RefreshQuickPastes()
+            if this.QuickVisibleItems.Length
+                this.QuickPasteList.Focus()
+            else if this.QuickRefreshButton.Enabled
+                this.QuickRefreshButton.Focus()
+            else if this.QuickSettingsButton.Visible
+                this.QuickSettingsButton.Focus()
+            else
+                this.QuickPasteList.Focus()
         } else {
             this.Navigation.Controls := [this.BackButton]
             this.BackButton.Focus()
@@ -387,6 +477,8 @@ class LauncherWindow {
         for control in this.ClipboardControls
             control.Visible := false
         for control in this.ConnectionControls
+            control.Visible := false
+        for control in this.QuickPastesControls
             control.Visible := false
         for control in this.PageControls
             control.Visible := false
@@ -412,6 +504,7 @@ class LauncherWindow {
             dpi := area.Dpi
         width := Round(this.Settings["panelWidth"] * dpi / 96)
         logicalHeight := this.PageKey = "clipboard" ? 500
+            : this.PageKey = "quickPastes" ? 500
             : this.PageKey = "settings" ? 380
             : (this.HasVisibleStatus ? 318 : this.DesiredLogicalHeight)
         height := Min(logicalHeight, area.Bottom - area.Top)
@@ -597,6 +690,207 @@ class LauncherWindow {
             this.ClipboardManager.Delete(index)
     }
 
+    OnQuickPastesChanged(state, detail) {
+        if this.PageKey = "quickPastes" {
+            focused := DllCall("GetFocus", "ptr")
+            this.RefreshQuickPastes()
+            if state = "ready" && this.QuickVisibleItems.Length
+                && (!focused || focused = this.QuickRefreshButton.Hwnd)
+                this.QuickPasteList.Focus()
+        }
+    }
+
+    RefreshQuickPastes() {
+        manager := this.QuickPastesManager
+        this.QuickStatus.Text := IsObject(manager) ? manager.Detail
+            : "Quick Paste synchronization is unavailable in this isolated mode."
+        this.RefreshQuickPasteCategories()
+        this.RefreshQuickPasteList()
+
+        hasCredential := IsObject(this.ConnectionManager)
+            && this.ConnectionManager.Credential
+        busy := IsObject(manager) && manager.RequestBusy
+        needsSettings := !hasCredential || !IsObject(manager)
+            || manager.State = "disconnected" || manager.State = "revoked"
+            || manager.State = "scope-required"
+        TileRenderer.SetEnabled(this.QuickRefreshButton, hasCredential && !busy)
+        this.QuickSearchEdit.Enabled := IsObject(manager) && manager.Items.Length > 0
+        this.QuickCategoryList.Enabled := this.QuickSearchEdit.Enabled
+        TileRenderer.SetEnabled(this.QuickSettingsButton, true)
+        this.QuickSettingsButton.Visible := needsSettings
+        this.QuickCopyButton.Visible := !needsSettings
+        this.QuickPasteButton.Visible := !needsSettings
+        this.UpdateQuickPasteActionState()
+        this.Navigation.Controls := [this.BackButton, this.QuickRefreshButton,
+            this.QuickSearchEdit, this.QuickCategoryList, this.QuickPasteList]
+        if needsSettings
+            this.Navigation.Controls.Push(this.QuickSettingsButton)
+        else {
+            this.Navigation.Controls.Push(this.QuickCopyButton)
+            this.Navigation.Controls.Push(this.QuickPasteButton)
+        }
+        this.QuickFooter.Text := this.QuickLastFeedback
+            ? this.QuickLastFeedback
+            : (IsObject(manager) ? manager.LastSyncDisplay() : "Waiting for first sync")
+        TileRenderer.RefreshAll()
+    }
+
+    RefreshQuickPasteCategories() {
+        current := this.SelectedQuickPasteCategory()
+        favoritesSelected := this.SelectedQuickPasteFavorites()
+        this.QuickCategoryValues := ["", ""]
+        labels := ["All", "Favorites"]
+        if IsObject(this.QuickPastesManager) {
+            for category in this.QuickPastesManager.Categories() {
+                this.QuickCategoryValues.Push(category)
+                labels.Push(this.SafeQuickPasteDisplay(category, 45))
+            }
+        }
+        this.QuickCategoryList.Delete()
+        this.QuickCategoryList.Add(labels)
+        selected := favoritesSelected ? 2 : 1
+        for index, category in this.QuickCategoryValues {
+            if index > 2 && category = current {
+                selected := index
+                break
+            }
+        }
+        this.QuickCategoryList.Choose(selected)
+    }
+
+    SafeQuickPasteDisplay(value, maximum) {
+        value := RegExReplace(String(value),
+            "[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "�")
+        value := RegExReplace(value, "\R+", " ↵ ")
+        value := Trim(value, " `t")
+        return StrLen(value) > maximum
+            ? SubStr(value, 1, maximum - 1) "…" : value
+    }
+
+    SelectedQuickPasteCategory() {
+        if !this.HasOwnProp("QuickCategoryValues")
+            || this.QuickCategoryList.Value < 1
+            || this.QuickCategoryList.Value > this.QuickCategoryValues.Length
+            return ""
+        return this.QuickCategoryValues[this.QuickCategoryList.Value]
+    }
+
+    SelectedQuickPasteFavorites() {
+        return this.QuickCategoryList.Value = 2
+    }
+
+    RefreshQuickPasteList() {
+        selectedItem := this.SelectedQuickPaste()
+        selectedId := IsObject(selectedItem) ? selectedItem.Id : ""
+        manager := this.QuickPastesManager
+        this.QuickVisibleItems := IsObject(manager)
+            ? manager.Filter(this.QuickSearchEdit.Value,
+                this.SelectedQuickPasteCategory(),
+                this.SelectedQuickPasteFavorites())
+            : []
+        DllCall("SendMessageW", "ptr", this.QuickPasteList.Hwnd,
+            "uint", 0x0184, "uptr", 0, "ptr", 0)
+        selected := 1
+        for index, item in this.QuickVisibleItems {
+            accessible := (item.IsFavorite ? "Favorite, " : "")
+                . item.SafeTitle(100)
+            if item.Category
+                accessible .= ", category " item.SafeCategory(50)
+            accessible .= ", " item.SafeContent(180)
+            DllCall("SendMessageW", "ptr", this.QuickPasteList.Hwnd,
+                "uint", 0x0180, "uptr", 0, "str", accessible, "ptr")
+            if selectedId && item.Id = selectedId
+                selected := index
+        }
+        if this.QuickVisibleItems.Length {
+            selected := Min(selected, this.QuickVisibleItems.Length)
+            DllCall("SendMessageW", "ptr", this.QuickPasteList.Hwnd,
+                "uint", 0x0186, "uptr", selected - 1, "ptr", 0)
+        }
+        dpi := DllCall("GetDpiForWindow", "ptr", this.Gui.Hwnd, "uint")
+        if !dpi
+            dpi := 96
+        DllCall("SendMessageW", "ptr", this.QuickPasteList.Hwnd,
+            "uint", 0x01A0, "uptr", 0, "ptr", Round(98 * dpi / 96))
+        DllCall("InvalidateRect", "ptr", this.QuickPasteList.Hwnd,
+            "ptr", 0, "int", true)
+        this.UpdateQuickPasteActionState()
+    }
+
+    SelectedQuickPasteIndex() {
+        selected := DllCall("SendMessageW", "ptr", this.QuickPasteList.Hwnd,
+            "uint", 0x0188, "uptr", 0, "ptr", 0, "ptr")
+        return selected < 0 || selected > 10000 ? 0 : selected + 1
+    }
+
+    SelectedQuickPaste() {
+        index := this.SelectedQuickPasteIndex()
+        return index && index <= this.QuickVisibleItems.Length
+            ? this.QuickVisibleItems[index] : 0
+    }
+
+    UpdateQuickPasteActionState() {
+        enabled := IsObject(this.SelectedQuickPaste())
+        TileRenderer.SetEnabled(this.QuickCopyButton, enabled)
+        TileRenderer.SetEnabled(this.QuickPasteButton, enabled)
+        return enabled
+    }
+
+    RefreshQuickPastesNow() {
+        this.QuickLastFeedback := ""
+        if IsObject(this.QuickPastesManager)
+            this.QuickPastesManager.Refresh()
+    }
+
+    CopyQuickPasteSelection() {
+        item := this.SelectedQuickPaste()
+        if !IsObject(item) || !IsObject(this.ClipboardManager)
+            return false
+        if !this.ClipboardManager.PublishText(item.Content) {
+            this.SetQuickFeedback("The clipboard is temporarily unavailable.", true)
+            return false
+        }
+        this.SetQuickFeedback("Copied selected Quick Paste.")
+        return true
+    }
+
+    PasteQuickPasteSelection() {
+        target := this.PreviousForeground
+        if !this.CopyQuickPasteSelection()
+            return false
+        this.Hide(false)
+        if this.PasteRunner.Call(target) {
+            try TrayTip("Quick Paste inserted.", "Olio Launcher", 0x1)
+            return true
+        }
+        this.SetQuickFeedback("Copied; Windows could not insert it. Paste manually.", true)
+        try TrayTip("Quick Paste copied, but Windows could not insert it. Paste manually.",
+            "Olio Launcher", 0x2)
+        return false
+    }
+
+    SetQuickFeedback(text, isError := false) {
+        this.QuickLastFeedback := text
+        this.QuickFooter.SetFont("s8 c" (isError ? "FCA5A5" : "A7F3D0"),
+            "Segoe UI Variable Text")
+        this.QuickFooter.Text := text
+    }
+
+    ActivateQuickPasteFocused() {
+        focused := DllCall("GetFocus", "ptr")
+        if focused = this.QuickPasteList.Hwnd {
+            this.CopyQuickPasteSelection()
+            return
+        }
+        for control in this.Navigation.Controls {
+            if control.Hwnd = focused {
+                DllCall("SendMessageW", "ptr", focused, "uint", 0x00F5,
+                    "uptr", 0, "ptr", 0)
+                return
+            }
+        }
+    }
+
     OnConnectionChanged(state, detail) {
         if this.PageKey = "settings"
             this.RefreshConnectionControls()
@@ -708,6 +1002,10 @@ class LauncherWindow {
             this.UpdateClipboardOpenState()
             return 0
         }
+        if lParam = this.QuickPasteList.Hwnd && notification = 1 {
+            this.UpdateQuickPasteActionState()
+            return 0
+        }
         if notification = 0 && this.ButtonKeysByHwnd.Has(lParam) {
             key := this.ButtonKeysByHwnd[lParam]
             if key = "__back" {
@@ -722,6 +1020,10 @@ class LauncherWindow {
                 case "__connection_cancel": this.ConnectionManager.CancelPairing()
                 case "__connection_retry": this.ConnectionManager.Retry()
                 case "__connection_disconnect": this.ConfirmDisconnect()
+                case "__quick_refresh": this.RefreshQuickPastesNow()
+                case "__quick_copy": this.CopyQuickPasteSelection()
+                case "__quick_paste": this.PasteQuickPasteSelection()
+                case "__quick_settings": this.Activate("settings")
                 default:
                     if this.Buttons[key].Enabled
                         this.Activate(key)

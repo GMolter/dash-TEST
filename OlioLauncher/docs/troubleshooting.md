@@ -1,4 +1,44 @@
-# Milestone 5 troubleshooting
+# Milestone 6 troubleshooting
+
+## Quick Pastes says connect in Settings
+
+Open **Settings** and approve the launcher. A device approved before Milestone 6 retains
+only `connection:status`, so it must be disconnected and approved again to receive the
+separate `quick-pastes:read` scope. Existing devices are intentionally not upgraded in
+place.
+
+## Quick Pastes is offline, rate-limited, or cannot synchronize
+
+The last successful in-memory list may remain visible and is explicitly labeled stale.
+Check connectivity and choose **Refresh** later. Rate limits reset within the displayed
+recovery window. Do not include response bodies, Quick Paste text, credentials, account
+identifiers, or authorization headers in diagnostics.
+
+If the page says synchronization is not available on Olio Workstation yet, the connected
+device-status endpoint is present but the Milestone 6 API action or database migration has
+not been deployed. Apply the committed migration and deploy the updated existing
+`/api/launcher` function through the approved release process; reconnecting alone cannot
+install missing backend code.
+
+An invalid or oversized response is rejected without partially replacing the current
+list. The server permits at most 100 items, 20,000 content characters per item, 500,000
+aggregate content characters, and a 1 MiB JSON response.
+
+## Paste did not reach the previous application
+
+The selected content remains on the clipboard; return to the intended application and
+paste manually. Olio Launcher never elevates itself. Windows blocks a standard-user
+process from sending input to an elevated target, and the launcher abandons paste if the
+previous window disappears or another window takes focus. Clipboard pause and sensitive-
+application capture exclusions remain in force; launcher-published content uses the
+existing duplicate-suppression path.
+
+## A revoked device still shows old Quick Paste rows
+
+Open or refresh Quick Pastes. The next protected request returns the same content-free
+invalid state as an unknown device and clears the local credential and all in-memory
+Quick Paste rows. Confirmed disconnect and launcher exit clear them immediately as well.
+There is no disk cache to recover.
 
 ## Connect says account connection is not ready
 

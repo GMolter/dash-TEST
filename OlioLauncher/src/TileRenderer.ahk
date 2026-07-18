@@ -82,7 +82,10 @@ class TileRenderer {
     static OnDrawItem(wParam, lParam, msg, hwnd) {
         try {
             result := this.DrawItem(lParam)
-            return result ? result : ClipboardRenderer.DrawItem(lParam)
+            if result
+                return result
+            result := ClipboardRenderer.DrawItem(lParam)
+            return result ? result : QuickPastesRenderer.DrawItem(lParam)
         }
         catch as drawError {
             this.LastDrawError := Type(drawError) ": " drawError.Message

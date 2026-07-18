@@ -64,7 +64,8 @@ content-free states.
 The final credential is another 256-bit random value generated in server memory. Its hash
 is inserted atomically with the device row; only the winning exchange receives the raw
 value, once. `launcher_devices` constrains credential hashes and active stable identifiers
-to uniqueness, limits scope to `connection:status`, and timestamps approval, last use,
+to uniqueness, limits scope to the exact reviewed legacy or Milestone 6 sets, and
+timestamps approval, last use,
 revocation, and updates. Every device-authenticated operation binds credential hash and
 stable identifier and requires `revoked_at is null`.
 
@@ -90,5 +91,27 @@ must still avoid sharing it or screenshots. The launcher credential is protected
 Windows Credential Manager and is deleted after confirmed server disconnect or detected
 revocation.
 
-Milestone 5 explicitly has no Quick Paste device scope or endpoint. Authorization alone
-does not permit Quick Paste reads, synchronization, caching, display, copy, or paste.
+## Launcher Quick Paste authorization
+
+The minimum Milestone 6 addition is `quick-pastes:read`. Copy and explicit paste happen
+locally and need no server use/mutation permission. Existing `connection:status` devices
+are not updated by the migration; only a fresh explicit approval receives both scopes.
+
+`fetch_launcher_quick_pastes` is callable only by `service_role`, fixes
+`search_path = ''`, and accepts device identifier, credential hash, and opaque rate-limit
+actors—not an owner field. It matches identifier and credential hash in the same
+unrevoked device row, checks scope, derives `owner_id` from that row, and selects only
+that owner's Quick Pastes. Revocation makes the next call fail before any row is read.
+Authenticated, anon, and public roles have no execute permission. Existing table RLS and
+owner CRUD policies remain enabled and unchanged.
+
+The RPC returns only id, title, content, category, sort order, and favorite status. It
+reuses the owner/order index and updates `last_used_at` atomically. Unknown, wrong,
+cross-device, and revoked requests share one content-free invalid state, so a compromised
+credential cannot enumerate owners or devices. Per-source and per-device fixed-window
+rate limits, item/field/aggregate limits, and the API's 1 MiB UTF-8 response bound apply.
+
+No service-role key is present in launcher or browser code. Quick Paste rows remain in
+the launcher's process memory only; disconnect, revocation, and exit clear them. No
+offline cache—encrypted or plaintext—was added. Browser storage, URLs, logs, analytics,
+test output, snapshots, coverage, and diagnostics remain content-free.

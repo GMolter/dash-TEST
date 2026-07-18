@@ -11,6 +11,7 @@
 #Include ..\src\Navigation.ahk
 #Include ..\src\TileRenderer.ahk
 #Include ..\src\ClipboardRenderer.ahk
+#Include ..\src\QuickPastesRenderer.ahk
 #Include ..\src\ClipboardPreviewWindow.ahk
 #Include ..\src\ScreenshotManager.ahk
 #Include ..\src\LauncherWindow.ahk

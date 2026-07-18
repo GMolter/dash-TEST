@@ -41,6 +41,18 @@ up to 60 characters.
 
 Your order remains after refresh. Quick Paste content is not saved in browser storage.
 
+## Use Quick Pastes in Olio Launcher
+
+A freshly approved Olio Launcher can read your private list. Open **Quick Pastes** there
+to synchronize, search, choose a saved category or **Favorites** from the Category
+selector, refresh, copy, or explicitly paste into the application that was active before
+the launcher.
+
+The launcher is read-only. Create, edit, delete, reorder, duplicate, and change favorites
+here in Workstation. Its synchronized list exists only in launcher memory; it has no
+offline cache and clears on disconnect, revocation, or exit. An older approved launcher
+may ask for a new approval because existing device access is not silently broadened.
+
 ## Delete
 
 Choose the trash action, review the permanent-deletion warning, then confirm. Cancel if

@@ -17,7 +17,8 @@ VITE_SUPABASE_ANON_KEY=your-public-anon-key
 
 Never put a Supabase service-role key in a `VITE_` variable. Vite variables are included
 in client code. Server-only administrative functions use non-`VITE_` variables through
-their existing server configuration; Quick Pastes does not use those functions.
+their existing server configuration. Launcher Quick Paste reads use the existing
+server-only `/api/launcher` function.
 
 The Milestone 5 `/api/launcher` server function additionally requires the existing
 server-only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Never prefix the service-role
@@ -39,6 +40,7 @@ supabase start
 supabase db reset
 supabase test db supabase/tests/quick_pastes_rls.test.sql
 supabase test db supabase/tests/launcher_connection_rls.test.sql
+supabase test db supabase/tests/launcher_quick_pastes_rls.test.sql
 ```
 
 The repository did not previously include `supabase/config.toml`; run `supabase init`
@@ -60,6 +62,7 @@ of raw-secret columns. Do not link this local configuration to a remote project.
 ```powershell
 npm run test:quick-pastes
 npm run test:launcher-connection
+npm run test:launcher-quick-pastes
 npm test
 npm run typecheck
 npm run lint

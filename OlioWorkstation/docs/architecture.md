@@ -72,5 +72,36 @@ hash-only requests; `launcher_devices` stores individually revocable hash-only d
 credentials; `launcher_rate_limits` stores HMAC actor hashes and fixed windows. Security-
 definer functions use `search_path = ''`, explicit roles, row locks, and one transition
 per transaction. Authenticated device-list/revoke RPCs derive `auth.uid()` and return only
-safe metadata. Device scope is constrained to `connection:status`; Milestone 6 must add a
-new reviewed authorization boundary before any Quick Paste access exists.
+safe metadata. Milestone 6 preserves this baseline and adds the boundary below.
+
+## Launcher Quick Paste reads (Milestone 6)
+
+The reviewed device scope is exactly `quick-pastes:read`, alongside
+`connection:status`. The migration changes the scope constraint to allow only the legacy
+or new exact sets and does not update existing device rows. A legacy device must be
+disconnected and approved again; this prevents a silent authorization expansion.
+
+The existing `/api/launcher` entrypoint adds one `quick-pastes` action, preserving the
+12-function Hobby budget. It accepts only stable device UUID and credential in an HTTPS
+POST body. The server hashes the credential and calls the service-only
+`fetch_launcher_quick_pastes` RPC with HMAC source/device rate actors. The RPC matches one
+unrevoked device, checks the new scope, derives its owner, and then reads only that
+owner's Quick Paste rows. No `user_id`, `owner_id`, email, or account identifier is
+accepted from the launcher.
+
+The RPC is `SECURITY DEFINER` with an empty search path, schema-qualified objects, an
+explicit `service_role` grant, atomic `last_used_at` update, and stable
+`sort_order, created_at, id` ordering. It reuses
+`quick_pastes_owner_order_idx`; no new index or direct table grant is required. RLS and
+Workstation CRUD ownership policies are unchanged. Only id, title, content, category,
+sort order, and favorite state leave the database.
+
+Source access is limited to 60 requests per 10 minutes and device access to 30 per 10
+minutes. The RPC/API enforce 100 items, title/category/content model limits, 500,000
+aggregate content characters, and a 1 MiB UTF-8 JSON response. Wrong credentials,
+unknown devices, revoked devices, and cross-device attempts receive the same
+content-free invalid response.
+
+The browser authorization page discloses read-only private Quick Paste access. It does
+not expose launcher credentials or add Quick Paste data to browser persistence. Editing,
+deleting, reordering, favoriting, and sharing remain Workstation-only.

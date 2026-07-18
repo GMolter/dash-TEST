@@ -24,6 +24,8 @@ class LauncherEndpoint {
 }
 
 class LauncherHttpTransport {
+    static MaxResponseCharacters := 1048576
+
     __New() {
         this.Request := 0
         this.Callback := 0
@@ -83,7 +85,25 @@ class LauncherHttpTransport {
             return
         }
         data := 0
-        try data := FlatJson.Parse(request.ResponseText)
+        responseText := ""
+        oversized := false
+        try {
+            contentLength := request.GetResponseHeader("Content-Length")
+            if RegExMatch(contentLength, "^\d+$")
+                oversized := Integer(contentLength) > LauncherHttpTransport.MaxResponseCharacters
+        }
+        if !oversized {
+            try {
+                responseText := request.ResponseText
+                oversized := StrLen(responseText) > LauncherHttpTransport.MaxResponseCharacters
+            }
+        }
+        if oversized {
+            callback.Call({Ok: false, Status: 413,
+                Data: Map("state", "too_large")})
+            return
+        }
+        try data := FlatJson.Parse(responseText)
         catch
             data := 0
         callback.Call({Ok: status >= 200 && status < 300 && data is Map,
@@ -106,6 +126,7 @@ class LauncherConnection {
         browserRunner := 0) {
         this.Settings := settings
         this.ChangedCallback := changedCallback
+        this.CredentialClearedCallback := 0
         this.Origin := LauncherEndpoint.ProductionOrigin
         if settings.Has("workstationUrl") {
             overrideOrigin := LauncherEndpoint.Normalize(settings["workstationUrl"])
@@ -282,7 +303,7 @@ class LauncherConnection {
         SettingsManager.UpdateMany(Map("connectedDeviceName", safeName,
             "connectedAt", this.Settings["connectedAt"]))
         this.ClearPairing()
-        this.SetState("connected", "Connected. Quick Pastes are not available in the launcher yet.")
+        this.SetState("connected", "Connected. Quick Pastes are available from the launcher.")
     }
 
     RefreshStatus() {
@@ -296,15 +317,13 @@ class LauncherConnection {
     OnStatus(result) {
         if !this.ValidResponse(result) {
             if IsObject(result) && result.Status = 401 {
-                this.CredentialStore.Delete(), this.Credential := ""
-                this.ClearConnectionMetadata()
-                this.SetState("revoked", "This launcher was revoked. Connect again to recover.")
+                this.InvalidateCredential()
             } else
                 this.SetState("offline", "Connected status could not be verified while offline.")
             return
         }
         if this.ResponseState(result) = "connected"
-            this.SetState("connected", "Connected. Quick Pastes are not available in the launcher yet.")
+            this.SetState("connected", "Connected. Quick Pastes are available from the launcher.")
         else
             this.SetState("offline", "Connected status could not be verified. Try again.")
     }
@@ -324,6 +343,7 @@ class LauncherConnection {
             this.CredentialStore.Delete()
             this.Credential := ""
             this.ClearConnectionMetadata()
+            this.NotifyCredentialCleared("disconnected")
             this.SetState("disconnected", "Disconnected. The protected credential was removed.")
             return
         }
@@ -425,6 +445,19 @@ class LauncherConnection {
         this.Settings["connectedDeviceName"] := ""
         this.Settings["connectedAt"] := ""
         SettingsManager.UpdateMany(Map("connectedDeviceName", "", "connectedAt", ""))
+    }
+
+    InvalidateCredential(detail := "This launcher was revoked. Connect again to recover.") {
+        this.CredentialStore.Delete()
+        this.Credential := ""
+        this.ClearConnectionMetadata()
+        this.NotifyCredentialCleared("revoked")
+        this.SetState("revoked", detail)
+    }
+
+    NotifyCredentialCleared(reason) {
+        if IsObject(this.CredentialClearedCallback)
+            this.CredentialClearedCallback.Call(reason)
     }
 
     SetState(state, detail) {

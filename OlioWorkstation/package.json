@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:quick-pastes": "vitest run src/features/quickPastes src/components/QuickPastes.test.tsx src/hooks/useQuickPastes.test.tsx test/quickPastesPrivacy.test.ts",
     "test:launcher-connection": "vitest run api/_utils/launcherProtocol.test.ts src/features/launcherDevices src/components/LauncherDevices.test.tsx src/pages/LauncherAuthorization.test.tsx test/launcherConnectionPrivacy.test.ts",
+    "test:launcher-quick-pastes": "vitest run api/launcherQuickPastes.test.ts api/_utils/launcherProtocol.test.ts test/launcherQuickPastesPrivacy.test.ts test/vercelFunctionBudget.test.ts",
     "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"

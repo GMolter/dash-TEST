@@ -9,8 +9,10 @@ settings, or view counts. Pastebin remains a separate sharing utility backed by 
 
 Secure Launcher Connection lets an authenticated user approve a named Windows launcher
 without entering an Olio password into AutoHotkey. Profile Settings lists safe device
-metadata and provides confirmed per-device revocation. Milestone 5 grants connection
-status only; it does not synchronize Quick Pastes to the launcher.
+metadata and provides confirmed per-device revocation. Milestone 6 adds a separately
+reviewed `quick-pastes:read` scope for newly approved devices and read-only, owner-bound
+synchronization through the existing `/api/launcher` function. Existing devices are not
+silently upgraded.
 
 ## Commands
 
@@ -27,6 +29,7 @@ npm run lint
 npm run build
 npm run test:quick-pastes
 npm run test:launcher-connection
+npm run test:launcher-quick-pastes
 npm test
 ```
 
@@ -38,3 +41,5 @@ or client bundle. See [setup.md](docs/setup.md), [security.md](docs/security.md)
 [milestone4-results.md](docs/milestone4-results.md) for local database validation,
 privacy boundaries, and the Quick Pastes manual checklist. Secure Launcher Connection
 evidence and limitations are in [milestone5-results.md](docs/milestone5-results.md).
+Launcher Quick Paste authorization and validation evidence is in
+[the Milestone 6 results](../OlioLauncher/docs/milestone6-results.md).

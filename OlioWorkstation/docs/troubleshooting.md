@@ -7,6 +7,27 @@ anon key are configured, and the Milestone 4 migration exists in the target envi
 Choose **Try again** in the error notice after correcting the problem. Existing rows remain
 unchanged when loading fails.
 
+## Launcher Quick Pastes says new approval is required
+
+The launcher has a valid Milestone 5 `connection:status` credential but lacks the
+separate `quick-pastes:read` scope. This is intentional: the Milestone 6 migration does
+not silently broaden existing device access. Disconnect that controlled launcher and
+approve it again.
+
+## Launcher Quick Paste synchronization fails
+
+Apply migrations in timestamp order, including
+`20260716053000_fix_launcher_pairing_expiry.sql` and then
+`20260717090000_add_launcher_quick_paste_read_scope.sql`, through the approved deployment
+workflow. Confirm `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and the existing launcher
+rate-limit HMAC secret remain server-only, then redeploy the existing `/api/launcher`
+function. Do not add a thirteenth serverless entrypoint.
+
+Unknown, wrong, cross-device, and revoked credentials intentionally return the same
+content-free failure. A rate-limited client must wait for the fixed window and retry.
+Never collect request/response bodies, Quick Paste values, credentials, hashes, owner
+IDs, sessions, or authorization headers while troubleshooting.
+
 ## A create or edit will not save
 
 Title and content are required. The limits are 120 characters for title, 20,000 for
