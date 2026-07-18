@@ -29,4 +29,21 @@ describe('launcher connection privacy boundaries', () => {
     expect(milestone6).not.toMatch(/update public\.launcher_devices\s+set scopes/i);
     expect(endpoint).toContain("case 'quick-pastes'");
   });
+
+  it('hard-deletes removed devices without weakening ownership or credential checks', () => {
+    const migration = readFileSync(
+      join(root, 'supabase/migrations/20260718193000_hard_delete_removed_launcher_devices.sql'),
+      'utf8',
+    );
+    expect(migration).toMatch(/foreign key \(device_id\)[\s\S]*on delete cascade/i);
+    expect(migration).toMatch(
+      /delete from public\.launcher_devices[\s\S]*where id = p_device_id[\s\S]*and owner_id = auth\.uid\(\)/i,
+    );
+    expect(migration).toMatch(
+      /delete from public\.launcher_devices[\s\S]*where device_identifier = p_device_identifier[\s\S]*and credential_hash = p_credential_hash/i,
+    );
+    expect(migration).toContain("set search_path = ''");
+    expect(migration).toContain('clock_timestamp()');
+    expect(migration).not.toMatch(/set\s+credential_hash\s*=/i);
+  });
 });

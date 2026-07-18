@@ -71,8 +71,11 @@ PostgreSQL owns the atomic state machine. `launcher_pairing_requests` stores sho
 hash-only requests; `launcher_devices` stores individually revocable hash-only device
 credentials; `launcher_rate_limits` stores HMAC actor hashes and fixed windows. Security-
 definer functions use `search_path = ''`, explicit roles, row locks, and one transition
-per transaction. Authenticated device-list/revoke RPCs derive `auth.uid()` and return only
-safe metadata. Milestone 6 preserves this baseline and adds the boundary below.
+per transaction. Authenticated device-list/revoke RPCs derive `auth.uid()`. The
+owner-facing list returns only safe metadata for active devices. Removal deletes the
+owned device row and cascades its completed pairing record, so the credential becomes
+invalid while the card and stored device history disappear. Milestone 6 preserves this
+baseline and adds the boundary below.
 
 ## Launcher Quick Paste reads (Milestone 6)
 

@@ -73,9 +73,16 @@ already-applied base migration is corrected by
 schema cache. Do not place a service-role key in browser code and do not send database
 credentials, sessions, or SQL-editor screenshots to support.
 
-## A launcher device will not revoke
+## A launcher device will not remove
 
 Refresh **Profile Settings → Olio Launcher devices** and retry. A recoverable error leaves
-the device unchanged. Do not send database output, authorization headers, request bodies,
-credentials, codes, account screenshots, or Supabase sessions to support. If revocation
-succeeds, every subsequent device-authenticated request is rejected immediately.
+the device visible and connected. Do not send database output, authorization headers,
+request bodies, credentials, codes, account screenshots, or Supabase sessions to support.
+After removal succeeds, the card disappears and every subsequent device-authenticated
+request is rejected immediately. The device row, stored credential hash, and completed
+pairing record are deleted together.
+
+If Supabase reports `launcher_pairing_device_state` while deleting a device row, apply
+`20260718193000_hard_delete_removed_launcher_devices.sql`. The original foreign key tried
+to set an exchanged pairing request's `device_id` to null, which contradicted its state
+constraint. The later migration changes that relationship to an atomic cascade.

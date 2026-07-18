@@ -45,21 +45,23 @@ Account details are currently read-only in the UI. Contact your system administr
 
 ## 💻 Olio Launcher Devices
 
-The **Olio Launcher devices** section lists launchers approved for your account. It shows
-only safe metadata: device name, connected time, last-used time, and connected or revoked
-status. Credential values, pairing codes, hashes, and internal security fields are never
-shown.
+The **Olio Launcher devices** section lists active launchers approved for your account.
+It shows only safe metadata: device name, connected time, and last-used time. Removed
+devices do not remain in this list. Credential values, pairing codes, hashes, and
+internal security fields are never shown.
 
 To remove a device:
 
 1. Find its recognizable device name.
-2. Choose **Revoke**.
-3. Review the warning and choose **Revoke access**. Cancel if you selected the wrong
+2. Choose **Remove**.
+3. Review the warning and choose **Remove launcher**. Cancel if you selected the wrong
    device.
-4. Refresh the list and confirm the status is **Revoked**.
+4. Confirm the device card disappears.
 
-Revocation immediately prevents later authenticated launcher operations and clears
-Quick Pastes when the launcher observes the revoked credential. Reconnect from launcher
+Removal immediately blocks later authenticated launcher operations and clears Quick
+Pastes when the launcher observes the invalid credential. The device row, stored
+credential hash, and completed pairing history are deleted together; the old credential
+stays blocked because there is no matching device record. Reconnect from launcher
 Settings if you still control the device. A newly approved launcher may read your private
 Quick Pastes; an older connection may require disconnect and fresh approval because its
 access is not silently broadened.

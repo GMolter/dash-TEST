@@ -26,7 +26,8 @@ export function createLauncherDeviceRepository(client: SupabaseClient): Launcher
     async list() {
       const { data, error } = await client.rpc('list_launcher_devices');
       if (error) throw dataError(error);
-      return (Array.isArray(data) ? data : []) as LauncherDevice[];
+      return ((Array.isArray(data) ? data : []) as LauncherDevice[])
+        .filter((device) => device.revoked_at === null && device.status !== 'revoked');
     },
     async revoke(id) {
       const { data, error } = await client.rpc('revoke_launcher_device', { p_device_id: id });

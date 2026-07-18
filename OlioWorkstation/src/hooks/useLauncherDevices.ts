@@ -43,13 +43,11 @@ export function useLauncherDevices(repository: LauncherDeviceRepository = launch
     setSuccess(null);
     try {
       await repository.revoke(id);
-      setDevices((current) => current.map((device) => device.id === id
-        ? { ...device, status: 'revoked', revoked_at: new Date().toISOString() }
-        : device));
-      setSuccess('Launcher access revoked.');
+      setDevices((current) => current.filter((device) => device.id !== id));
+      setSuccess('Launcher removed and access revoked.');
       return true;
     } catch {
-      setError("We couldn't revoke that launcher. Nothing changed; try again.");
+      setError("We couldn't remove that launcher. Nothing changed; try again.");
       return false;
     } finally {
       setBusyId(null);

@@ -257,8 +257,7 @@ select is(
   'device synchronization rate limit blocks the excess request'
 );
 
-update public.launcher_devices
-set revoked_at = clock_timestamp()
+delete from public.launcher_devices
 where id = 'aaaaaaaa-dddd-4ddd-8ddd-aaaaaaaaaaa1';
 
 select results_eq(
@@ -269,16 +268,16 @@ select results_eq(
     decode(repeat('72', 32), 'hex')
   )$$,
   $$values ('invalid'::text)$$,
-  'revocation immediately blocks later synchronization'
+  'device removal immediately blocks later synchronization'
 );
 select is(
   (
-    select encode(credential_hash, 'hex')
+    select count(*)
     from public.launcher_devices
     where id = 'aaaaaaaa-dddd-4ddd-8ddd-aaaaaaaaaaa1'
   ),
-  repeat('11', 32),
-  'database retains only the one-way credential hash'
+  0::bigint,
+  'device removal deletes its stored credential hash'
 );
 select is(
   (

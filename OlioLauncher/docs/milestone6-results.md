@@ -53,7 +53,7 @@ the resident launcher.
 - Launcher regressions: Milestone 1 **85**, Milestone 2 **63**, Milestone 3 logic
   **26**, Milestone 5 **382**, and Clipboard Preview **44** assertions passed. The full
   guarded Milestone 3 harness also exited successfully.
-- Complete Workstation Vitest: **14 files and 64 tests passed**
+- Complete Workstation Vitest: **14 files and 66 tests passed**
 - API TypeScript check: **passed**
 - Test TypeScript check: **passed**
 - Focused ESLint: **passed**
@@ -68,9 +68,9 @@ The API tests provide uniform content-free rejection for wrong credentials, wron
 devices, revoked devices, and missing authentication, and verify that no owner spoof
 field reaches the RPC. The pgTAP test transaction uses two users and two device identities
 to prove owner A sees only A's rows, owner B sees only B's rows, device A cannot
-authenticate as device B, legacy devices lack the new scope, and revocation blocks the
-next fetch. Database rows contain only credential hashes, never recoverable raw
-credentials.
+authenticate as device B, legacy devices lack the new scope, and removal blocks the next
+fetch. Active database rows contain only credential hashes, never recoverable raw
+credentials; removing a device deletes its row, hash, and completed pairing history.
 
 ## Nontechnical manual checklist
 

@@ -20,6 +20,21 @@ describe('launcher device repository', () => {
     await expect(repository.list()).rejects.toBeInstanceOf(LauncherDeviceDataError);
   });
 
+  it('defensively keeps legacy revoked rows out of the Profile device list', async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        { id: 'active', revoked_at: null, status: 'connected' },
+        { id: 'revoked', revoked_at: '2026-07-18T12:00:00Z', status: 'revoked' },
+      ],
+      error: null,
+    }));
+    const repository = createLauncherDeviceRepository({ rpc } as never);
+
+    await expect(repository.list()).resolves.toEqual([
+      { id: 'active', revoked_at: null, status: 'connected' },
+    ]);
+  });
+
   it('classifies a missing RPC without exposing backend response detail', async () => {
     const repository = createLauncherDeviceRepository({ rpc: vi.fn(async () => ({
       data: null,

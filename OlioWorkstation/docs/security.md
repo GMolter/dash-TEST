@@ -70,8 +70,11 @@ revocation, and updates. Every device-authenticated operation binds credential h
 stable identifier and requires `revoked_at is null`.
 
 RLS is enabled on device, pairing, and rate tables. Authenticated users can directly
-select only safe columns from their own device rows. `list_launcher_devices()` and
-`revoke_launcher_device(uuid)` derive `auth.uid()` and cannot accept ownership. Pairing
+select only safe columns from their own device rows. `list_launcher_devices()` returns
+only the signed-in owner's active devices; `revoke_launcher_device(uuid)` deletes the
+owned device row and cascades its completed pairing request. The stored credential hash
+therefore disappears and the unmatched raw credential immediately becomes invalid.
+Both functions derive `auth.uid()` and cannot accept ownership. Pairing
 and device protocol functions are executable only by `service_role`; every security-
 definer function fixes `search_path = ''` and uses schema-qualified objects. The service
 role exists only in server deployment configuration. Approval ownership comes from

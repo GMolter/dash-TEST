@@ -134,7 +134,7 @@ select results_eq(
 select is(
   (select revoked_at from public.launcher_devices where id = 'aaaaaaaa-dddd-4ddd-8ddd-aaaaaaaaaaa1'),
   null::timestamptz,
-  'failed replacement exchange rolls back revocation of the working credential'
+  'failed replacement exchange rolls back deletion of the working credential'
 );
 select results_eq(
   $$select outcome from public.validate_launcher_device(
@@ -233,6 +233,11 @@ select is(public.revoke_launcher_device('aaaaaaaa-dddd-4ddd-8ddd-aaaaaaaaaaa1'),
 
 select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
 select is(public.revoke_launcher_device('aaaaaaaa-dddd-4ddd-8ddd-aaaaaaaaaaa1'), true, 'user A can revoke user A device');
+select is(
+  (select count(*) from public.list_launcher_devices()),
+  0::bigint,
+  'removed device no longer appears in the owner-facing device list'
+);
 
 reset role;
 set local role service_role;
@@ -240,9 +245,18 @@ select results_eq(
   $$select outcome from public.validate_launcher_device(
     'aaaaaaaa-0000-4000-8000-000000000001', decode(repeat('21', 32), 'hex'), decode(repeat('91', 32), 'hex'))$$,
   $$values ('invalid'::text)$$,
-  'revocation immediately rejects later device authentication'
+  'removal immediately rejects later device authentication'
 );
-select is((select encode(credential_hash, 'hex') from public.launcher_devices where id = 'aaaaaaaa-dddd-4ddd-8ddd-aaaaaaaaaaa1'), repeat('21', 32), 'database retains only the supplied credential hash');
+select is(
+  (select count(*) from public.launcher_devices where id = 'aaaaaaaa-dddd-4ddd-8ddd-aaaaaaaaaaa1'),
+  0::bigint,
+  'removed device credential hash and history row are deleted'
+);
+select is(
+  (select count(*) from public.launcher_pairing_requests where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'),
+  0::bigint,
+  'completed pairing history is deleted with its removed device'
+);
 select is((select count(*) from information_schema.columns where table_schema = 'public' and table_name in ('launcher_devices', 'launcher_pairing_requests') and column_name in ('credential', 'pairing_secret', 'display_code')), 0::bigint, 'no raw credential, pairing-secret, or display-code column exists');
 
 reset role;
