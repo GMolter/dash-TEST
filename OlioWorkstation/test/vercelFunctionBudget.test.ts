@@ -10,7 +10,7 @@ function productionFunctions(root: string, directory = root): string[] {
     if (entry.isDirectory()) {
       return entry.name.startsWith('_') ? [] : productionFunctions(root, fullPath);
     }
-    if (!/\.(?:cjs|js|mjs|ts)$/.test(entry.name) || entry.name.includes('.test.')) {
+    if (!/\.(?:cjs|js|mjs|ts)$/.test(entry.name)) {
       return [];
     }
     return [relative(root, fullPath).replaceAll('\\', '/')];
@@ -23,6 +23,7 @@ describe('Vercel Hobby serverless-function budget', () => {
 
     expect(functions).not.toContain('admin/help-article.ts');
     expect(functions).toContain('admin/help-articles.ts');
+    expect(functions.some((entry) => entry.includes('.test.'))).toBe(false);
     expect(functions).toHaveLength(HOBBY_FUNCTION_LIMIT);
   });
 });

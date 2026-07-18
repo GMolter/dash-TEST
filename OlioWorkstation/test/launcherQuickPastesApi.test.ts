@@ -4,7 +4,7 @@ import {
   handleQuickPastes,
   LAUNCHER_QUICK_PASTE_LIMITS,
   validateLauncherQuickPasteItems,
-} from './launcher.js';
+} from '../api/launcher.js';
 
 const deviceId = 'aaaaaaaa-0000-4000-8000-000000000001';
 const credential = 'a'.repeat(64);
