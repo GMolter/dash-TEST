@@ -122,12 +122,15 @@ class LauncherHttpTransport {
 }
 
 class LauncherConnection {
+    static IdentityResolver := 0
+
     __New(settings, changedCallback := 0, credentialStoreOverride := 0, transport := 0,
         browserRunner := 0) {
         this.Settings := settings
         this.ChangedCallback := changedCallback
         this.CredentialClearedCallback := 0
         this.Origin := LauncherEndpoint.ProductionOrigin
+        this.IdentityRecoveryAmbiguous := false
         if settings.Has("workstationUrl") {
             overrideOrigin := LauncherEndpoint.Normalize(settings["workstationUrl"])
             if overrideOrigin
@@ -151,6 +154,10 @@ class LauncherConnection {
         if this.Credential {
             this.State := "connected"
             this.Detail := "Connected. Open Settings to verify device status."
+        } else if this.IdentityRecoveryAmbiguous {
+            this.State := "recovery"
+            this.Detail := "Settings were recovered, but multiple protected launcher "
+                . "credentials remain. Remove old devices in Workstation, then connect again."
         }
     }
 
@@ -158,7 +165,15 @@ class LauncherConnection {
         changed := Map()
         if !this.Settings.Has("deviceId") || !RegExMatch(this.Settings["deviceId"],
             "i)^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$") {
-            this.Settings["deviceId"] := CryptoRandom.Guid()
+            recoveredIds := []
+            if SettingsManager.InvalidSource {
+                recoveredIds := IsObject(LauncherConnection.IdentityResolver)
+                    ? LauncherConnection.IdentityResolver.Call()
+                    : CredentialStore.DiscoverDeviceIds()
+            }
+            this.IdentityRecoveryAmbiguous := recoveredIds.Length > 1
+            this.Settings["deviceId"] := recoveredIds.Length = 1
+                ? recoveredIds[1] : CryptoRandom.Guid()
             changed["deviceId"] := this.Settings["deviceId"]
         }
         if !this.Settings.Has("deviceName") || !Trim(this.Settings["deviceName"]) {

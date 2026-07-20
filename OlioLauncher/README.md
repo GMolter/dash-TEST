@@ -1,7 +1,7 @@
 # Olio Launcher
 
 Olio Launcher is a native AutoHotkey v2 Windows launcher. The current code implements
-the approved Milestones 1–6 behavior: one
+the approved Milestones 1–7 behavior: one
 resident process, Focus Key activation, right-edge
 placement, native navigation, validated local settings, optional per-user startup,
 redacted diagnostics, memory-only clipboard history, clipboard-only screen capture, a
@@ -33,10 +33,29 @@ browser without collecting an Olio password. The launcher uses short-lived one-t
 authorization, Windows CNG, bounded asynchronous HTTPS requests, and Windows Credential
 Manager. Workstation can list and revoke each device, and launcher disconnect requires
 confirmation. A newly approved device receives the reviewed `quick-pastes:read` scope
-and can synchronize only its owner's Quick Pastes into process memory. Search, category,
-favorites, refresh, copy, and explicit paste are available natively; management remains
-in Workstation. No offline Quick Paste cache exists. Send to Phone and Network Analyzer
-remain disabled and execute no action.
+and can synchronize only its owner's Quick Pastes into process memory. Native search
+covers titles, contents, categories, and favorites without a separate category selector.
+Favorite (pinned) results remain at the top, and the owner-drawn list uses accelerated,
+high-resolution-aware wheel scrolling. Selecting a result copies it through Clipboard
+History's suppression path; refresh and explicit paste are also available. Management
+remains in Workstation. No offline Quick Paste cache exists. Send to Phone and Network
+Analyzer remain disabled and execute no action.
+
+Milestone 7 adds a compact standalone native Settings window that opens directly from
+the launcher. Its primary General, Clipboard & paste, and Account tabs keep everyday
+choices close at hand; monitor/position tuning, diagnostics, exclusions, and reset live
+behind the quiet overflow menu. Choices save immediately, typed values save after a
+short validation delay, and hovering a setting reveals native explanatory help without
+adding rows of help buttons. It provides safe
+schema-versioned settings, hotkey conflict validation, active/primary/remembered monitor placement,
+right-edge/remembered positioning, width limits, runtime always-on-top and focus-loss
+behavior, opt-in close/auto-paste selection policies, persisted clipboard pause and
+plain-language Clipboard History app exclusions, system/dark/light themes, high-contrast adaptation,
+reduced motion, and strictly redacted diagnostics. Automatic paste is off by default and
+can target only the application active before the launcher; a Windows focus or integrity
+failure leaves the item copied for manual paste. Reset explicitly preserves the Olio
+account connection and protected credential. Disconnect remains a separate confirmed
+action.
 
 ## Run from source
 
@@ -61,4 +80,6 @@ evidence, [milestone3-results.md](docs/milestone3-results.md) for Dynamic Screen
 verification, and [milestone5-results.md](docs/milestone5-results.md) for authorization,
 isolation, privacy, and manual connection checks. Milestone 6 authorization, test
 evidence, and its nontechnical checklist are in
-[milestone6-results.md](docs/milestone6-results.md).
+[milestone6-results.md](docs/milestone6-results.md). Milestone 7 settings, accessibility,
+privacy, isolated test evidence, and environmental limitations are in
+[milestone7-results.md](docs/milestone7-results.md).

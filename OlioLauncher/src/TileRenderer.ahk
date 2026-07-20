@@ -84,6 +84,9 @@ class TileRenderer {
             result := this.DrawItem(lParam)
             if result
                 return result
+            result := SettingsRenderer.DrawItem(lParam)
+            if result
+                return result
             result := ClipboardRenderer.DrawItem(lParam)
             return result ? result : QuickPastesRenderer.DrawItem(lParam)
         }
@@ -113,19 +116,20 @@ class TileRenderer {
         pressed := state & 0x1
         focused := state & 0x10
         hovered := itemHwnd = this.HoveredHwnd
-        background := disabled ? 0x070D1A
-            : pressed ? 0x1E1B4B
-            : tile.Selected ? 0x171B46
-            : hovered ? 0x0F172A
-            : 0x0B1220
+        accent := ThemeManager.HighContrast ? ThemeManager.Color("Text") : tile.Accent
+        background := disabled ? ThemeManager.Color("DisabledSurface")
+            : pressed ? ThemeManager.Color("SurfacePressed")
+            : tile.Selected ? ThemeManager.Color("SurfaceSelected")
+            : hovered ? ThemeManager.Color("SurfaceHover")
+            : ThemeManager.Color("Surface")
         if tile.Icon && !disabled
-            background := pressed ? 0x2A2108
-                : tile.Selected ? 0x241E0C
-                : hovered ? 0x172033
-                : 0x0B1220
+            background := pressed ? ThemeManager.Color("SurfacePressed")
+                : tile.Selected ? ThemeManager.Color("SurfaceSelected")
+                : hovered ? ThemeManager.Color("SurfaceHover")
+                : ThemeManager.Color("Surface")
         if (tile.IconKind = "settings-2" || tile.IconKind = "arrow-left") && !disabled
-            background := 0x0B1220
-        parentBackground := 0x020617
+            background := ThemeManager.Color("Surface")
+        parentBackground := ThemeManager.Color("Window")
 
         this.FillRect(hdc, left, top, right, bottom, parentBackground)
         radius := tile.Icon ? Max(10, Floor((bottom - top) / 2))
@@ -133,16 +137,20 @@ class TileRenderer {
         this.FillRounded(hdc, left, top, right, bottom, radius, background)
 
         dpi := this.WindowDpi(itemHwnd)
-        borderColor := disabled ? 0x111827 : tile.Selected ? 0x6366F1 : hovered ? 0x39445A : 0x1E293B
+        borderColor := disabled ? ThemeManager.Color("MutedBorder")
+            : tile.Selected ? accent
+            : hovered ? ThemeManager.Color("Border")
+            : ThemeManager.Color("MutedBorder")
         if tile.Icon && !disabled
-            borderColor := (focused || tile.Selected) ? tile.Accent
-                : hovered ? this.BlendRgb(tile.Accent, 0x1E293B, 0.45)
-                : 0x293548
+            borderColor := (focused || tile.Selected) ? accent
+                : hovered ? this.BlendRgb(accent,
+                    ThemeManager.Color("MutedBorder"), 0.45)
+                : ThemeManager.Color("Border")
         this.StrokeRounded(hdc, left + 1, top + 1, right - 1, bottom - 1,
             radius, borderColor, Max(1, Round(dpi / 96)))
 
         if tile.Icon {
-            iconColor := disabled ? 0x475569 : tile.Accent
+            iconColor := disabled ? ThemeManager.Color("DisabledText") : accent
             iconLeft := left + Round(11 * dpi / 96)
             iconTop := top + Round(8 * dpi / 96)
             iconSize := Round(20 * dpi / 96)
@@ -157,13 +165,14 @@ class TileRenderer {
             if tile.DrawLabel {
                 labelFont := this.CreateFont(9, 600, dpi)
                 try this.DrawUtilityLabel(hdc, tile.Title, labelFont,
-                    disabled ? 0x64748B : 0xF8FAFC,
+                    disabled ? ThemeManager.Color("DisabledText")
+                        : ThemeManager.Color("Text"),
                     left + Round(40 * dpi / 96), top, dpi)
                 finally DllCall("DeleteObject", "ptr", labelFont)
             }
             if focused && !disabled
                 this.StrokeRounded(hdc, left + 1, top + 1, right - 1, bottom - 1,
-                    radius, tile.Accent, Max(1, Round(2 * dpi / 96)))
+                    radius, accent, Max(1, Round(2 * dpi / 96)))
             return true
         }
 
@@ -171,15 +180,18 @@ class TileRenderer {
         inset := Round(12 * dpi / 96)
         this.FillRounded(hdc, left + inset, top + inset, left + inset + accentWidth,
             bottom - inset, accentWidth,
-            disabled ? this.BlendRgb(tile.Accent, 0x334155, 0.42) : tile.Accent)
+            disabled ? this.BlendRgb(accent,
+                ThemeManager.Color("DisabledSurface"), 0.42) : accent)
 
         titleFont := this.CreateFont(10, 600, dpi)
         subtitleFont := this.CreateFont(8, 400, dpi)
         textLeft := left + Round(25 * dpi / 96)
         textRight := right - Round(9 * dpi / 96)
         try {
-            titleColor := disabled ? 0x64748B : 0xF8FAFC
-            subtitleColor := disabled ? 0x475569 : 0x94A3B8
+            titleColor := disabled ? ThemeManager.Color("DisabledText")
+                : ThemeManager.Color("Text")
+            subtitleColor := disabled ? ThemeManager.Color("DisabledText")
+                : ThemeManager.Color("MutedText")
             if tile.Subtitle {
                 this.DrawText(hdc, tile.Title, titleFont, titleColor, textLeft,
                     top + Round(8 * dpi / 96), textRight, top + Round(32 * dpi / 96))
@@ -196,12 +208,18 @@ class TileRenderer {
 
         if focused && !disabled
             this.StrokeRounded(hdc, left + 1, top + 1, right - 1, bottom - 1,
-                radius, tile.Accent, Max(1, Round(2 * dpi / 96)))
+                radius, accent, Max(1, Round(2 * dpi / 96)))
         return true
     }
 
     static OnMouseMove(wParam, lParam, msg, hwnd) {
-        if !this.Tiles.Has(hwnd) || !this.Tiles[hwnd].Enabled
+        if !this.Tiles.Has(hwnd) {
+            SettingsRenderer.OnMouseMove(hwnd)
+            return
+        }
+        if !this.Tiles[hwnd].Enabled
+            return
+        if ThemeManager.ReducedMotion
             return
         if this.HoveredHwnd != hwnd {
             old := this.HoveredHwnd
@@ -218,6 +236,7 @@ class TileRenderer {
     }
 
     static OnMouseLeave(wParam, lParam, msg, hwnd) {
+        SettingsRenderer.OnMouseLeave(hwnd)
         if hwnd = this.HoveredHwnd {
             this.HoveredHwnd := 0
             DllCall("InvalidateRect", "ptr", hwnd, "ptr", 0, "int", true)

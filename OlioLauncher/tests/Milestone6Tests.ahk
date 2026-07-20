@@ -6,6 +6,8 @@ DllCall("SetProcessDpiAwarenessContext", "ptr", -4, "ptr")
 
 #Include ..\src\FlatJson.ahk
 #Include ..\src\SettingsManager.ahk
+#Include ..\src\ThemeManager.ahk
+#Include ..\src\HotkeyManager.ahk
 #Include ..\src\CryptoRandom.ahk
 #Include ..\src\CredentialStore.ahk
 #Include ..\src\LauncherConnection.ahk
@@ -16,6 +18,7 @@ DllCall("SetProcessDpiAwarenessContext", "ptr", -4, "ptr")
 #Include ..\src\ClipboardRenderer.ahk
 #Include ..\src\QuickPastesRenderer.ahk
 #Include ..\src\ClipboardPreviewWindow.ahk
+#Include ..\src\SettingsDialog.ahk
 #Include ..\src\LauncherWindow.ahk
 
 class M6MockTransport {
@@ -188,6 +191,10 @@ class Milestone6Tests {
             "Favorites filtering returned the wrong rows.")
         this.Assert(client.Filter("favorite").Length = 2,
             "Favorites were not searchable through the common search field.")
+        visible := client.Filter()
+        this.Assert(visible[1].Title = "Alpha" && visible[2].Title = "Gamma"
+            && visible[3].Title = "Beta",
+            "Favorites were not grouped first while preserving stable group order.")
         categories := client.Categories()
         this.Assert(categories.Length = 2 && categories[1] = "General"
             && categories[2] = "Support",
@@ -335,30 +342,59 @@ class Milestone6Tests {
                 this.Item(1, "Keyboard fixture", "Exact clipboard fixture",
                     "General", 0, true),
                 this.Item(2, "Other fixture", "Other harmless fixture",
-                    "Support", 1, false)
+                    "Support", 1, false),
+                this.Item(3, "Third fixture", "Third harmless fixture",
+                    "", 2, false),
+                this.Item(4, "Fourth fixture", "Fourth harmless fixture",
+                    "", 3, false),
+                this.Item(5, "Fifth fixture", "Fifth harmless fixture",
+                    "", 4, false),
+                this.Item(6, "Sixth fixture", "Sixth harmless fixture",
+                    "", 5, false)
             ]))
             this.Assert(window.PageKey = "quickPastes"
                 && window.QuickSearchEdit.Visible
-                && window.QuickCategoryList.Visible,
-                "Native search or category controls are missing.")
-            window.QuickCategoryList.Choose(2)
-            window.RefreshQuickPasteList()
-            this.Assert(!window.HasOwnProp("QuickFavoritesCheck")
-                && window.QuickVisibleItems.Length = 1
-                && window.QuickVisibleItems[1].IsFavorite,
-                "Favorites were not consolidated into the category selector.")
+                && !window.HasOwnProp("QuickCategoryList")
+                && !window.HasOwnProp("QuickCategoryLabel"),
+                "Native search is missing or the removed category selector remains.")
             this.Assert(window.QuickRefreshButton.Text = "Refresh"
                 && window.QuickCopyButton.Text = "Copy"
                 && window.QuickPasteButton.Text = "Paste"
                 && window.QuickSettingsButton.Text = "Open Settings",
                 "A Quick Paste action lacks an accessible native label.")
-            this.Assert(window.QuickVisibleItems.Length = 1
+            this.Assert(window.QuickVisibleItems.Length = 6
                 && DllCall("GetFocus", "ptr") = window.QuickPasteList.Hwnd,
                 "Quick Paste list did not receive native keyboard focus.")
             listStyle := DllCall("GetWindowLongW", "ptr",
                 window.QuickPasteList.Hwnd, "int", -16, "uint")
             this.Assert(listStyle & 0x10 && listStyle & 0x00200000,
                 "Quick Paste list lacks owner-drawn cards or vertical navigation.")
+
+            wheelDown := ((-120 & 0xFFFF) << 16)
+            this.Assert(window.OnQuickPasteMouseWheel(wheelDown, 0, 0,
+                window.QuickPasteList.Hwnd) = 0
+                && DllCall("SendMessageW", "ptr", window.QuickPasteList.Hwnd,
+                    "uint", 0x018E, "uptr", 0, "ptr", 0, "ptr") = 2,
+                "A wheel notch did not move the Quick Paste list by two cards.")
+            wheelUp := (120 << 16)
+            this.Assert(window.OnQuickPasteMouseWheel(wheelUp, 0, 0,
+                window.QuickPasteList.Hwnd) = 0
+                && DllCall("SendMessageW", "ptr", window.QuickPasteList.Hwnd,
+                    "uint", 0x018E, "uptr", 0, "ptr", 0, "ptr") = 0,
+                "Reverse wheel movement did not return naturally toward the first card.")
+            halfWheelDown := ((-60 & 0xFFFF) << 16)
+            window.OnQuickPasteMouseWheel(halfWheelDown, 0, 0,
+                window.QuickPasteList.Hwnd)
+            this.Assert(DllCall("SendMessageW", "ptr", window.QuickPasteList.Hwnd,
+                "uint", 0x018E, "uptr", 0, "ptr", 0, "ptr") = 0,
+                "A partial high-resolution wheel delta moved before one full notch.")
+            window.OnQuickPasteMouseWheel(halfWheelDown, 0, 0,
+                window.QuickPasteList.Hwnd)
+            this.Assert(DllCall("SendMessageW", "ptr", window.QuickPasteList.Hwnd,
+                "uint", 0x018E, "uptr", 0, "ptr", 0, "ptr") = 2,
+                "Accumulated high-resolution wheel deltas did not scroll naturally.")
+            DllCall("SendMessageW", "ptr", window.QuickPasteList.Hwnd,
+                "uint", 0x0197, "uptr", 0, "ptr", 0)
 
             this.Assert(window.CopyQuickPasteSelection()
                 && clipboard.Published.Length = 1
@@ -369,12 +405,24 @@ class Milestone6Tests {
             this.Assert(window.QuickLastFeedback = "Copied selected Quick Paste.",
                 "Copy did not provide clear feedback.")
 
+            DllCall("SendMessageW", "ptr", window.QuickPasteList.Hwnd,
+                "uint", 0x0186, "uptr", 1, "ptr", 0)
+            firstItemPoint := (10 << 16) | 10
+            window.OnListMouseUp(0, firstItemPoint, 0,
+                window.QuickPasteList.Hwnd)
+            this.Assert(window.SelectedQuickPasteIndex() = 1,
+                "Mouse selection did not select the expected Quick Paste row.")
+            this.Assert(clipboard.Published.Length = 2,
+                "Mouse selection did not invoke the suppressed clipboard publication.")
+            this.Assert(clipboard.Published[2] = "Exact clipboard fixture",
+                "Mouse-selecting a Quick Paste did not automatically copy its exact content.")
+
             pasteTarget := 0
             window.PreviousForeground := 424242
             window.PasteRunner := (hwnd) => (pasteTarget := hwnd, false)
             this.Assert(!window.PasteQuickPasteSelection()
                 && pasteTarget = 424242
-                && clipboard.Published.Length = 2,
+                && clipboard.Published.Length = 3,
                 "Explicit paste did not target only the previously active application.")
             this.Assert(InStr(window.QuickLastFeedback, "Paste manually"),
                 "Safe paste failure did not leave recoverable feedback.")

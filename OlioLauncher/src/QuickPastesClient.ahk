@@ -251,7 +251,7 @@ class QuickPastesClient {
 
     Filter(search := "", category := "", favoritesOnly := false) {
         query := StrLower(Trim(search, " `t"))
-        result := []
+        favorites := [], regular := []
         for item in this.Items {
             if favoritesOnly && !item.IsFavorite
                 continue
@@ -262,8 +262,14 @@ class QuickPastesClient {
                 && !InStr(StrLower(item.Category), query)
                 && !(item.IsFavorite && InStr("favorites", query))
                 continue
-            result.Push(item)
+            if item.IsFavorite
+                favorites.Push(item)
+            else
+                regular.Push(item)
         }
+        result := favorites
+        for item in regular
+            result.Push(item)
         return result
     }
 

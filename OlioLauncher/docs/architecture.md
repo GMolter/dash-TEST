@@ -1,12 +1,95 @@
 # Olio Launcher architecture decisions
 
-Status: **Milestones 0 through 6 are approved and implemented; live database execution
+Status: **Milestones 0 through 7 are approved and implemented; live database execution
 remains an environmental validation case.**
 
 This document records the native architecture choices established by Milestone 0 and
-preserved through Milestone 6. Milestone 6 adds only read-only Quick Paste
-synchronization and local use. It does not add offline caching, Send to Phone, Network
-Analyzer, organization sharing, packaging, or later milestone work.
+preserved through Milestone 7. Milestone 7 is launcher-local settings, accessibility, and
+polish. It does not add backend functions, database migrations, offline caching, Send to
+Phone, Network Analyzer, organization sharing, packaging, updating, or later milestone
+work.
+
+## Milestone 7 settings and accessibility
+
+`SettingsManager` owns schema version 2. Versionless documents are explicitly treated as
+version 1 and migrated in memory before validation. The migration maps obsolete
+`foreground`/`edge` placement names, adds safe defaults for every Milestone 7 setting,
+and preserves launcher device identity and non-sensitive connection metadata. Unknown
+fields and future schema versions do not block startup. Known invalid fields recover
+independently; malformed JSON recovers the entire document. A corrupt source is copied to
+a timestamped `settings.invalid.*.json` file before the next atomic valid replacement.
+Settings contain no credential, token, authorization header, account identifier, email,
+clipboard payload, screenshot pixel, or Quick Paste row.
+
+If corrupt settings lose the non-secret device UUID needed to address Credential Manager,
+`CredentialStore` enumerates only the current user's Olio Launcher credential target
+names. Exactly one valid target restores that UUID without reading or serializing the
+credential. Multiple targets produce an explicit recovery state; none is deleted and the
+launcher does not claim the old connection was disconnected. A settings reset always
+preserves device identity, device name, connected display metadata, and the protected
+credential. Its confirmation says so. Server revocation and local credential deletion
+remain the separate, default-cancel **Disconnect Olio Account** action.
+
+The native `SettingsDialog` is a standalone top-level application window, not an owned
+dialog stacked on an intermediate launcher page. The launcher Settings action opens it
+directly and hides the compact launcher. A compact horizontal tab strip exposes General,
+Clipboard & paste, and Account; a low-emphasis overflow button opens the deliberately
+unadvertised Advanced section. Advanced contains monitor/position tuning, panel width,
+always-on-top, diagnostics, executable exclusions, and reset. Custom-drawn switch cards,
+tabs, and actions retain native button semantics and accessible names without exposing
+classic checkbox chrome. Selection changes validate and persist immediately; typed
+fields use a short 350 ms debounce before the same transactional save path. There is no
+separate Save/Cancel workflow. Each feature has a keyboard-reachable accessible name,
+and the complete setting or label is registered with a native Win32 hover tooltip; no
+visible tooltip buttons compete with the controls. Section changes suspend redraw and do
+not reapply the palette, keeping navigation responsive. The same window exposes Focus
+Key, per-user startup, monitor, position, width, always-on-top, click-away hiding,
+close-after-selection, opt-in auto-paste, clipboard pause, plain-language Clipboard
+History app exclusions, theme, reduced motion, redacted diagnostics, and Olio account
+connect/cancel/retry/confirmed-disconnect controls. Focus Key validation rejects malformed, reserved, or
+unavailable keys before persistence and emits generic errors. Saving applies hotkey and
+HKCU startup side effects transactionally and rolls them back if the settings file cannot
+be replaced. No path requests elevation.
+
+`WindowsInterop` enumerates physical monitor work rectangles and names. Active selects the
+foreground window's monitor; primary selects the flagged primary; remembered first
+matches the saved monitor name and otherwise chooses the work area nearest the saved
+coordinates. Right-edge placement uses `rcWork`. Remembered coordinates are clamped with
+the DPI-scaled width and current view height so removed displays, negative coordinates,
+taskbar work areas, width changes, and DPI changes cannot strand the panel. The header can
+be dragged; `WM_EXITSIZEMOVE` persists only its resulting non-sensitive monitor and
+coordinates. Panel width remains 280–640 logical pixels.
+
+Selection policy is shared by Clipboard History and Quick Pastes. With both settings off,
+the Milestone 6 behavior remains: selection publishes through
+`ClipboardManager` suppression and leaves the panel open. **Close after choosing** hides
+the panel after a successful selection. **Automatically paste after selection** is off by
+default; when enabled, selection publishes first, hides the panel, and calls the existing
+previous-foreground-root-only `PasteClipboardToWindow` path. The target is never
+recomputed from a newly focused window. Focus destruction, foreground verification
+failure, `SendInput` failure, and Windows integrity restrictions fail without elevation
+while leaving the content copied and announcing manual-paste recovery. Explicit Copy
+continues to copy only; explicit Paste keeps its Milestone 6 behavior. Clipboard pause
+blocks capture, including launcher callbacks, but does not block user-requested
+publication. The “Apps ignored by Clipboard History” list remains a source-capture rule:
+copied data from a listed active executable is not added to history, and neither source
+nor content is logged.
+
+`ThemeManager` resolves system, dark, and light preferences and overrides them with
+Windows high-contrast system colors when high contrast is active. Owner-drawn buttons,
+Clipboard cards, Quick Paste cards, previews, text, disabled state, border, and focus
+colors read from the same palette. Reduced motion removes nonessential hover transitions;
+it never removes input or functionality. Native Tab/Shift+Tab order, directional
+navigation, Enter, Space on item lists, Escape, owner-drawn focus rings, default-cancel
+destructive confirmations, labels, control text, and Windows accessibility change
+notifications cover keyboard and assistive-technology use.
+
+`RedactedLogger` is not a general text sink. Enabling diagnostics permits only an
+allowlisted event name plus a short token-shaped status. Email-like values, UUIDs,
+64-character secrets, authorization/body/content terms, unknown events, multiline text,
+and oversized values become the literal token `redacted` before disk access. The toggle
+therefore cannot enable request/response bodies, credentials, account identity,
+clipboard/Quick Paste content, screenshot pixels, or other protected data.
 
 ## Milestone 6 Quick Pastes
 
@@ -20,17 +103,22 @@ No launcher-supplied owner or account value exists in the protocol.
 The response is bounded to 100 items, 20,000 content characters per item, 500,000
 aggregate content characters, and 1 MiB of JSON. The launcher validates type, length,
 uniqueness, stable order, control characters, and the same limits before an atomic list
-replacement. Search, category, and favorites are local projections over that list.
+replacement. One local search projection covers title, content, category, and favorite
+metadata; the launcher has no separate category selector. That projection performs a
+stable favorite-first partition, preserving Workstation order within the favorite and
+regular groups.
 Manual refresh and the last successful synchronization time also remain memory-only. A
 transient failure may preserve the current list only with an explicit stale label.
 Revocation, disconnect, and process exit cancel work and release every retained item.
 There is intentionally no plaintext or encrypted offline cache; a future cache requires
 a separate product and threat-model decision.
 
-`LauncherWindow` provides native search, category, favorite, refresh, list, Copy, Paste,
-and Settings-route controls with labels, Tab order, arrow selection, Enter activation,
-owner-drawn visible focus, and literal rendering of untrusted text. It exposes no edit or
-management action. Copy calls `ClipboardManager.PublishText`, reusing its sequence/owner
+`LauncherWindow` provides native search, refresh, list, Copy, Paste, and Settings-route
+controls with labels, Tab order, arrow selection, Enter activation, owner-drawn visible
+focus, and literal rendering of untrusted text. It exposes no edit or management action.
+Quick Paste `WM_MOUSEWHEEL` deltas accumulate to support high-resolution devices; every
+complete notch moves two cards in the requested direction and clamps to the list bounds.
+Mouse selection and Enter call `ClipboardManager.PublishText`, reusing its sequence/owner
 suppression so the launcher publication is not captured twice. Paste first copies through
 that same path, then `WindowsInterop.PasteClipboardToWindow` verifies and focuses only
 the saved previous foreground root window before sending Ctrl+V. Focus loss, window

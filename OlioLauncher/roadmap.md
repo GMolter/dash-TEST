@@ -404,8 +404,12 @@ Tasks:
 
 - Display connected, disconnected, syncing, offline, expired, and revoked states.
 - Fetch the current user's Quick Pastes through the restricted API.
-- Add search, categories, favorites, and manual refresh.
-- Copy a selected Quick Paste to the clipboard.
+- Add one search field covering titles, contents, categories, and favorites, plus manual
+  refresh; do not add a separate category selector.
+- Group favorite (pinned) results at the top while preserving Workstation order within
+  the favorite and regular groups.
+- Provide accumulated, predictable native wheel scrolling for the owner-drawn list.
+- Copy a Quick Paste when the user selects it, matching Clipboard History.
 - Support optional immediate paste into the previously active application.
 - Avoid recording a selected Quick Paste twice in Clipboard History.
 - Display last successful synchronization time.

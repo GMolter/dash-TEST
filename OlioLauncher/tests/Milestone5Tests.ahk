@@ -4,6 +4,8 @@
 
 #Include ..\src\FlatJson.ahk
 #Include ..\src\SettingsManager.ahk
+#Include ..\src\ThemeManager.ahk
+#Include ..\src\HotkeyManager.ahk
 #Include ..\src\CryptoRandom.ahk
 #Include ..\src\CredentialStore.ahk
 #Include ..\src\LauncherConnection.ahk
@@ -14,6 +16,7 @@
 #Include ..\src\QuickPastesRenderer.ahk
 #Include ..\src\ClipboardPreviewWindow.ahk
 #Include ..\src\ScreenshotManager.ahk
+#Include ..\src\SettingsDialog.ahk
 #Include ..\src\LauncherWindow.ahk
 
 class M5MockCredentialStore {
@@ -306,12 +309,16 @@ class Milestone5Tests {
             M5MockTransport(), M5MockBrowser())
         window := LauncherWindow(settings, (*) => 0, true, 0, manager)
         try {
-            window.ShowPage("settings")
-            this.Assert(window.ConnectionNameEdit.Visible,
+            window.OpenPreferences()
+            this.Assert(IsObject(window.SettingsDialog),
+                "Launcher did not open the standalone Settings window.")
+            window.SettingsDialog.ShowSection("account")
+            this.Assert(window.SettingsDialog.DeviceNameEdit.Visible,
                 "Native Settings device-name field is not visible.")
-            this.Assert(window.ConnectionConnectButton.Visible,
+            this.Assert(window.SettingsDialog.ConnectButton.Visible,
                 "Disconnected Settings state has no Connect action.")
-            this.Assert(window.ConnectionConnectButton.Text = "Connect Olio Account",
+            this.Assert(SettingsRenderer.Items[window.SettingsDialog.ConnectButton.Hwnd].Title
+                = "Connect Olio account",
                 "Connect action lacks an accessible native label.")
             this.Assert(window.Buttons["sendToPhone"].Enabled = false
                 && window.Buttons["networkAnalyzer"].Enabled = false,
@@ -324,6 +331,7 @@ class Milestone5Tests {
                 && InStr(source, "YesNo Icon! Default2"),
                 "Disconnect does not require an explicit default-cancel confirmation.")
         } finally {
+            window.CloseSettingsDialog()
             manager.Shutdown()
             window.Gui.Destroy()
         }

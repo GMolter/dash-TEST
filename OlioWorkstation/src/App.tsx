@@ -1,29 +1,8 @@
-import { useState, useEffect } from 'react';
+import { lazy, useState, useEffect } from 'react';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { Quicklinks } from './components/Quicklinks';
-import { URLShortener } from './components/URLShortener';
-import { SecretSharing } from './components/SecretSharing';
-import { QRCodeGenerator } from './components/QRCodeGenerator';
-import { Pastebin } from './components/Pastebin';
-import { QuickPastes } from './components/QuickPastes';
-import { URLRedirect } from './pages/URLRedirect';
-import { SecretView } from './pages/SecretView';
-import { PasteView } from './pages/PasteView';
-import { PasteList } from './pages/PasteList';
-import { NotFound } from './pages/NotFound';
-import Admin from './pages/Admin';
-import { UtilitiesHub } from './components/UtilitiesHub';
 import { DashboardTodosHomeHeader } from './components/DashboardTodos';
 import { AppNavigation } from './components/AppNavigation';
-import { ProjectsCenterApp } from './pages/ProjectsCenterApp';
-import { ProjectDashboard } from './pages/ProjectDashboard';
-import { Onboarding } from './pages/Onboarding';
-import { OrgSetup } from './pages/OrgSetup';
-import { OrganizationPage } from './pages/OrganizationPage';
-import { ProfileSettings } from './pages/ProfileSettings';
-import { HelpPage } from './pages/HelpPage';
-import { HelpArticlePage } from './pages/HelpArticlePage';
-import { LauncherAuthorization } from './pages/LauncherAuthorization';
 import { useAuth } from './hooks/useAuth';
 import { useOrg } from './hooks/useOrg';
 import {
@@ -46,6 +25,28 @@ import {
   parseLauncherAuthorizationLocation,
 } from './features/launcherDevices/authorizationRoute';
 
+const URLShortener = lazy(() => import('./components/URLShortener').then(({ URLShortener: Component }) => ({ default: Component })));
+const SecretSharing = lazy(() => import('./components/SecretSharing').then(({ SecretSharing: Component }) => ({ default: Component })));
+const QRCodeGenerator = lazy(() => import('./components/QRCodeGenerator').then(({ QRCodeGenerator: Component }) => ({ default: Component })));
+const Pastebin = lazy(() => import('./components/Pastebin').then(({ Pastebin: Component }) => ({ default: Component })));
+const QuickPastes = lazy(() => import('./components/QuickPastes').then(({ QuickPastes: Component }) => ({ default: Component })));
+const UtilitiesHub = lazy(() => import('./components/UtilitiesHub').then(({ UtilitiesHub: Component }) => ({ default: Component })));
+const URLRedirect = lazy(() => import('./pages/URLRedirect').then(({ URLRedirect: Component }) => ({ default: Component })));
+const SecretView = lazy(() => import('./pages/SecretView').then(({ SecretView: Component }) => ({ default: Component })));
+const PasteView = lazy(() => import('./pages/PasteView').then(({ PasteView: Component }) => ({ default: Component })));
+const PasteList = lazy(() => import('./pages/PasteList').then(({ PasteList: Component }) => ({ default: Component })));
+const NotFound = lazy(() => import('./pages/NotFound').then(({ NotFound: Component }) => ({ default: Component })));
+const Admin = lazy(() => import('./pages/Admin'));
+const ProjectsCenterApp = lazy(() => import('./pages/ProjectsCenterApp').then(({ ProjectsCenterApp: Component }) => ({ default: Component })));
+const ProjectDashboard = lazy(() => import('./pages/ProjectDashboard').then(({ ProjectDashboard: Component }) => ({ default: Component })));
+const Onboarding = lazy(() => import('./pages/Onboarding').then(({ Onboarding: Component }) => ({ default: Component })));
+const OrgSetup = lazy(() => import('./pages/OrgSetup').then(({ OrgSetup: Component }) => ({ default: Component })));
+const OrganizationPage = lazy(() => import('./pages/OrganizationPage').then(({ OrganizationPage: Component }) => ({ default: Component })));
+const ProfileSettings = lazy(() => import('./pages/ProfileSettings').then(({ ProfileSettings: Component }) => ({ default: Component })));
+const HelpPage = lazy(() => import('./pages/HelpPage').then(({ HelpPage: Component }) => ({ default: Component })));
+const HelpArticlePage = lazy(() => import('./pages/HelpArticlePage').then(({ HelpArticlePage: Component }) => ({ default: Component })));
+const LauncherAuthorization = lazy(() => import('./pages/LauncherAuthorization').then(({ LauncherAuthorization: Component }) => ({ default: Component })));
+
 type View =
   | { type: 'home' }
   | { type: 'utilities' }
@@ -65,6 +66,29 @@ type View =
   | { type: 'launcher-authorization'; requestId: string; displayCode: string };
 
 type BannerState = { enabled: boolean; text: string };
+const BANNER_CACHE_KEY = 'olio-public-banner-v1';
+
+function readBannerCache(): BannerState {
+  try {
+    const cached = window.localStorage.getItem(BANNER_CACHE_KEY);
+    if (!cached) return { enabled: false, text: '' };
+    const parsed = JSON.parse(cached) as BannerState;
+    return {
+      enabled: parsed.enabled === true,
+      text: typeof parsed.text === 'string' ? parsed.text : '',
+    };
+  } catch {
+    return { enabled: false, text: '' };
+  }
+}
+
+function writeBannerCache(banner: BannerState) {
+  try {
+    window.localStorage.setItem(BANNER_CACHE_KEY, JSON.stringify(banner));
+  } catch {
+    // Storage can be unavailable in hardened/private browsing modes.
+  }
+}
 
 function App() {
   const { user, loading: authLoading } = useAuth();
@@ -72,7 +96,7 @@ function App() {
 
   const [view, setView] = useState<View>({ type: 'home' });
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [banner, setBanner] = useState<BannerState>({ enabled: false, text: '' });
+  const [banner, setBanner] = useState<BannerState>(readBannerCache);
   const [allowOnboarding, setAllowOnboarding] = useState(false);
   const [appBackgroundTheme, setAppBackgroundTheme] = useState<AppBackgroundTheme>(() => getStoredAppBackgroundTheme());
   const [appBackgroundThemePresets, setAppBackgroundThemePresets] = useState<AppBackgroundThemePresetMap>(() => getStoredAppBackgroundThemePresets());
@@ -143,10 +167,12 @@ function App() {
         const j = await r.json();
         if (cancelled) return;
 
-        setBanner({
+        const nextBanner = {
           enabled: !!j.bannerEnabled,
           text: j.bannerText || '',
-        });
+        };
+        setBanner(nextBanner);
+        writeBannerCache(nextBanner);
       } catch {
         if (cancelled) return;
         setBanner({ enabled: false, text: '' });

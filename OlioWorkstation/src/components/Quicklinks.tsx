@@ -26,6 +26,43 @@ interface QuicklinkFolder {
   user_id?: string;
 }
 
+type QuicklinksCache = {
+  links: Quicklink[];
+  folders: QuicklinkFolder[];
+};
+
+const QUICKLINKS_CACHE_PREFIX = 'olio-quicklinks-v1';
+
+function quicklinksCacheKey(userId: string) {
+  return `${QUICKLINKS_CACHE_PREFIX}:${userId}`;
+}
+
+function readQuicklinksCache(userId: string): QuicklinksCache | null {
+  try {
+    const raw = window.localStorage.getItem(quicklinksCacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<QuicklinksCache>;
+    if (!Array.isArray(parsed.links) || !Array.isArray(parsed.folders)) return null;
+    return {
+      links: parsed.links as Quicklink[],
+      folders: parsed.folders as QuicklinkFolder[],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeQuicklinksCache(userId: string, links: Quicklink[], folders: QuicklinkFolder[]) {
+  try {
+    window.localStorage.setItem(
+      quicklinksCacheKey(userId),
+      JSON.stringify({ links, folders } satisfies QuicklinksCache),
+    );
+  } catch {
+    // The live data remains authoritative when local storage is unavailable.
+  }
+}
+
 type GridItem =
   | { itemType: 'folder'; id: string; order_index: number; data: QuicklinkFolder }
   | { itemType: 'link'; id: string; order_index: number; data: Quicklink };
@@ -104,7 +141,48 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
   ].sort((a, b) => a.order_index - b.order_index);
 
   // ── Load ─────────────────────────────────────────────────────────────────────
-  useEffect(() => { loadLinks(); loadFolders(); }, []);
+  useEffect(() => {
+    if (!user?.id) {
+      setLinks([]);
+      setFolders([]);
+      return;
+    }
+
+    const userId = user.id;
+    const cached = readQuicklinksCache(userId);
+    if (cached) {
+      setLinks(cached.links);
+      setFolders(cached.folders);
+    }
+
+    let cancelled = false;
+
+    async function refreshQuicklinks() {
+      const [linksResult, foldersResult] = await Promise.all([
+        supabase.from('quicklinks').select('*').order('order_index', { ascending: true }),
+        supabase.from('quicklink_folders').select('*').order('order_index', { ascending: true }),
+      ]);
+      if (cancelled) return;
+
+      const nextLinks = !linksResult.error && linksResult.data
+        ? linksResult.data as Quicklink[]
+        : cached?.links ?? [];
+      const nextFolders = !foldersResult.error && foldersResult.data
+        ? foldersResult.data as QuicklinkFolder[]
+        : cached?.folders ?? [];
+
+      setLinks(nextLinks);
+      setFolders(nextFolders);
+      if (!linksResult.error && !foldersResult.error) {
+        writeQuicklinksCache(userId, nextLinks, nextFolders);
+      }
+    }
+
+    void refreshQuicklinks();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -138,12 +216,20 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
 
   const loadLinks = async () => {
     const { data, error } = await supabase.from('quicklinks').select('*').order('order_index', { ascending: true });
-    if (!error && data) setLinks(data);
+    if (!error && data) {
+      const nextLinks = data as Quicklink[];
+      setLinks(nextLinks);
+      if (user?.id) writeQuicklinksCache(user.id, nextLinks, folders);
+    }
   };
 
   const loadFolders = async () => {
     const { data, error } = await supabase.from('quicklink_folders').select('*').order('order_index', { ascending: true });
-    if (!error && data) setFolders(data);
+    if (!error && data) {
+      const nextFolders = data as QuicklinkFolder[];
+      setFolders(nextFolders);
+      if (user?.id) writeQuicklinksCache(user.id, links, nextFolders);
+    }
   };
 
   // ── URL helpers ───────────────────────────────────────────────────────────────

@@ -1,4 +1,6 @@
 class CredentialStore {
+    static TargetPrefix := "OlioLauncher.DeviceCredential.v1."
+
     __New(targetSuffix := "") {
         this.Target := "OlioLauncher.DeviceCredential.v1" targetSuffix
     }
@@ -51,5 +53,27 @@ class CredentialStore {
             return true
         return A_LastError = 1168 ; ERROR_NOT_FOUND
     }
-}
 
+    static DiscoverDeviceIds() {
+        count := 0, credentials := 0, result := []
+        if !DllCall("Advapi32\CredEnumerateW", "str", this.TargetPrefix "*",
+            "uint", 0, "uint*", &count, "ptr*", &credentials, "int")
+            return result
+        try {
+            Loop count {
+                credential := NumGet(credentials, (A_Index - 1) * A_PtrSize, "ptr")
+                targetPointer := credential ? NumGet(credential, 8, "ptr") : 0
+                if !targetPointer
+                    continue
+                target := StrGet(targetPointer, "UTF-16")
+                if InStr(target, this.TargetPrefix) != 1
+                    continue
+                deviceId := SubStr(target, StrLen(this.TargetPrefix) + 1)
+                if RegExMatch(deviceId,
+                    "i)^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+                    result.Push(deviceId)
+            }
+        } finally DllCall("Advapi32\CredFree", "ptr", credentials)
+        return result
+    }
+}

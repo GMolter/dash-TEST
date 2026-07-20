@@ -3,6 +3,10 @@
 
 DllCall("SetProcessDpiAwarenessContext", "ptr", -4, "ptr")
 
+#Include ..\src\FlatJson.ahk
+#Include ..\src\SettingsManager.ahk
+#Include ..\src\ThemeManager.ahk
+#Include ..\src\HotkeyManager.ahk
 #Include ..\src\WindowsInterop.ahk
 #Include ..\src\ClipboardManager.ahk
 #Include ..\src\Navigation.ahk
@@ -10,6 +14,7 @@ DllCall("SetProcessDpiAwarenessContext", "ptr", -4, "ptr")
 #Include ..\src\ClipboardRenderer.ahk
 #Include ..\src\QuickPastesRenderer.ahk
 #Include ..\src\ClipboardPreviewWindow.ahk
+#Include ..\src\SettingsDialog.ahk
 #Include ..\src\LauncherWindow.ahk
 
 class ClipboardPreviewTests {
@@ -44,10 +49,8 @@ class ClipboardPreviewTests {
     }
 
     static Run() {
-        settings := Map("panelWidth", 360, "openingMonitor", "active",
-            "alwaysOnTop", true, "closeOnFocusLost", true,
-            "lastSelected", "clipboard", "clipboardPaused", false,
-            "sensitiveApplications", "")
+        settings := SettingsManager.Defaults()
+        settings["sensitiveApplications"] := ""
         manager := ClipboardManager(settings)
         manager.CaptureText("harmless preview text")
         window := LauncherWindow(settings, (*) => 0, true, manager)

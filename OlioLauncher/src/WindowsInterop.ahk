@@ -5,14 +5,35 @@ class WindowsInterop {
 
     static ForegroundWorkArea(usePrimary := false) {
         hwnd := DllCall("GetForegroundWindow", "ptr")
-        if usePrimary {
-            point := Buffer(8, 0)
-            monitor := DllCall("MonitorFromPoint", "int64", NumGet(point, 0, "int64"), "uint", 1, "ptr")
-        } else {
-            monitor := DllCall("MonitorFromWindow", "ptr", hwnd, "uint", 2, "ptr")
+        selectionMode := usePrimary ? "primary" : "active"
+        area := this.SelectWorkArea(this.MonitorWorkAreas(), selectionMode, hwnd)
+        area.Foreground := hwnd
+        return area
+    }
+
+    static MonitorWorkAreas() {
+        areas := []
+        callback := CallbackCreate((monitor, hdc, rect, data) =>
+            this.CollectMonitor(areas, monitor), "Fast", 4)
+        try DllCall("EnumDisplayMonitors", "ptr", 0, "ptr", 0,
+            "ptr", callback, "ptr", 0)
+        finally CallbackFree(callback)
+        if !areas.Length {
+            monitor := DllCall("MonitorFromWindow", "ptr",
+                DllCall("GetForegroundWindow", "ptr"), "uint", 2, "ptr")
+            areas.Push(this.MonitorArea(monitor))
         }
-        info := Buffer(40, 0)
-        NumPut("uint", 40, info, 0)
+        return areas
+    }
+
+    static CollectMonitor(areas, monitor) {
+        try areas.Push(this.MonitorArea(monitor))
+        return true
+    }
+
+    static MonitorArea(monitor) {
+        info := Buffer(104, 0)
+        NumPut("uint", info.Size, info, 0)
         if !DllCall("GetMonitorInfoW", "ptr", monitor, "ptr", info)
             throw OSError()
         dpi := 96, dpiY := 96
@@ -22,10 +43,101 @@ class WindowsInterop {
                 dpi := 96
         }
         return {
+            Handle: monitor,
             Left: NumGet(info, 20, "int"), Top: NumGet(info, 24, "int"),
             Right: NumGet(info, 28, "int"), Bottom: NumGet(info, 32, "int"),
-            Dpi: dpi, Foreground: hwnd
+            Primary: (NumGet(info, 36, "uint") & 1) != 0,
+            Name: StrGet(info.Ptr + 40, 32, "UTF-16"),
+            Dpi: dpi,
+            Foreground: 0
         }
+    }
+
+    static SelectWorkArea(areas, mode := "active", foregroundHwnd := 0,
+        rememberedName := "", rememberedX := 0, rememberedY := 0,
+        rememberedPositionValid := false, foregroundMonitorOverride := 0) {
+        if !areas.Length
+            throw ValueError("At least one monitor work area is required.")
+        if mode = "primary" {
+            for area in areas {
+                if area.Primary
+                    return area
+            }
+            return areas[1]
+        }
+        if mode = "remembered" {
+            if rememberedName {
+                for area in areas {
+                    if area.Name = rememberedName
+                        return area
+                }
+            }
+            if rememberedPositionValid
+                return this.NearestArea(areas, rememberedX, rememberedY)
+        }
+        monitor := foregroundMonitorOverride ? foregroundMonitorOverride : foregroundHwnd
+            ? DllCall("MonitorFromWindow", "ptr", foregroundHwnd, "uint", 2, "ptr")
+            : 0
+        if monitor {
+            for area in areas {
+                if area.Handle = monitor
+                    return area
+            }
+        }
+        for area in areas {
+            if area.Primary
+                return area
+        }
+        return areas[1]
+    }
+
+    static NearestArea(areas, x, y) {
+        best := areas[1], bestDistance := 0
+        for index, area in areas {
+            nearestX := Max(area.Left, Min(x, area.Right - 1))
+            nearestY := Max(area.Top, Min(y, area.Bottom - 1))
+            distance := (x - nearestX) ** 2 + (y - nearestY) ** 2
+            if index = 1 || distance < bestDistance
+                best := area, bestDistance := distance
+        }
+        return best
+    }
+
+    static ClampWindowPosition(area, x, y, width, height) {
+        usableWidth := Max(1, area.Right - area.Left)
+        usableHeight := Max(1, area.Bottom - area.Top)
+        width := Min(Max(1, width), usableWidth)
+        height := Min(Max(1, height), usableHeight)
+        clampedX := Max(area.Left, Min(x, area.Right - width))
+        clampedY := Max(area.Top, Min(y, area.Bottom - height))
+        return {
+            X: clampedX, Y: clampedY, Width: width, Height: height,
+            Recovered: clampedX != x || clampedY != y
+        }
+    }
+
+    static ResolveOpeningGeometry(settings, logicalHeight, foregroundHwnd := 0,
+        areas := 0) {
+        if !IsObject(areas)
+            areas := this.MonitorWorkAreas()
+        area := this.SelectWorkArea(areas, settings["openingMonitor"],
+            foregroundHwnd, settings["rememberedMonitor"],
+            settings["rememberedX"], settings["rememberedY"],
+            settings["rememberedPositionValid"])
+        width := Round(settings["panelWidth"] * area.Dpi / 96)
+        height := Min(Round(logicalHeight * area.Dpi / 96),
+            area.Bottom - area.Top)
+        x := settings["openingPosition"] = "remembered"
+            && settings["rememberedPositionValid"]
+            ? settings["rememberedX"] : area.Right - width
+        y := settings["openingPosition"] = "remembered"
+            && settings["rememberedPositionValid"]
+            ? settings["rememberedY"]
+            : area.Top + Max(0, Floor(((area.Bottom - area.Top) - height) / 2))
+        geometry := this.ClampWindowPosition(area, x, y, width, height)
+        geometry.Area := area
+        geometry.Foreground := foregroundHwnd
+        return geometry
     }
 
     static RestoreForeground(hwnd) {
@@ -65,5 +177,12 @@ class WindowsInterop {
 
     static RootWindow(hwnd) {
         return hwnd ? DllCall("GetAncestor", "ptr", hwnd, "uint", 2, "ptr") : 0
+    }
+
+    static AnnounceStatus(control) {
+        hwnd := IsObject(control) ? control.Hwnd : control
+        if hwnd
+            DllCall("NotifyWinEvent", "uint", 0x800C, "ptr", hwnd,
+                "int", -4, "int", 0) ; EVENT_OBJECT_NAMECHANGE, OBJID_CLIENT
     }
 }

@@ -37,7 +37,7 @@ class ClipboardPreviewWindow {
 
         this.Gui := Gui("+Owner" parentGui.Hwnd
             " -Caption +Border +ToolWindow", "Olio Launcher Image Preview")
-        this.Gui.BackColor := "020617"
+        this.Gui.BackColor := ThemeManager.Hex("Window")
         this.Gui.MarginX := 16
         this.Gui.MarginY := 10
         this.ApplyWindowStyle()
@@ -46,7 +46,8 @@ class ClipboardPreviewWindow {
         if A_IsCompiled
             logoOptions .= " Icon1"
         this.Logo := this.Gui.AddPicture(logoOptions, LauncherWindow.BrandIconPath())
-        this.Gui.SetFont("s11 bold c818CF8", "Segoe UI Variable Text")
+        this.Gui.SetFont("s11 bold c" ThemeManager.Hex("Text"),
+            "Segoe UI Variable Text")
         this.HeaderTitle := this.Gui.AddText("x62 y18 w" (logicalWidth - 126)
             " h28 +0x200", "Image Preview")
 
@@ -131,7 +132,8 @@ class ClipboardPreviewWindow {
             DllCall("GetClientRect", "ptr", hwnd, "ptr", client)
             right := NumGet(client, 8, "int")
             bottom := NumGet(client, 12, "int")
-            TileRenderer.FillRect(hdc, 0, 0, right, bottom, 0x0B1220)
+            TileRenderer.FillRect(hdc, 0, 0, right, bottom,
+                ThemeManager.Color("Surface"))
             availableWidth := Max(1, right - 24)
             availableHeight := Max(1, bottom - 24)
             scale := Min(availableWidth / this.Width, availableHeight / this.Height)
@@ -141,7 +143,7 @@ class ClipboardPreviewWindow {
             destinationY := Floor((bottom - destinationHeight) / 2)
             TileRenderer.FillRect(hdc, destinationX - 2, destinationY - 2,
                 destinationX + destinationWidth + 2,
-                destinationY + destinationHeight + 2, 0x293548)
+                destinationY + destinationHeight + 2, ThemeManager.Color("Border"))
             oldMode := DllCall("SetStretchBltMode", "ptr", hdc, "int", 4, "int")
             try this.LastPaintResult := DllCall("StretchDIBits", "ptr", hdc,
                 "int", destinationX, "int", destinationY,

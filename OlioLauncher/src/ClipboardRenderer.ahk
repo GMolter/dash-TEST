@@ -23,7 +23,8 @@ class ClipboardRenderer {
         bottom := NumGet(drawInfo, rectOffset + 12, "int")
         state := NumGet(drawInfo, 16, "uint")
 
-        TileRenderer.FillRect(hdc, left, top, right, bottom, 0x020617)
+        TileRenderer.FillRect(hdc, left, top, right, bottom,
+            ThemeManager.Color("Window"))
         if itemId = 0xFFFFFFFF || !IsObject(manager)
             return true
         index := itemId + 1
@@ -37,8 +38,10 @@ class ClipboardRenderer {
         cardRight := right - 7, cardBottom := bottom - 5
         dpi := TileRenderer.WindowDpi(itemHwnd)
         radius := Max(10, Round(14 * dpi / 96))
-        background := selected ? 0x101B33 : 0x0B1220
-        border := selected ? 0x38BDF8 : 0x293548
+        background := selected ? ThemeManager.Color("SurfaceSelected")
+            : ThemeManager.Color("Surface")
+        border := selected ? (ThemeManager.HighContrast
+            ? ThemeManager.Color("Text") : 0x38BDF8) : ThemeManager.Color("Border")
         TileRenderer.FillRounded(hdc, cardLeft, cardTop, cardRight, cardBottom,
             radius, background)
         TileRenderer.StrokeRounded(hdc, cardLeft + 1, cardTop + 1,
@@ -46,7 +49,8 @@ class ClipboardRenderer {
             Max(1, Round((selected || focused ? 2 : 1) * dpi / 96)))
         ; Violet right-edge accent suggests the reference gradient without extra controls.
         TileRenderer.FillRounded(hdc, cardRight - 3, cardTop + 12,
-            cardRight, cardBottom - 12, 3, selected ? 0xA855F7 : 0x4C1D95)
+            cardRight, cardBottom - 12, 3, ThemeManager.HighContrast
+                ? ThemeManager.Color("Text") : (selected ? 0xA855F7 : 0x4C1D95))
 
         metaFont := TileRenderer.CreateFont(8, 400, dpi)
         titleFont := TileRenderer.CreateFont(10, 600, dpi)
@@ -74,7 +78,7 @@ class ClipboardRenderer {
         imageHeight := Round(58 * dpi / 96)
         TileRenderer.FillRounded(hdc, imageLeft, imageTop,
             imageLeft + imageWidth, imageTop + imageHeight,
-            Round(9 * dpi / 96), 0x111827)
+            Round(9 * dpi / 96), ThemeManager.Color("DisabledSurface"))
         details := manager.ValidateDib(entry.Dib)
         if details.Ok {
             oldMode := DllCall("SetStretchBltMode", "ptr", hdc, "int", 4, "int")
@@ -88,12 +92,13 @@ class ClipboardRenderer {
         }
         textLeft := imageLeft + imageWidth + Round(14 * dpi / 96)
         flags := 0x00000020 | 0x00000004 | 0x00000800 | 0x00008000
-        TileRenderer.DrawText(hdc, entry.DisplayTime, metaFont, 0x94A3B8,
+        TileRenderer.DrawText(hdc, entry.DisplayTime, metaFont,
+            ThemeManager.Color("MutedText"),
             textLeft, top + 12, right - 14, top + 35, flags)
         label := "Image " entry.Width "×" entry.Height
         if entry.Pinned
             label .= "  •  Pinned"
-        TileRenderer.DrawText(hdc, label, titleFont, 0xF8FAFC,
+        TileRenderer.DrawText(hdc, label, titleFont, ThemeManager.Color("Text"),
             textLeft, top + 38, right - 14, bottom - 12, flags)
     }
 
@@ -102,7 +107,7 @@ class ClipboardRenderer {
         iconLeft := left + Round(20 * dpi / 96)
         iconTop := top + Round(31 * dpi / 96)
         lineHeight := Max(3, Round(4 * dpi / 96))
-        color := 0x94A3B8
+        color := ThemeManager.Color("MutedText")
         TileRenderer.FillRounded(hdc, iconLeft, iconTop,
             iconLeft + Round(48 * dpi / 96), iconTop + lineHeight, lineHeight, color)
         TileRenderer.FillRounded(hdc, iconLeft, iconTop + Round(12 * dpi / 96),
@@ -114,12 +119,18 @@ class ClipboardRenderer {
 
         textLeft := left + Round(82 * dpi / 96)
         flags := 0x00000020 | 0x00000004 | 0x00000800 | 0x00008000
-        TileRenderer.DrawText(hdc, entry.DisplayTime, metaFont, 0x94A3B8,
+        TileRenderer.DrawText(hdc, entry.DisplayTime, metaFont,
+            ThemeManager.Color("MutedText"),
             textLeft, top + 10, right - 14, top + 32, flags)
-        TileRenderer.DrawText(hdc, entry.SafePreview(180), previewFont, 0xF8FAFC,
+        TileRenderer.DrawText(hdc, entry.SafePreview(180), previewFont,
+            ThemeManager.Color("Text"),
             textLeft, top + 34, right - 14, top + 61, flags)
         label := entry.Pinned ? "Text  •  Pinned" : "Text"
-        TileRenderer.DrawText(hdc, label, titleFont, entry.Pinned ? 0xFBBF24 : 0x38BDF8,
+        TileRenderer.DrawText(hdc, label, titleFont,
+            ThemeManager.HighContrast ? ThemeManager.Color("Text")
+                : ThemeManager.Mode = "light"
+                    ? (entry.Pinned ? 0x92400E : 0x075985)
+                    : (entry.Pinned ? 0xFBBF24 : 0x38BDF8),
             textLeft, top + 61, right - 14, bottom - 8, flags)
     }
 }

@@ -1,4 +1,4 @@
-# Milestone 6 setup and operation
+# Milestone 7 setup and operation
 
 ## Requirements
 
@@ -57,9 +57,8 @@ editing, deletion, reordering, and other management remain in Workstation.
 ## Connect an Olio account
 
 1. Open **Settings** in the launcher.
-2. Enter a recognizable device name and the exact HTTPS origin supplied by the Olio
-   Workstation operator, such as `https://workstation.example.com`. Paths, HTTP, embedded
-   credentials, localhost names, and host changes are rejected.
+2. Enter a recognizable device name. The production Workstation origin is built in as
+   `https://olio.one` and cannot be changed in normal settings.
 3. Choose **Connect Olio Account**. The launcher opens the authorization page in the
    default browser and shows the same short display code.
 4. Sign in through the normal Workstation sign-in screen if necessary. Confirm the device
@@ -81,12 +80,15 @@ approval is required, disconnect and approve that launcher again.
 
 1. Connect the launcher, then open **Quick Pastes**. Opening the page starts
    synchronization directly; it is asynchronous and the native panel remains responsive.
-2. Type in **Search**, choose a saved category, or choose **Favorites** from the same
-   Category selector. Searching for “favorite” also finds favorited items.
-   Filters operate only on the current in-memory list and never change Workstation data.
-3. Select an item with the mouse or arrow keys. Enter copies it. **Copy** also places only
-   the selected content on the clipboard using Clipboard History's existing duplicate-
-   suppression path.
+2. Type in **Search** to match titles, contents, saved categories, or “favorite.”
+   Search operates only on the current in-memory list and never changes Workstation data.
+   Favorite (pinned) results appear first while retaining their Workstation order.
+3. Select an item with the mouse to copy it immediately, just like Clipboard History.
+   With the keyboard, use the arrow keys and press Enter. **Copy** repeats the same action.
+   Only the selected content reaches the clipboard, using Clipboard History's existing
+   duplicate-suppression path.
+   The mouse wheel moves two cards per full notch and accumulates smaller touchpad or
+   high-resolution wheel deltas.
 4. **Paste** copies the selected content and sends Ctrl+V only to the application that
    was active immediately before the launcher. If focus or Windows integrity rules
    prevent that, the content remains copied for manual paste.
@@ -136,25 +138,40 @@ Settings are read from:
 %LOCALAPPDATA%\OlioLauncher\settings.json
 ```
 
-The folder is created only after a setting must be written. Start from
-`config/settings.example.json` if you want to configure the source build manually.
-Supported values are:
+The folder is created only after a setting must be written. Choose **Settings** on the
+launcher home screen to open the standalone native Settings window directly. General,
+Clipboard & paste, and Account are compact primary tabs. Less frequently changed monitor,
+position, width, always-on-top, diagnostics, executable-exclusion, and reset controls are
+available from the **•••** overflow menu under **Advanced settings**. Choices save
+immediately. Text fields validate and save after a short pause in typing. **Saved**
+appears at the bottom after a successful change; there is no separate Save button.
+Hover a setting, its label, or its control for a description; help does not require a
+separate question-mark button. Start from
+`config/settings.example.json` only when an isolated source-build fixture needs a manual
+file. Supported values and safe defaults are:
 
-- `focusKey`: AutoHotkey v2 hotkey syntax; default `#+F23`
-- `startWithWindows`: Boolean; default `false`
-- `panelWidth`: integer from 280 through 640
-- `alwaysOnTop`: Boolean
-- `closeOnFocusLost`: Boolean
-- `loggingEnabled`: Boolean; default `false`
-- `clipboardPaused`: Boolean; default `false`
-- `sensitiveApplications`: semicolon-separated executable names; defaults to
-  `KeePass.exe;KeePassXC.exe;1Password.exe;Bitwarden.exe`
-- `lastSelected`: `clipboard`, `screenshot`, `quickPastes`, or `settings`
-- `openingMonitor`: `active` or `primary`
-- `openingPosition`: currently `right`
-- `deviceId`: non-secret stable version-4 UUID created with Windows CNG
-- `deviceName`: safe user-visible launcher name, 1 through 80 characters
-- `connectedDeviceName` and `connectedAt`: non-sensitive connection display metadata
+| Setting | Values | Default |
+| --- | --- | --- |
+| Focus Key | usable, non-reserved AutoHotkey v2 hotkey | `#+F23` |
+| Start with Windows | on/off | off |
+| Opening monitor | Active, Primary, Remembered | Active |
+| Opening position | Right edge, Remembered | Right edge |
+| Panel width | 280–640 logical pixels | 360 |
+| Always on top | on/off | on |
+| Hide the launcher when I click elsewhere | on/off | on |
+| Close after choosing an item | on/off | off |
+| Automatically paste after selection | on/off | off |
+| Clipboard History capture | active/paused | active |
+| Apps ignored by Clipboard History | up to 32 semicolon-separated `.exe` names | `KeePass.exe;KeePassXC.exe;1Password.exe;Bitwarden.exe` |
+| Theme | Follow Windows, Dark, Light | Follow Windows |
+| Reduced motion | on/off | off |
+| Redacted diagnostics | on/off | off |
+| Olio account | Connect, Cancel, Retry, Disconnect | disconnected on a new device |
+
+Internal non-sensitive fields include `settingsSchemaVersion` (currently 2),
+`lastSelected`, remembered monitor name/coordinates, the stable device UUID, safe device
+name, and connection display timestamps. Quick Paste rows, synchronization timestamps,
+clipboard data, pixels, credentials, tokens, email, and account identity are absent.
 
 Quick Paste data and synchronization timestamps are deliberately absent from this file.
 
@@ -162,11 +179,70 @@ The production Workstation origin is built in as `https://olio.one`; users do no
 or store an API address. Isolated protocol tests may inject a non-production HTTPS origin
 in memory, but normal settings cannot override the product endpoint.
 
-Edit the file only while the launcher is stopped, then restart it. Invalid fields recover
-to documented defaults and the panel reports how many values recovered. Before a later
-write replaces an invalid source file, the original is preserved beside it as
-`settings.invalid.YYYYMMDD-HHMMSS.json`. Writes use a same-directory temporary file and
-atomic replace.
+Versionless files migrate from schema 1 to schema 2. Unknown future fields do not prevent
+startup. Invalid known fields recover independently to the table above; malformed JSON
+recovers the whole document. Before a later write replaces a corrupt/invalid source, the
+original is preserved beside it as `settings.invalid.YYYYMMDD-HHMMSS.*.json`. Writes use
+a same-directory temporary file and atomic replace.
+
+Focus Key availability is tested before its automatic save. Invalid, reserved, or
+conflicting keys produce a generic recoverable message without echoing exception details;
+the last valid key remains active. Startup and hotkey changes are rolled back if the
+settings file cannot be replaced.
+
+**Reset settings** uses a default-cancel confirmation. It restores every launcher
+preference to the safe default while explicitly preserving the current Olio connection,
+device identity, connection metadata, and Windows Credential Manager credential. To
+revoke and remove the connection, use the separate **Disconnect Olio Account** action and
+confirm it. Reset never invokes disconnect, and disconnect never runs as a side effect of
+reset.
+
+### Monitor, position, width, and scaling
+
+- **Active monitor** follows the application that was active immediately before opening.
+- **Primary monitor** uses the Windows primary work area.
+- **Remembered monitor** reuses the last dragged monitor. If it was removed, the nearest
+  usable work area is selected.
+- **Right edge** attaches to `rcWork`, respecting the taskbar.
+- **Remembered position** reuses the last header-drag position and clamps it into the
+  selected work area.
+- Negative virtual coordinates are valid. Removed monitors, invalid/off-screen
+  coordinates, taskbar changes, width changes, and DPI changes are recovered by clamping,
+  not by assuming coordinate zero.
+- Panel width is stored in logical pixels and scaled for 100%, 125%, and 150% DPI. The
+  standalone Settings window acquires its target monitor before sizing so its window and
+  controls scale together through Per-Monitor V2 behavior.
+
+### Selection, pause, and exclusions
+
+**Close after choosing an item** applies to mouse, Enter, or Space selection in Clipboard
+History and Quick Pastes. Explicit Copy remains a copy-only action.
+
+**Automatically paste after selection** implies a temporary close so Windows can focus
+the saved target. It publishes through Clipboard History suppression and targets only the
+application active before the launcher opened. It never pastes into a newly focused or
+arbitrary window, never requests elevation, and leaves the item copied with a readable
+manual-paste notice when focus, destruction, `SendInput`, or integrity restrictions block
+insertion.
+
+Clipboard pause prevents new captures but does not prevent a deliberate copy/paste
+selection. **Apps ignored by Clipboard History** means anything copied while a listed
+application is active is not added to the launcher's history. This is useful for password
+managers and other apps containing private text. Entries match only validated executable
+file names, case-insensitively, when Windows exposes a clipboard owner. They do not block
+pasting into those apps. Neither the executable name nor content enters diagnostics.
+
+### Theme, motion, and keyboard access
+
+Follow Windows resolves light/dark and automatically uses Windows high-contrast system
+colors. Owner-drawn controls, cards, previews, disabled states, status text, and visible
+focus share the resolved palette. Reduced motion removes nonessential hover transitions
+without disabling any action.
+
+Use Tab and Shift+Tab through Settings, arrows within selection controls and launcher
+navigation, Enter or Space to activate the expected control/item, and Escape to close the
+Settings window or return from a launcher content page. Destructive confirmations focus
+the safe choice by default.
 
 ## Start with Windows
 

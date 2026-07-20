@@ -29,15 +29,18 @@ Quick Paste RLS and Workstation ownership rules remain unchanged.
 
 ## Native use
 
-The native page includes loading/disconnected/error/empty states, Search, one Category
-selector containing Favorites, Refresh, last successful sync, a keyboard-accessible
-owner-drawn list, Copy, Paste, and a Settings route. Opening the page starts
+The native page includes loading/disconnected/error/empty states, one full-width Search
+field, Refresh, last successful sync, a keyboard-accessible owner-drawn list, Copy, Paste,
+and a Settings route. Search covers title, content, category, and favorite metadata
+without a separate category selector. A stable favorite-first projection keeps pinned
+items above regular items without changing order inside either group. Accumulated wheel
+deltas move two cards per full notch for faster, predictable scrolling. Opening the page starts
 synchronization directly. It provides no creation, editing, deletion, reordering, or
 sharing interface.
 
-Copy publishes only the selected content through the existing Clipboard History
-suppression mechanism. Paste uses the same publication and then targets only the
-previously active root window. Windows focus and integrity failures do not trigger
+Mouse selection, Enter, and Copy publish only the selected content through the existing
+Clipboard History suppression mechanism. Paste uses the same publication and then targets
+only the previously active root window. Windows focus and integrity failures do not trigger
 elevation; the content stays copied for manual recovery. Clipboard capture pause and
 sensitive-application exclusions remain coherent, and Dynamic Screenshot is unchanged.
 
@@ -48,7 +51,7 @@ clipboard state, paste targets, and an off-screen native GUI. It does not acquir
 production mutex, open production settings or credentials, invoke launcher IPC, or start
 the resident launcher.
 
-- Focused launcher Milestone 6: **57 assertions passed**
+- Focused launcher Milestone 6: **64 assertions passed**
 - Focused Workstation Milestone 6 Vitest: **17 tests passed**
 - Launcher regressions: Milestone 1 **85**, Milestone 2 **63**, Milestone 3 logic
   **26**, Milestone 5 **382**, and Clipboard Preview **44** assertions passed. The full
@@ -78,11 +81,13 @@ Use harmless test text and two disposable local test accounts/devices. Never use
 resident launcher's profile or clipboard history.
 
 1. Approve a fresh launcher and confirm Quick Pastes loads in Workstation order.
-2. Verify Search, saved categories, the Favorites category, Refresh, empty state, and
-   last-sync time.
+2. Verify Search matches titles, contents, saved categories, and “favorite,” and verify
+   Refresh, empty state, and last-sync time. Confirm there is no category selector and
+   favorite items remain above regular items.
 3. Navigate every control with Tab/Shift+Tab and the list with arrow keys; confirm focus
-   is visible and Enter copies the selected item.
-4. Copy one item and paste it manually into Notepad. Confirm exactly its content appears.
+   is visible and Enter copies the selected item. Confirm a wheel notch moves two cards
+   and smaller high-resolution deltas accumulate smoothly.
+4. Click one item, paste it manually into Notepad, and confirm exactly its content appears.
 5. Put Notepad in front, open the launcher, select a harmless item, and choose Paste.
    Confirm only Notepad receives it.
 6. Try an elevated editor from a standard-user launcher. Confirm paste fails safely,

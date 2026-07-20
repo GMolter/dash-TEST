@@ -228,6 +228,27 @@ class ClipboardManager {
         return this.Paused
     }
 
+    SetPaused(paused) {
+        paused := !!paused
+        if this.Paused = paused
+            return this.Paused
+        this.Paused := paused
+        if paused
+            this.Pending := 0
+        this.Notify(this.Paused ? "paused" : "resumed")
+        return this.Paused
+    }
+
+    ApplySettings(settings) {
+        if !IsObject(settings)
+            return
+        if settings.Has("clipboardPaused")
+            this.SetPaused(settings["clipboardPaused"])
+        if settings.Has("sensitiveApplications")
+            this.SensitiveApplications := this.ParseExclusions(
+                settings["sensitiveApplications"])
+    }
+
     OnClipboardChanged(type) {
         if this.Stopped || this.Paused || type = 0
             return

@@ -21,7 +21,8 @@ class QuickPastesRenderer {
         right := NumGet(drawInfo, rectOffset + 8, "int")
         bottom := NumGet(drawInfo, rectOffset + 12, "int")
         state := NumGet(drawInfo, 16, "uint")
-        TileRenderer.FillRect(hdc, left, top, right, bottom, 0x020617)
+        TileRenderer.FillRect(hdc, left, top, right, bottom,
+            ThemeManager.Color("Window"))
         if itemId = 0xFFFFFFFF
             return true
         index := itemId + 1
@@ -35,8 +36,10 @@ class QuickPastesRenderer {
         cardLeft := left + 2, cardTop := top + 5
         cardRight := right - 7, cardBottom := bottom - 5
         radius := Max(10, Round(13 * dpi / 96))
-        background := selected ? 0x101B33 : 0x0B1220
-        border := selected ? 0x38BDF8 : 0x293548
+        background := selected ? ThemeManager.Color("SurfaceSelected")
+            : ThemeManager.Color("Surface")
+        border := selected ? (ThemeManager.HighContrast
+            ? ThemeManager.Color("Text") : 0x38BDF8) : ThemeManager.Color("Border")
         TileRenderer.FillRounded(hdc, cardLeft, cardTop, cardRight, cardBottom,
             radius, background)
         TileRenderer.StrokeRounded(hdc, cardLeft + 1, cardTop + 1,
@@ -44,7 +47,8 @@ class QuickPastesRenderer {
             border,
             Max(1, Round((selected || focused ? 2 : 1) * dpi / 96)))
         TileRenderer.FillRounded(hdc, cardRight - 3, cardTop + 12,
-            cardRight, cardBottom - 12, 3, selected ? 0xA855F7 : 0x4C1D95)
+            cardRight, cardBottom - 12, 3, ThemeManager.HighContrast
+                ? ThemeManager.Color("Text") : (selected ? 0xA855F7 : 0x4C1D95))
 
         metaFont := TileRenderer.CreateFont(8, 400, dpi)
         titleFont := TileRenderer.CreateFont(10, 600, dpi)
@@ -53,7 +57,8 @@ class QuickPastesRenderer {
             iconLeft := cardLeft + Round(20 * dpi / 96)
             iconTop := cardTop + Round(31 * dpi / 96)
             lineHeight := Max(3, Round(4 * dpi / 96))
-            iconColor := item.IsFavorite ? 0xFBBF24 : 0x94A3B8
+            iconColor := ThemeManager.HighContrast ? ThemeManager.Color("Text")
+                : (item.IsFavorite ? 0xFBBF24 : ThemeManager.Color("MutedText"))
             TileRenderer.FillRounded(hdc, iconLeft, iconTop,
                 iconLeft + Round(48 * dpi / 96), iconTop + lineHeight,
                 lineHeight, iconColor)
@@ -73,13 +78,13 @@ class QuickPastesRenderer {
             if item.IsFavorite
                 meta .= "  •  Favorite"
             TileRenderer.DrawText(hdc, meta, metaFont,
-                0x94A3B8, textLeft, cardTop + 10,
+                ThemeManager.Color("MutedText"), textLeft, cardTop + 10,
                 textRight, cardTop + 30, flags)
             TileRenderer.DrawText(hdc, item.SafeTitle(100), titleFont,
-                0xF8FAFC, textLeft, cardTop + 32,
+                ThemeManager.Color("Text"), textLeft, cardTop + 32,
                 textRight, cardTop + 57, flags)
             TileRenderer.DrawText(hdc, item.SafeContent(180), contentFont,
-                0x94A3B8, textLeft, cardTop + 59, textRight,
+                ThemeManager.Color("MutedText"), textLeft, cardTop + 59, textRight,
                 cardBottom - 7, flags)
         } finally {
             DllCall("DeleteObject", "ptr", titleFont)

@@ -1,13 +1,16 @@
 class LauncherWindow {
     __New(settings, navigateCallback, visualTestMode := false, clipboardManager := 0,
-        connectionManager := 0, quickPastesManager := 0) {
+        connectionManager := 0, quickPastesManager := 0, settingsApplyCallback := 0) {
         this.Settings := settings
         this.NavigateCallback := navigateCallback
+        this.SettingsApplyCallback := settingsApplyCallback
+        this.VisualTestMode := visualTestMode
         this.ClipboardManager := clipboardManager
         this.ConnectionManager := connectionManager
         this.QuickPastesManager := quickPastesManager
         this.QuickVisibleItems := []
         this.QuickLastFeedback := ""
+        this.QuickWheelRemainder := 0
         this.PasteRunner := (hwnd) => WindowsInterop.PasteClipboardToWindow(hwnd)
         this.PreviousForeground := 0
         ; Settings is a utility, not the launcher's default destination.
@@ -20,12 +23,15 @@ class LauncherWindow {
         this.PageKey := ""
         this.DesiredLogicalHeight := 286
         this.HasVisibleStatus := false
-        this.AutoCloseOnDeactivate := !visualTestMode
+        this.AutoCloseOnDeactivate := settings["closeOnFocusLost"] && !visualTestMode
         this.PreviewWindow := 0
         this.PreviewPriorAutoClose := this.AutoCloseOnDeactivate
         this.LastPreviewError := ""
         this.DirectScreenshotActive := false
         this.DirectScreenshotPriorAutoClose := this.AutoCloseOnDeactivate
+        this.SettingsDialog := 0
+        this.LogicalWidth := settings["panelWidth"]
+        ThemeManager.Configure(settings)
 
         options := "-Caption +Border"
         if !visualTestMode
@@ -33,7 +39,7 @@ class LauncherWindow {
         if settings["alwaysOnTop"]
             options .= " +AlwaysOnTop"
         this.Gui := Gui(options, "Olio Launcher")
-        this.Gui.BackColor := "020617"
+        this.Gui.BackColor := ThemeManager.Hex("Window")
         this.Gui.MarginX := 16
         this.Gui.MarginY := 14
         this.ApplyWorkstationWindowStyle()
@@ -55,7 +61,7 @@ class LauncherWindow {
         this.Gui.SetFont("s9 bold cF8FAFC", "Segoe UI Variable Text")
         this.SettingsLabel := this.Gui.AddText(
             "x272 y16 w62 h32 +0x200 +0x100 Background0B1220", "Settings")
-        this.SettingsLabel.OnEvent("Click", (*) => this.Activate("settings"))
+        this.SettingsLabel.OnEvent("Click", (*) => this.OpenPreferences())
         this.HomeControls.Push(this.SettingsLabel)
 
         definitions := [
@@ -82,8 +88,7 @@ class LauncherWindow {
         this.PageDefinitions := Map(
             "clipboard", {Title: "Clipboard History", Subtitle: "History will appear here.", Accent: 0x38BDF8},
             "screenshot", {Title: "Dynamic Screenshot", Subtitle: "Drag to select an area.", Accent: 0x8B5CF6},
-            "quickPastes", {Title: "Quick Pastes", Subtitle: "Launcher access begins in Milestone 6.", Accent: 0x34D399},
-            "settings", {Title: "Settings", Subtitle: "Connect without entering your Olio password.", Accent: 0xFBBF24}
+            "quickPastes", {Title: "Quick Pastes", Subtitle: "Launcher access begins in Milestone 6.", Accent: 0x34D399}
         )
         this.BackButton := this.Gui.Add("Custom",
             "ClassButton x232 y14 w112 h36 Hidden 0x5401000B", "Back to tools")
@@ -129,22 +134,46 @@ class LauncherWindow {
         HotIf(this.ClipboardEnterContext)
         Hotkey("Enter", this.ClipboardEnterHandler)
         HotIf()
+        this.ClipboardSpaceContext := (*) => WinActive("ahk_id " this.Gui.Hwnd)
+            && this.PageKey = "clipboard"
+            && DllCall("GetFocus", "ptr") = this.ClipboardList.Hwnd
+        this.ClipboardSpaceHandler := (*) => this.ActivateClipboardSelection()
+        HotIf(this.ClipboardSpaceContext)
+        Hotkey("Space", this.ClipboardSpaceHandler)
+        HotIf()
         this.QuickEnterContext := (*) => WinActive("ahk_id " this.Gui.Hwnd)
             && this.PageKey = "quickPastes"
         this.QuickEnterHandler := (*) => this.ActivateQuickPasteFocused()
         HotIf(this.QuickEnterContext)
         Hotkey("Enter", this.QuickEnterHandler)
         HotIf()
+        this.QuickSpaceContext := (*) => WinActive("ahk_id " this.Gui.Hwnd)
+            && this.PageKey = "quickPastes"
+            && DllCall("GetFocus", "ptr") = this.QuickPasteList.Hwnd
+        this.QuickSpaceHandler := (*) => this.ChooseQuickPasteSelection()
+        HotIf(this.QuickSpaceContext)
+        Hotkey("Space", this.QuickSpaceHandler)
+        HotIf()
         this.Activate(this.CurrentView, false)
 
         this.ActivateHandler := ObjBindMethod(this, "OnWindowActivate")
+        this.ActivateAppHandler := ObjBindMethod(this, "OnApplicationActivate")
         this.DpiHandler := ObjBindMethod(this, "OnDpiChanged")
         this.CommandHandler := ObjBindMethod(this, "OnCommand")
-        this.ClipboardMouseHandler := ObjBindMethod(this, "OnClipboardListMouseUp")
+        this.ListMouseHandler := ObjBindMethod(this, "OnListMouseUp")
+        this.QuickWheelHandler := ObjBindMethod(this, "OnQuickPasteMouseWheel")
+        this.HeaderMouseHandler := ObjBindMethod(this, "OnHeaderMouseDown")
+        this.ExitSizeMoveHandler := ObjBindMethod(this, "OnExitSizeMove")
         OnMessage(0x0006, this.ActivateHandler)
+        OnMessage(0x001C, this.ActivateAppHandler)
         OnMessage(0x02E0, this.DpiHandler)
         OnMessage(0x0111, this.CommandHandler)
-        OnMessage(0x0202, this.ClipboardMouseHandler) ; WM_LBUTTONUP
+        OnMessage(0x0202, this.ListMouseHandler) ; WM_LBUTTONUP
+        OnMessage(0x020A, this.QuickWheelHandler) ; WM_MOUSEWHEEL
+        OnMessage(0x0201, this.HeaderMouseHandler) ; WM_LBUTTONDOWN
+        OnMessage(0x0232, this.ExitSizeMoveHandler) ; WM_EXITSIZEMOVE
+        this.LayoutForPanelWidth(this.LogicalWidth)
+        this.ApplyTheme()
     }
 
     CreateClipboardControls() {
@@ -185,31 +214,34 @@ class LauncherWindow {
 
     CreateConnectionControls() {
         this.ConnectionControls := []
+        this.PreferencesButton := this.AddConnectionButton(
+            "x16 y104 w328 h38 Hidden", "Launcher preferences", 0x818CF8)
+        this.ButtonKeysByHwnd[this.PreferencesButton.Hwnd] := "__preferences"
         this.Gui.SetFont("s9 cCBD5E1", "Segoe UI Variable Text")
-        this.ConnectionNameLabel := this.Gui.AddText("x16 y106 w328 h22 Hidden",
+        this.ConnectionNameLabel := this.Gui.AddText("x16 y154 w328 h22 Hidden",
             "Launcher device name")
         this.ConnectionControls.Push(this.ConnectionNameLabel)
         this.Gui.SetFont("s9 cF8FAFC", "Segoe UI Variable Text")
         this.ConnectionNameEdit := this.Gui.AddEdit(
-            "x16 y128 w328 h30 Hidden Background0F172A cF8FAFC",
+            "x16 y176 w328 h30 Hidden Background0F172A cF8FAFC",
             this.Settings.Has("deviceName") ? this.Settings["deviceName"] : SubStr(A_ComputerName " Launcher", 1, 80))
         this.ConnectionControls.Push(this.ConnectionNameEdit)
         this.Gui.SetFont("s9 cCBD5E1", "Segoe UI Variable Text")
         this.ConnectionStatus := this.Gui.AddText(
-            "x16 y174 w328 h80 +Wrap Hidden", "Disconnected")
+            "x16 y216 w328 h80 +Wrap Hidden", "Disconnected")
         this.ConnectionControls.Push(this.ConnectionStatus)
 
         this.ConnectionConnectButton := this.AddConnectionButton(
-            "x16 y270 w328 h42 Hidden", "Connect Olio Account", 0x22D3EE)
+            "x16 y308 w328 h42 Hidden", "Connect Olio Account", 0x22D3EE)
         this.ButtonKeysByHwnd[this.ConnectionConnectButton.Hwnd] := "__connection_connect"
         this.ConnectionCancelButton := this.AddConnectionButton(
-            "x16 y270 w328 h42 Hidden", "Cancel authentication", 0xF59E0B)
+            "x16 y308 w328 h42 Hidden", "Cancel authentication", 0xF59E0B)
         this.ButtonKeysByHwnd[this.ConnectionCancelButton.Hwnd] := "__connection_cancel"
         this.ConnectionRetryButton := this.AddConnectionButton(
-            "x16 y270 w160 h42 Hidden", "Retry status", 0x22D3EE)
+            "x16 y308 w160 h42 Hidden", "Retry status", 0x22D3EE)
         this.ButtonKeysByHwnd[this.ConnectionRetryButton.Hwnd] := "__connection_retry"
         this.ConnectionDisconnectButton := this.AddConnectionButton(
-            "x16 y270 w328 h42 Hidden", "Disconnect Olio Account", 0xF87171)
+            "x16 y308 w328 h42 Hidden", "Disconnect Olio Account", 0xF87171)
         this.ButtonKeysByHwnd[this.ConnectionDisconnectButton.Hwnd] := "__connection_disconnect"
     }
 
@@ -233,23 +265,14 @@ class LauncherWindow {
 
         this.Gui.SetFont("s8 c94A3B8", "Segoe UI Variable Text")
         this.QuickSearchLabel := this.Gui.AddText(
-            "x16 y132 w184 h16 Hidden", "Search")
+            "x16 y132 w328 h16 Hidden", "Search")
         this.QuickPastesControls.Push(this.QuickSearchLabel)
-        this.QuickCategoryLabel := this.Gui.AddText(
-            "x208 y132 w136 h16 Hidden", "Category")
-        this.QuickPastesControls.Push(this.QuickCategoryLabel)
         this.Gui.SetFont("s9 cF8FAFC", "Segoe UI Variable Text")
         this.QuickSearchEdit := this.Gui.AddEdit(
-            "x16 y148 w184 h30 Hidden Background0F172A cF8FAFC",
+            "x16 y148 w328 h30 Hidden Background0F172A cF8FAFC",
             "")
         this.QuickSearchEdit.OnEvent("Change", (*) => this.RefreshQuickPasteList())
         this.QuickPastesControls.Push(this.QuickSearchEdit)
-
-        this.Gui.SetFont("s9 cF8FAFC", "Segoe UI Variable Text")
-        this.QuickCategoryList := this.Gui.AddDropDownList(
-            "x208 y148 w136 h30 Hidden", ["All", "Favorites"])
-        this.QuickCategoryList.OnEvent("Change", (*) => this.RefreshQuickPasteList())
-        this.QuickPastesControls.Push(this.QuickCategoryList)
 
         this.QuickPasteList := this.Gui.Add("Custom",
             "ClassListBox x16 y184 w328 h230 Hidden Background020617 cE2E8F0 0x50211051")
@@ -289,6 +312,120 @@ class LauncherWindow {
             DllCall("dwmapi\DwmSetWindowAttribute", "ptr", this.Gui.Hwnd, "uint", 34,
                 "uint*", &borderColor, "uint", 4)
         }
+    }
+
+    LayoutForPanelWidth(logicalWidth) {
+        logicalWidth := Max(SettingsManager.MinimumPanelWidth,
+            Min(SettingsManager.MaximumPanelWidth, logicalWidth))
+        this.LogicalWidth := logicalWidth
+        inner := logicalWidth - 32
+        columnWidth := Floor((inner - 8) / 2)
+        rightColumn := 24 + columnWidth
+        utilityX := logicalWidth - 128
+        this.Wordmark.Move(62, 18, Max(60, utilityX - 70), 28)
+        this.Buttons["settings"].Move(utilityX, 14, 112, 36)
+        this.SettingsLabel.Move(utilityX + 40, 16, 62, 32)
+        this.Buttons["clipboard"].Move(16, 64, columnWidth, 64)
+        this.Buttons["screenshot"].Move(rightColumn, 64, columnWidth, 64)
+        this.Buttons["quickPastes"].Move(16, 136, inner, 64)
+        this.Buttons["sendToPhone"].Move(16, 208, columnWidth, 56)
+        this.Buttons["networkAnalyzer"].Move(rightColumn, 208, columnWidth, 56)
+        this.BackButton.Move(utilityX, 14, 112, 36)
+        this.BackLabel.Move(utilityX + 40, 16, 62, 32)
+        this.PageTitle.Move(16, 62, inner, 34)
+        this.PageSubtitle.Move(16, 124, inner, 60)
+        this.StatusText.Move(16, 278, inner, 28)
+
+        this.ClipboardStatus.Move(16, 102, inner, 28)
+        this.ClipboardClearButton.Move(logicalWidth - 122, 62, 106, 34)
+        this.ClipboardList.Move(16, 130, inner, 290)
+        this.ClipboardOpenButton.Move(logicalWidth - 232, 438, 104, 42)
+        this.ClipboardDeleteButton.Move(logicalWidth - 120, 438, 104, 42)
+
+        this.PreferencesButton.Move(16, 104, inner, 38)
+        this.ConnectionNameLabel.Move(16, 154, inner, 22)
+        this.ConnectionNameEdit.Move(16, 176, inner, 30)
+        this.ConnectionStatus.Move(16, 216, inner, 80)
+        for button in [this.ConnectionConnectButton, this.ConnectionCancelButton,
+            this.ConnectionDisconnectButton]
+            button.Move(16, 308, inner, 42)
+        this.ConnectionRetryButton.Move(16, 308, Floor((inner - 8) / 2), 42)
+
+        this.QuickStatus.Move(16, 102, inner, 28)
+        this.QuickRefreshButton.Move(logicalWidth - 122, 62, 106, 34)
+        this.QuickSearchLabel.Move(16, 132, inner, 16)
+        this.QuickSearchEdit.Move(16, 148, inner, 30)
+        this.QuickPasteList.Move(16, 184, inner, 230)
+        this.QuickFooter.Move(16, 416, inner, 18)
+        this.QuickCopyButton.Move(logicalWidth - 232, 438, 104, 42)
+        this.QuickPasteButton.Move(logicalWidth - 120, 438, 104, 42)
+        this.QuickSettingsButton.Move(16, 438, inner, 42)
+    }
+
+    ApplyTheme() {
+        ThemeManager.Configure(this.Settings)
+        this.Gui.BackColor := ThemeManager.Hex("Window")
+        for control in [this.Wordmark, this.SettingsLabel, this.BackLabel,
+            this.PageTitle]
+            control.SetFont("c" ThemeManager.Hex("Text"),
+                "Segoe UI Variable Text")
+        for control in [this.PageSubtitle, this.ClipboardStatus,
+            this.ConnectionNameLabel, this.ConnectionStatus, this.QuickStatus,
+            this.QuickSearchLabel, this.QuickFooter]
+            control.SetFont("c" ThemeManager.Hex("MutedText"),
+                "Segoe UI Variable Text")
+        this.StatusText.SetFont("c" ThemeManager.Hex("ErrorText"),
+            "Segoe UI Variable Text")
+        for control in [this.ConnectionNameEdit, this.QuickSearchEdit] {
+            try control.Opt("Background" ThemeManager.Hex("Input")
+                " c" ThemeManager.Hex("Text"))
+        }
+        for control in [this.SettingsLabel, this.BackLabel] {
+            try control.Opt("Background" ThemeManager.Hex("Surface")
+                " c" ThemeManager.Hex("Text"))
+        }
+        for control in [this.ClipboardList, this.QuickPasteList] {
+            try control.Opt("Background" ThemeManager.Hex("Window")
+                " c" ThemeManager.Hex("Text"))
+        }
+        TileRenderer.RefreshAll()
+        try DllCall("InvalidateRect", "ptr", this.ClipboardList.Hwnd,
+            "ptr", 0, "int", true)
+        try DllCall("InvalidateRect", "ptr", this.QuickPasteList.Hwnd,
+            "ptr", 0, "int", true)
+    }
+
+    OnHeaderMouseDown(wParam, lParam, msg, hwnd) {
+        if !this.IsVisible() || (hwnd != this.Logo.Hwnd && hwnd != this.Wordmark.Hwnd)
+            return
+        DllCall("ReleaseCapture")
+        DllCall("SendMessageW", "ptr", this.Gui.Hwnd, "uint", 0x00A1,
+            "uptr", 2, "ptr", 0)
+        return 0
+    }
+
+    OnExitSizeMove(wParam, lParam, msg, hwnd) {
+        if hwnd != this.Gui.Hwnd || this.VisualTestMode
+            return
+        rect := Buffer(16, 0)
+        if !DllCall("GetWindowRect", "ptr", hwnd, "ptr", rect)
+            return
+        monitor := DllCall("MonitorFromWindow", "ptr", hwnd, "uint", 2, "ptr")
+        try area := WindowsInterop.MonitorArea(monitor)
+        catch
+            return
+        changes := Map(
+            "rememberedMonitor", area.Name,
+            "rememberedX", NumGet(rect, 0, "int"),
+            "rememberedY", NumGet(rect, 4, "int"),
+            "rememberedPositionValid", true
+        )
+        try {
+            SettingsManager.UpdateMany(changes)
+            for key, value in changes
+                this.Settings[key] := value
+        }
+        return 0
     }
 
     IsVisible() {
@@ -331,19 +468,16 @@ class LauncherWindow {
     Show() {
         if this.CurrentView = "settings"
             this.Activate("clipboard", false)
-        area := WindowsInterop.ForegroundWorkArea(this.Settings["openingMonitor"] = "primary")
-        if area.Foreground != this.Gui.Hwnd
-            this.PreviousForeground := area.Foreground
-        width := Round(this.Settings["panelWidth"] * area.Dpi / 96)
-        workHeight := area.Bottom - area.Top
+        foreground := DllCall("GetForegroundWindow", "ptr")
+        if foreground != this.Gui.Hwnd
+            this.PreviousForeground := foreground
         requestedHeight := this.PageKey = "clipboard" ? 500
             : this.PageKey = "quickPastes" ? 500
-            : this.PageKey = "settings" ? 380
+            : this.PageKey = "settings" ? 400
             : (this.HasVisibleStatus ? 318 : this.DesiredLogicalHeight)
-        height := Min(requestedHeight, workHeight)
-        y := LauncherWindow.CenteredY(area.Top, area.Bottom, height)
-        x := area.Right - width
-        this.Gui.Show("x" x " y" y " w" width " h" height)
+        geometry := this.OpeningGeometry(requestedHeight, foreground)
+        this.Gui.Show("x" geometry.X " y" geometry.Y " w" geometry.Width
+            " h" geometry.Height)
         DllCall("RedrawWindow", "ptr", this.Gui.Hwnd, "ptr", 0, "ptr", 0,
             "uint", 0x0001 | 0x0004 | 0x0080 | 0x0100)
         TileRenderer.RefreshAll()
@@ -353,8 +487,13 @@ class LauncherWindow {
     }
 
     Hide(restoreFocus := true) {
+        if IsObject(this.SettingsDialog) && this.SettingsDialog.IsVisible() {
+            this.CloseSettingsDialog()
+            return
+        }
         if !this.IsVisible()
             return
+        this.CloseSettingsDialog()
         this.CloseClipboardPreview(false)
         foreground := DllCall("GetForegroundWindow", "ptr")
         launcherOwnedFocus := LauncherWindow.ShouldRestoreFocus(foreground, this.Gui.Hwnd)
@@ -392,6 +531,10 @@ class LauncherWindow {
     }
 
     Toggle() {
+        if IsObject(this.SettingsDialog) && this.SettingsDialog.IsVisible() {
+            this.CloseSettingsDialog()
+            return
+        }
         if this.IsVisible()
             this.Hide(true)
         else
@@ -399,6 +542,10 @@ class LauncherWindow {
     }
 
     Activate(key, notify := true, *) {
+        if key = "settings" {
+            this.OpenPreferences()
+            return
+        }
         if !this.Buttons.Has(key) || !this.Buttons[key].Enabled
             key := "clipboard"
         this.CurrentView := key
@@ -418,7 +565,7 @@ class LauncherWindow {
             control.Visible := false
         this.StatusText.Visible := false
         this.PageTitle.Text := page.Title
-        this.PageTitle.SetFont("s16 bold c" Format("{:06X}", page.Accent),
+        this.PageTitle.SetFont("s16 bold c" ThemeManager.Hex("Text"),
             "Segoe UI Variable Text")
         this.PageSubtitle.Text := page.Subtitle
         for control in this.PageControls
@@ -441,6 +588,7 @@ class LauncherWindow {
             else
                 this.ClipboardClearButton.Focus()
         } else if key = "settings" {
+            this.PageSubtitle.Visible := false
             for control in this.ConnectionControls
                 control.Visible := true
             this.RefreshConnectionControls()
@@ -498,19 +646,33 @@ class LauncherWindow {
     ResizeForCurrentView() {
         if !this.IsVisible()
             return
-        area := WindowsInterop.ForegroundWorkArea(this.Settings["openingMonitor"] = "primary")
-        dpi := DllCall("GetDpiForWindow", "ptr", this.Gui.Hwnd, "uint")
-        if !dpi
-            dpi := area.Dpi
-        width := Round(this.Settings["panelWidth"] * dpi / 96)
         logicalHeight := this.PageKey = "clipboard" ? 500
             : this.PageKey = "quickPastes" ? 500
-            : this.PageKey = "settings" ? 380
+            : this.PageKey = "settings" ? 400
             : (this.HasVisibleStatus ? 318 : this.DesiredLogicalHeight)
+        geometry := this.OpeningGeometry(logicalHeight, this.PreviousForeground)
+        this.Gui.Show("x" geometry.X " y" geometry.Y " w" geometry.Width
+            " h" geometry.Height)
+    }
+
+    OpeningGeometry(logicalHeight, foregroundHwnd := 0, areas := 0) {
+        if !IsObject(areas)
+            areas := WindowsInterop.MonitorWorkAreas()
+        area := WindowsInterop.SelectWorkArea(areas,
+            this.Settings["openingMonitor"], foregroundHwnd,
+            this.Settings["rememberedMonitor"], this.Settings["rememberedX"],
+            this.Settings["rememberedY"],
+            this.Settings["rememberedPositionValid"])
+        width := Round(this.Settings["panelWidth"] * area.Dpi / 96)
         height := Min(logicalHeight, area.Bottom - area.Top)
-        y := LauncherWindow.CenteredY(area.Top, area.Bottom, height)
-        x := area.Right - width
-        this.Gui.Show("x" x " y" y " w" width " h" height)
+        x := this.Settings["openingPosition"] = "remembered"
+            && this.Settings["rememberedPositionValid"]
+            ? this.Settings["rememberedX"] : area.Right - width
+        y := this.Settings["openingPosition"] = "remembered"
+            && this.Settings["rememberedPositionValid"]
+            ? this.Settings["rememberedY"]
+            : LauncherWindow.CenteredY(area.Top, area.Bottom, height)
+        return WindowsInterop.ClampWindowPosition(area, x, y, width, height)
     }
 
     OnClipboardHistoryChanged(status) {
@@ -646,11 +808,12 @@ class LauncherWindow {
     ConfirmClearClipboard() {
         if !IsObject(this.ClipboardManager) || !this.ClipboardManager.Entries.Length
             return
+        previousAutoClose := this.AutoCloseOnDeactivate
         this.AutoCloseOnDeactivate := false
         this.Gui.Opt("+OwnDialogs")
         try answer := MsgBox("Clear every clipboard-history item?`n`nThis cannot be undone.",
             "Clear clipboard history", "YesNo Icon! Default2")
-        finally this.AutoCloseOnDeactivate := true
+        finally this.AutoCloseOnDeactivate := previousAutoClose
         if answer = "Yes"
             this.ClipboardManager.Clear()
     }
@@ -666,22 +829,58 @@ class LauncherWindow {
         }
         DllCall("SendMessageW", "ptr", this.ClipboardList.Hwnd,
             "uint", 0x0186, "uptr", 0, "ptr", 0) ; promoted item is selected
+        this.AfterItemSelection("clipboard")
     }
 
-    OnClipboardListMouseUp(wParam, lParam, msg, hwnd) {
-        if this.PageKey != "clipboard" || hwnd != this.ClipboardList.Hwnd
+    OnListMouseUp(wParam, lParam, msg, hwnd) {
+        isClipboard := this.PageKey = "clipboard" && hwnd = this.ClipboardList.Hwnd
+        isQuickPaste := this.PageKey = "quickPastes" && hwnd = this.QuickPasteList.Hwnd
+        if !isClipboard && !isQuickPaste
             return
         hit := DllCall("SendMessageW", "ptr", hwnd, "uint", 0x01A9,
             "uptr", 0, "ptr", lParam, "ptr") ; LB_ITEMFROMPOINT
         if ((hit >> 16) & 0xFFFF)
             return
         index := (hit & 0xFFFF) + 1
-        if !IsObject(this.ClipboardManager) || index > this.ClipboardManager.Entries.Length
+        maximum := isClipboard && IsObject(this.ClipboardManager)
+            ? this.ClipboardManager.Entries.Length : this.QuickVisibleItems.Length
+        if index > maximum
             return
         DllCall("SendMessageW", "ptr", hwnd, "uint", 0x0186,
             "uptr", index - 1, "ptr", 0)
-        this.UpdateClipboardOpenState()
-        SetTimer(() => this.ActivateClipboardSelection(index), -1)
+        if isClipboard {
+            this.UpdateClipboardOpenState()
+            SetTimer(() => this.ActivateClipboardSelection(index), -1)
+        } else {
+            this.UpdateQuickPasteActionState()
+            this.ChooseQuickPasteSelection(index)
+        }
+    }
+
+    OnQuickPasteMouseWheel(wParam, lParam, msg, hwnd) {
+        if this.PageKey != "quickPastes"
+            || !this.QuickVisibleItems.Length
+            || hwnd != this.QuickPasteList.Hwnd
+            return
+        delta := (wParam >> 16) & 0xFFFF
+        if delta >= 0x8000
+            delta -= 0x10000
+        if !delta
+            return 0
+        this.QuickWheelRemainder += delta
+        if Abs(this.QuickWheelRemainder) < 120
+            return 0
+        notches := this.QuickWheelRemainder > 0
+            ? Floor(this.QuickWheelRemainder / 120)
+            : Ceil(this.QuickWheelRemainder / 120)
+        this.QuickWheelRemainder -= notches * 120
+        current := DllCall("SendMessageW", "ptr", this.QuickPasteList.Hwnd,
+            "uint", 0x018E, "uptr", 0, "ptr", 0, "ptr") ; LB_GETTOPINDEX
+        target := Max(0, Min(this.QuickVisibleItems.Length - 1,
+            current - (notches * 2)))
+        DllCall("SendMessageW", "ptr", this.QuickPasteList.Hwnd,
+            "uint", 0x0197, "uptr", target, "ptr", 0) ; LB_SETTOPINDEX
+        return 0
     }
 
     DeleteClipboardSelection() {
@@ -704,7 +903,6 @@ class LauncherWindow {
         manager := this.QuickPastesManager
         this.QuickStatus.Text := IsObject(manager) ? manager.Detail
             : "Quick Paste synchronization is unavailable in this isolated mode."
-        this.RefreshQuickPasteCategories()
         this.RefreshQuickPasteList()
 
         hasCredential := IsObject(this.ConnectionManager)
@@ -715,14 +913,13 @@ class LauncherWindow {
             || manager.State = "scope-required"
         TileRenderer.SetEnabled(this.QuickRefreshButton, hasCredential && !busy)
         this.QuickSearchEdit.Enabled := IsObject(manager) && manager.Items.Length > 0
-        this.QuickCategoryList.Enabled := this.QuickSearchEdit.Enabled
         TileRenderer.SetEnabled(this.QuickSettingsButton, true)
         this.QuickSettingsButton.Visible := needsSettings
         this.QuickCopyButton.Visible := !needsSettings
         this.QuickPasteButton.Visible := !needsSettings
         this.UpdateQuickPasteActionState()
         this.Navigation.Controls := [this.BackButton, this.QuickRefreshButton,
-            this.QuickSearchEdit, this.QuickCategoryList, this.QuickPasteList]
+            this.QuickSearchEdit, this.QuickPasteList]
         if needsSettings
             this.Navigation.Controls.Push(this.QuickSettingsButton)
         else {
@@ -735,58 +932,12 @@ class LauncherWindow {
         TileRenderer.RefreshAll()
     }
 
-    RefreshQuickPasteCategories() {
-        current := this.SelectedQuickPasteCategory()
-        favoritesSelected := this.SelectedQuickPasteFavorites()
-        this.QuickCategoryValues := ["", ""]
-        labels := ["All", "Favorites"]
-        if IsObject(this.QuickPastesManager) {
-            for category in this.QuickPastesManager.Categories() {
-                this.QuickCategoryValues.Push(category)
-                labels.Push(this.SafeQuickPasteDisplay(category, 45))
-            }
-        }
-        this.QuickCategoryList.Delete()
-        this.QuickCategoryList.Add(labels)
-        selected := favoritesSelected ? 2 : 1
-        for index, category in this.QuickCategoryValues {
-            if index > 2 && category = current {
-                selected := index
-                break
-            }
-        }
-        this.QuickCategoryList.Choose(selected)
-    }
-
-    SafeQuickPasteDisplay(value, maximum) {
-        value := RegExReplace(String(value),
-            "[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "�")
-        value := RegExReplace(value, "\R+", " ↵ ")
-        value := Trim(value, " `t")
-        return StrLen(value) > maximum
-            ? SubStr(value, 1, maximum - 1) "…" : value
-    }
-
-    SelectedQuickPasteCategory() {
-        if !this.HasOwnProp("QuickCategoryValues")
-            || this.QuickCategoryList.Value < 1
-            || this.QuickCategoryList.Value > this.QuickCategoryValues.Length
-            return ""
-        return this.QuickCategoryValues[this.QuickCategoryList.Value]
-    }
-
-    SelectedQuickPasteFavorites() {
-        return this.QuickCategoryList.Value = 2
-    }
-
     RefreshQuickPasteList() {
         selectedItem := this.SelectedQuickPaste()
         selectedId := IsObject(selectedItem) ? selectedItem.Id : ""
         manager := this.QuickPastesManager
         this.QuickVisibleItems := IsObject(manager)
-            ? manager.Filter(this.QuickSearchEdit.Value,
-                this.SelectedQuickPasteCategory(),
-                this.SelectedQuickPasteFavorites())
+            ? manager.Filter(this.QuickSearchEdit.Value)
             : []
         DllCall("SendMessageW", "ptr", this.QuickPasteList.Hwnd,
             "uint", 0x0184, "uptr", 0, "ptr", 0)
@@ -842,8 +993,9 @@ class LauncherWindow {
             this.QuickPastesManager.Refresh()
     }
 
-    CopyQuickPasteSelection() {
-        item := this.SelectedQuickPaste()
+    CopyQuickPasteSelection(index := 0) {
+        item := index && index <= this.QuickVisibleItems.Length
+            ? this.QuickVisibleItems[index] : this.SelectedQuickPaste()
         if !IsObject(item) || !IsObject(this.ClipboardManager)
             return false
         if !this.ClipboardManager.PublishText(item.Content) {
@@ -851,6 +1003,36 @@ class LauncherWindow {
             return false
         }
         this.SetQuickFeedback("Copied selected Quick Paste.")
+        return true
+    }
+
+    ChooseQuickPasteSelection(index := 0) {
+        if !this.CopyQuickPasteSelection(index)
+            return false
+        return this.AfterItemSelection("quick-paste")
+    }
+
+    AfterItemSelection(kind) {
+        if this.Settings["autoPasteAfterSelection"] {
+            target := this.PreviousForeground
+            this.Hide(false)
+            if this.PasteRunner.Call(target) {
+                try TrayTip("Selected item inserted.", "Olio Launcher", 0x1)
+                return true
+            }
+            if kind = "quick-paste"
+                this.SetQuickFeedback(
+                    "Copied; Windows could not insert it. Paste manually.", true)
+            else
+                this.ClipboardStatus.Text :=
+                    "Copied; Windows could not insert it. Paste manually."
+            try TrayTip(
+                "Item copied, but Windows could not insert it. Paste manually.",
+                "Olio Launcher", 0x2)
+            return false
+        }
+        if this.Settings["closeAfterSelection"]
+            this.Hide(true)
         return true
     }
 
@@ -871,15 +1053,17 @@ class LauncherWindow {
 
     SetQuickFeedback(text, isError := false) {
         this.QuickLastFeedback := text
-        this.QuickFooter.SetFont("s8 c" (isError ? "FCA5A5" : "A7F3D0"),
+        this.QuickFooter.SetFont("s8 c" ThemeManager.Hex(
+            isError ? "ErrorText" : "SuccessText"),
             "Segoe UI Variable Text")
         this.QuickFooter.Text := text
+        WindowsInterop.AnnounceStatus(this.QuickFooter)
     }
 
     ActivateQuickPasteFocused() {
         focused := DllCall("GetFocus", "ptr")
         if focused = this.QuickPasteList.Hwnd {
-            this.CopyQuickPasteSelection()
+            this.ChooseQuickPasteSelection()
             return
         }
         for control in this.Navigation.Controls {
@@ -892,8 +1076,8 @@ class LauncherWindow {
     }
 
     OnConnectionChanged(state, detail) {
-        if this.PageKey = "settings"
-            this.RefreshConnectionControls()
+        if IsObject(this.SettingsDialog) && this.SettingsDialog.IsVisible()
+            this.SettingsDialog.OnConnectionChanged(state, detail)
     }
 
     RefreshConnectionControls() {
@@ -912,24 +1096,28 @@ class LauncherWindow {
         this.ConnectionCancelButton.Visible := waiting || recoveryPairing
         this.ConnectionRetryButton.Visible := recoveryCredential || recoveryPairing
         this.ConnectionDisconnectButton.Visible := connected || recoveryCredential
+        this.PreferencesButton.Visible := true
+        inner := this.LogicalWidth - 32
+        half := Floor((inner - 8) / 2)
         if recoveryPairing {
-            this.ConnectionRetryButton.Move(16, 270, 160, 42)
-            this.ConnectionCancelButton.Move(184, 270, 160, 42)
+            this.ConnectionRetryButton.Move(16, 308, half, 42)
+            this.ConnectionCancelButton.Move(24 + half, 308, half, 42)
         } else {
-            this.ConnectionCancelButton.Move(16, 270, 328, 42)
-            this.ConnectionRetryButton.Move(16, 270, 160, 42)
+            this.ConnectionCancelButton.Move(16, 308, inner, 42)
+            this.ConnectionRetryButton.Move(16, 308, half, 42)
         }
         if recoveryCredential
-            this.ConnectionDisconnectButton.Move(184, 270, 160, 42)
+            this.ConnectionDisconnectButton.Move(24 + half, 308, half, 42)
         else
-            this.ConnectionDisconnectButton.Move(16, 270, 328, 42)
+            this.ConnectionDisconnectButton.Move(16, 308, inner, 42)
         busy := IsObject(manager) && manager.RequestBusy
         TileRenderer.SetEnabled(this.ConnectionConnectButton, IsObject(manager) && !busy)
         TileRenderer.SetEnabled(this.ConnectionCancelButton, IsObject(manager) && !busy)
         TileRenderer.SetEnabled(this.ConnectionRetryButton, IsObject(manager) && !busy)
         TileRenderer.SetEnabled(this.ConnectionDisconnectButton, IsObject(manager) && !busy)
+        TileRenderer.SetEnabled(this.PreferencesButton, true)
         this.ConnectionNameEdit.Enabled := !waiting && !connected
-        controls := [this.BackButton, this.ConnectionNameEdit]
+        controls := [this.BackButton, this.PreferencesButton, this.ConnectionNameEdit]
         for button in [this.ConnectionConnectButton, this.ConnectionCancelButton,
             this.ConnectionRetryButton, this.ConnectionDisconnectButton] {
             if button.Visible && button.Enabled
@@ -944,6 +1132,80 @@ class LauncherWindow {
         if !IsObject(this.ConnectionManager)
             return
         this.ConnectionManager.StartPairing(this.ConnectionNameEdit.Value)
+    }
+
+    OpenPreferences() {
+        if IsObject(this.SettingsDialog) && this.SettingsDialog.IsVisible() {
+            this.SettingsDialog.Focus()
+            return
+        }
+        previousAutoClose := this.AutoCloseOnDeactivate
+        this.SettingsDialogPriorAutoClose := previousAutoClose
+        this.AutoCloseOnDeactivate := false
+        try this.SettingsDialog := SettingsDialog(this.Gui, this.Settings,
+            (action, changes) => this.ApplySettingsRequest(action, changes),
+            (*) => this.OnSettingsDialogClosed(), this.VisualTestMode,
+            this.ConnectionManager)
+        catch {
+            this.SettingsDialog := 0
+            this.AutoCloseOnDeactivate := previousAutoClose
+            this.SetStatus("Settings could not be opened.")
+            return
+        }
+        if this.IsVisible() {
+            this.Gui.Hide()
+            this.ShowHome(false)
+        }
+    }
+
+    ApplySettingsRequest(action, changes) {
+        if IsObject(this.SettingsApplyCallback)
+            result := this.SettingsApplyCallback.Call(action, changes)
+        else {
+            try {
+                if action = "reset"
+                    values := SettingsManager.ResetPreservingConnection()
+                else {
+                    validation := HotkeyManager.Validate(changes["focusKey"])
+                    if !validation.Ok
+                        return {Ok: false,
+                            Message: "The Focus Key is invalid, reserved, or unavailable."}
+                    values := SettingsManager.UpdateMany(changes)
+                }
+                result := {Ok: true, Values: values}
+            } catch {
+                result := {Ok: false, Message: "Settings could not be saved. Nothing changed."}
+            }
+        }
+        if IsObject(result) && result.Ok && result.HasOwnProp("Values")
+            this.ApplyRuntimeSettings(result.Values)
+        return result
+    }
+
+    ApplyRuntimeSettings(settings) {
+        this.Settings := settings
+        this.AutoCloseOnDeactivate := settings["closeOnFocusLost"]
+            && !this.VisualTestMode
+        this.Gui.Opt(settings["alwaysOnTop"] ? "+AlwaysOnTop" : "-AlwaysOnTop")
+        this.LayoutForPanelWidth(settings["panelWidth"])
+        if IsObject(this.ClipboardManager)
+            this.ClipboardManager.ApplySettings(settings)
+        this.ApplyTheme()
+        this.ResizeForCurrentView()
+    }
+
+    OnSettingsDialogClosed() {
+        this.SettingsDialog := 0
+        this.AutoCloseOnDeactivate := this.Settings["closeOnFocusLost"]
+            && !this.VisualTestMode
+    }
+
+    CloseSettingsDialog() {
+        if !IsObject(this.SettingsDialog)
+            return
+        dialog := this.SettingsDialog
+        this.SettingsDialog := 0
+        dialog.Close()
     }
 
     ConfirmDisconnect() {
@@ -989,6 +1251,7 @@ class LauncherWindow {
         this.HasVisibleStatus := true
         this.StatusText.Text := text
         this.StatusText.Visible := true
+        WindowsInterop.AnnounceStatus(this.StatusText)
     }
 
     OnCommand(wParam, lParam, msg, hwnd) {
@@ -1016,6 +1279,7 @@ class LauncherWindow {
                 case "__clip_clear": this.ConfirmClearClipboard()
                 case "__clip_open": this.OpenClipboardPreview()
                 case "__clip_delete": this.DeleteClipboardSelection()
+                case "__preferences": this.OpenPreferences()
                 case "__connection_connect": this.StartConnection()
                 case "__connection_cancel": this.ConnectionManager.CancelPairing()
                 case "__connection_retry": this.ConnectionManager.Retry()
@@ -1023,9 +1287,11 @@ class LauncherWindow {
                 case "__quick_refresh": this.RefreshQuickPastesNow()
                 case "__quick_copy": this.CopyQuickPasteSelection()
                 case "__quick_paste": this.PasteQuickPasteSelection()
-                case "__quick_settings": this.Activate("settings")
+                case "__quick_settings": this.OpenPreferences()
                 default:
-                    if this.Buttons[key].Enabled
+                    if key = "settings"
+                        this.OpenPreferences()
+                    else if this.Buttons[key].Enabled
                         this.Activate(key)
             }
             return 0
@@ -1039,7 +1305,30 @@ class LauncherWindow {
         if hwnd != guiHwnd || !this.AutoCloseOnDeactivate
             return
         if (wParam & 0xFFFF) = 0 && this.IsVisible()
-            SetTimer((*) => this.Hide(false), -100)
+            SetTimer((*) => this.CloseAfterFocusLoss(), -100)
+    }
+
+    OnApplicationActivate(wParam, lParam, msg, hwnd) {
+        try guiHwnd := this.Gui.Hwnd
+        catch
+            return
+        if hwnd != guiHwnd || wParam || !this.AutoCloseOnDeactivate
+            return
+        if this.IsVisible()
+            SetTimer((*) => this.CloseAfterFocusLoss(), -100)
+    }
+
+    CloseAfterFocusLoss() {
+        if !this.AutoCloseOnDeactivate || !this.IsVisible()
+            return
+        foreground := DllCall("GetForegroundWindow", "ptr")
+        if !LauncherWindow.ShouldCloseAfterFocusLoss(foreground, this.Gui.Hwnd)
+            return
+        this.Hide(false)
+    }
+
+    static ShouldCloseAfterFocusLoss(foreground, launcherHwnd) {
+        return !foreground || WindowsInterop.RootWindow(foreground) != launcherHwnd
     }
 
     OnDpiChanged(wParam, lParam, msg, hwnd) {

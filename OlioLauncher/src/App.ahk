@@ -38,7 +38,8 @@ class OlioApp {
         this.Screenshot := ScreenshotManager(this.Clipboard,
             (status, previous, result) => this.OnScreenshotFinished(status, previous, result))
         this.Window := LauncherWindow(this.Settings, (key) => this.OnNavigate(key),
-            mode = "--visual-test", this.Clipboard, this.Connection, this.QuickPastes)
+            mode = "--visual-test", this.Clipboard, this.Connection, this.QuickPastes,
+            (action, changes) => this.ApplySettings(action, changes))
         if IsObject(this.Connection) {
             this.Connection.ChangedCallback := (state, detail) =>
                 this.OnConnectionChanged(state, detail)
@@ -170,7 +171,7 @@ class OlioApp {
     }
 
     static OnScreenshotFinished(status, previous, result) {
-        RedactedLogger.Write("screenshot", status)
+        RedactedLogger.Write("capture-result", status)
         if !IsObject(this.Window)
             return
         this.Window.RestoreAfterScreenshot(previous)
@@ -201,6 +202,70 @@ class OlioApp {
         A_TrayMenu.Add()
         A_TrayMenu.Add("Exit", (*) => this.Shutdown())
         A_TrayMenu.Default := "Open / Hide"
+    }
+
+    static ApplySettings(action, changes) {
+        previous := this.Settings
+        candidate := Map()
+        if action = "reset" {
+            candidate := SettingsManager.Defaults()
+            for key in ["deviceId", "deviceName", "connectedDeviceName", "connectedAt"] {
+                if previous.Has(key)
+                    candidate[key] := previous[key]
+            }
+        } else {
+            for key, value in previous
+                candidate[key] := value
+            for key, value in changes
+                candidate[key] := value
+        }
+
+        SettingsManager.Warnings := []
+        candidate := SettingsManager.Validate(candidate)
+        hotkeyValidation := HotkeyManager.Validate(candidate["focusKey"])
+        if !hotkeyValidation.Ok
+            return {Ok: false,
+                Message: "The Focus Key is invalid, reserved, or unavailable."}
+
+        focusChanged := candidate["focusKey"] != previous["focusKey"]
+        startupChanged := candidate["startWithWindows"] != previous["startWithWindows"]
+        if focusChanged {
+            registered := HotkeyManager.Register(candidate["focusKey"],
+                this.FocusCallback, this.FocusReleaseCallback)
+            if !registered.Ok {
+                HotkeyManager.Register(previous["focusKey"],
+                    this.FocusCallback, this.FocusReleaseCallback)
+                return {Ok: false,
+                    Message: "The Focus Key is invalid, reserved, or unavailable."}
+            }
+        }
+        if startupChanged {
+            startup := StartupManager.Apply(candidate["startWithWindows"])
+            if !startup.Ok {
+                if focusChanged
+                    HotkeyManager.Register(previous["focusKey"],
+                        this.FocusCallback, this.FocusReleaseCallback)
+                return {Ok: false,
+                    Message: "Start with Windows could not be changed. Nothing was saved."}
+            }
+        }
+
+        changesToSave := Map()
+        for key, value in candidate
+            changesToSave[key] := value
+        try values := SettingsManager.UpdateMany(changesToSave)
+        catch {
+            if startupChanged
+                StartupManager.Apply(previous["startWithWindows"])
+            if focusChanged
+                HotkeyManager.Register(previous["focusKey"],
+                    this.FocusCallback, this.FocusReleaseCallback)
+            return {Ok: false, Message: "Settings could not be saved. Nothing changed."}
+        }
+        this.Settings := values
+        RedactedLogger.Configure(values["loggingEnabled"])
+        RedactedLogger.Write(action = "reset" ? "settings-reset" : "settings-save", "ok")
+        return {Ok: true, Values: values}
     }
 
     static Shutdown(*) {

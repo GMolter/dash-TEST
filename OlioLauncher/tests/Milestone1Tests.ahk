@@ -4,6 +4,7 @@
 #Include ..\src\FlatJson.ahk
 #Include ..\src\Logging.ahk
 #Include ..\src\SettingsManager.ahk
+#Include ..\src\ThemeManager.ahk
 #Include ..\src\WindowsInterop.ahk
 #Include ..\src\HotkeyManager.ahk
 #Include ..\src\StartupManager.ahk
@@ -13,6 +14,7 @@
 #Include ..\src\ClipboardRenderer.ahk
 #Include ..\src\QuickPastesRenderer.ahk
 #Include ..\src\ClipboardPreviewWindow.ahk
+#Include ..\src\SettingsDialog.ahk
 #Include ..\src\LauncherWindow.ahk
 
 class Milestone1Tests {
