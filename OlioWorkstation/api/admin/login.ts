@@ -1,5 +1,7 @@
 export const config = { runtime: "nodejs" };
 
+import { resolveAppAdminFromRequest } from "../_utils/adminAccess.js";
+
 function b64urlFromBase64(b64: string) {
   return b64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
@@ -20,6 +22,11 @@ export default async function handler(req: any, res: any) {
 
     if (password !== adminPassword) {
       return res.status(401).json({ error: "Invalid password" });
+    }
+
+    const access = await resolveAppAdminFromRequest(req);
+    if (access.ok === false) {
+      return res.status(access.status).json({ error: access.error });
     }
 
     const { createHmac } = await import("crypto");

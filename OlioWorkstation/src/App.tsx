@@ -48,6 +48,7 @@ const HelpArticlePage = lazy(() => import('./pages/HelpArticlePage').then(({ Hel
 const LauncherAuthorization = lazy(() => import('./pages/LauncherAuthorization').then(({ LauncherAuthorization: Component }) => ({ default: Component })));
 const ClassDashPage = lazy(() => import('./pages/ClassDashPage').then(({ ClassDashPage: Component }) => ({ default: Component })));
 const PluginManager = lazy(() => import('./components/PluginManager').then(({ PluginManager: Component }) => ({ default: Component })));
+const ForcedPasswordChange = lazy(() => import('./pages/ForcedPasswordChange').then(({ ForcedPasswordChange: Component }) => ({ default: Component })));
 
 type View =
   | { type: 'home' }
@@ -223,7 +224,6 @@ function App() {
 
       if (cleanPath === '/admin') {
         setView({ type: 'admin' });
-        if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
         return;
       }
       if (cleanPath === '/admin/editor') {
@@ -469,6 +469,10 @@ function App() {
     return <LauncherAuthorization requestId={view.requestId} displayCode={view.displayCode} />;
   }
 
+  if (!authLoading && user?.app_metadata?.force_password_change === true) {
+    return <ForcedPasswordChange />;
+  }
+
   if (view.type === 'projects-center') {
     return (
       <>
@@ -516,12 +520,17 @@ function App() {
   }
 
   if (view.type === 'admin-editor') {
+    if (!user && allowOnboarding) return <Onboarding />;
     return (
       <>
         {floatingNavigation}
         <Admin editorOnly />
       </>
     );
+  }
+
+  if (view.type === 'admin' && user) {
+    return <Admin />;
   }
 
   if (isPublicRoute) {
@@ -570,7 +579,6 @@ function App() {
               />
             )}
             {view.type === 'classdash' && <ClassDashPage />}
-            {view.type === 'admin' && <Admin />}
             {view.type === 'tool' && view.tool === 'notfound' && <NotFound />}
           </main>
         </div>

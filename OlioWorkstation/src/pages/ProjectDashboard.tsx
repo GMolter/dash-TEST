@@ -192,14 +192,6 @@ export function ProjectDashboard({
   const [settingsName, setSettingsName] = useState('');
   const [settingsDescription, setSettingsDescription] = useState('');
   const [settingsStatus, setSettingsStatus] = useState('planning');
-  const [usageTapCount, setUsageTapCount] = useState(0);
-  const [usageLastTapAt, setUsageLastTapAt] = useState(0);
-  const [usageAdminModalOpen, setUsageAdminModalOpen] = useState(false);
-  const [usageAdminPassword, setUsageAdminPassword] = useState('');
-  const [usageAdminUnlimited, setUsageAdminUnlimited] = useState(false);
-  const [usageAdminCount, setUsageAdminCount] = useState(0);
-  const [usageAdminSaving, setUsageAdminSaving] = useState(false);
-  const [usageAdminError, setUsageAdminError] = useState<string | null>(null);
   const [deleteNameInput, setDeleteNameInput] = useState('');
   const [deleteConfirmChecked, setDeleteConfirmChecked] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -296,18 +288,6 @@ export function ProjectDashboard({
     },
     [projectId],
   );
-
-  async function projectApiFetch(url: string, init?: RequestInit) {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    const headers = new Headers(init?.headers || {});
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-    return fetch(url, {
-      ...init,
-      headers,
-      credentials: 'include',
-    });
-  }
 
   async function loadProject() {
     if (!projectId) {
@@ -718,13 +698,6 @@ export function ProjectDashboard({
     setSettingsName(project.name || '');
     setSettingsDescription(project.description || '');
     setSettingsStatus(clampStatus(project.status || 'planning'));
-    setUsageTapCount(0);
-    setUsageLastTapAt(0);
-    setUsageAdminModalOpen(false);
-    setUsageAdminPassword('');
-    setUsageAdminUnlimited(!!project.ai_plan_unlimited);
-    setUsageAdminCount(Math.max(0, Number(project.ai_plan_usage_count || 0)));
-    setUsageAdminError(null);
   }, [settingsOpen, project]);
 
   useEffect(() => {
@@ -734,89 +707,12 @@ export function ProjectDashboard({
     setDeleteError(null);
   }, [deleteModalOpen, project]);
 
-  const canUseHiddenUsageOverride = profile?.role === 'admin' || profile?.role === 'owner';
   const aiUsageCount = Math.max(0, Number(project?.ai_plan_usage_count || 0));
   const aiUsageUnlimited = !!project?.ai_plan_unlimited;
   const aiUsageRemaining = aiUsageUnlimited ? null : Math.max(0, PROJECT_AI_USAGE_LIMIT - aiUsageCount);
   const aiUsagePercent = aiUsageUnlimited
     ? 100
     : Math.min(100, Math.round((aiUsageCount / PROJECT_AI_USAGE_LIMIT) * 100));
-
-  function onUsageMeterClick() {
-    if (!settingsOpen || !project || !canUseHiddenUsageOverride) return;
-    const now = Date.now();
-    const isConsecutive = now - usageLastTapAt <= 1400;
-    const next = isConsecutive ? usageTapCount + 1 : 1;
-    setUsageLastTapAt(now);
-    setUsageTapCount(next);
-    if (next >= 10) {
-      setUsageTapCount(0);
-      setUsageAdminPassword('');
-      setUsageAdminError(null);
-      setUsageAdminUnlimited(!!project.ai_plan_unlimited);
-      setUsageAdminCount(Math.max(0, Number(project.ai_plan_usage_count || 0)));
-      setUsageAdminModalOpen(true);
-    }
-  }
-
-  async function submitUsageOverride() {
-    if (!projectId || !project) return;
-    if (!usageAdminUnlimited && (!Number.isFinite(usageAdminCount) || usageAdminCount < 0)) {
-      setUsageAdminError('Usage count must be 0 or higher.');
-      return;
-    }
-
-    setUsageAdminSaving(true);
-    setUsageAdminError(null);
-    try {
-      const r = await projectApiFetch('/api/projects/ai-usage-admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId,
-          password: usageAdminPassword,
-          unlimited: usageAdminUnlimited,
-          usageCount: usageAdminUnlimited ? undefined : Math.floor(usageAdminCount),
-        }),
-      });
-      const rawText = await r.text();
-      const j = (() => {
-        try {
-          return rawText ? JSON.parse(rawText) : {};
-        } catch {
-          return null;
-        }
-      })();
-      if (!r.ok) {
-        const fallback =
-          typeof rawText === 'string' && rawText.trim()
-            ? rawText.slice(0, 220)
-            : `Failed to update AI usage (HTTP ${r.status}).`;
-        setUsageAdminError((j as any)?.error || fallback);
-        return;
-      }
-      if (!j || typeof j !== 'object') {
-        setUsageAdminError('Invalid response from usage override endpoint.');
-        return;
-      }
-
-      setProject((prev) =>
-        prev
-          ? {
-              ...prev,
-              ai_plan_usage_count: Number((j as any)?.usage?.used || 0),
-              ai_plan_unlimited: Boolean((j as any)?.usage?.unlimited),
-            }
-          : prev,
-      );
-      setUsageAdminModalOpen(false);
-      setUsageAdminPassword('');
-    } catch (err) {
-      setUsageAdminError(err instanceof Error ? err.message : 'Failed to update AI usage.');
-    } finally {
-      setUsageAdminSaving(false);
-    }
-  }
 
   async function saveProjectSettings() {
     if (!projectId || !project) return;
@@ -843,7 +739,6 @@ export function ProjectDashboard({
       if (error) throw error;
 
       setProject(data as Project);
-      setUsageAdminModalOpen(false);
       setSettingsOpen(false);
     } catch (err) {
       setSettingsError(err instanceof Error ? err.message : 'Failed to save project settings.');
@@ -871,7 +766,6 @@ export function ProjectDashboard({
       const { error } = await supabase.from('projects').delete().eq('id', projectId);
       if (error) throw error;
       setDeleteModalOpen(false);
-      setUsageAdminModalOpen(false);
       setSettingsOpen(false);
       navigateTo('/projects');
     } catch (err) {
@@ -1424,7 +1318,6 @@ export function ProjectDashboard({
             className="absolute inset-0 bg-black/55"
             onClick={() => {
               setDeleteModalOpen(false);
-              setUsageAdminModalOpen(false);
               setSettingsOpen(false);
             }}
             aria-label="Close"
@@ -1438,7 +1331,6 @@ export function ProjectDashboard({
               <button
                 onClick={() => {
                   setDeleteModalOpen(false);
-                  setUsageAdminModalOpen(false);
                   setSettingsOpen(false);
                 }}
                 className="p-2 rounded-2xl border border-slate-800/70 bg-slate-900/30 hover:bg-slate-900/45"
@@ -1487,11 +1379,7 @@ export function ProjectDashboard({
 
             <div className="mt-4">
               <div className="text-sm text-slate-300 mb-2">AI planner usage</div>
-              <button
-                type="button"
-                onClick={onUsageMeterClick}
-                className="w-full rounded-2xl border border-slate-800/60 bg-slate-950/45 px-4 py-3 text-left"
-              >
+              <div className="w-full rounded-2xl border border-slate-800/60 bg-slate-950/45 px-4 py-3 text-left">
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="text-slate-200">
                     {aiUsageUnlimited ? 'Unlimited' : `${aiUsageCount}/${PROJECT_AI_USAGE_LIMIT} used`}
@@ -1512,7 +1400,12 @@ export function ProjectDashboard({
                     style={{ width: `${aiUsagePercent}%` }}
                   />
                 </div>
-              </button>
+                {profile?.app_admin && (
+                  <a href={`/admin?section=projects&resource=projects&record=${encodeURIComponent(projectId || '')}`} className="mt-3 inline-flex text-xs text-blue-300 hover:text-blue-200">
+                    Manage usage in App Admin
+                  </a>
+                )}
+              </div>
             </div>
 
             {settingsError && (
@@ -1525,7 +1418,6 @@ export function ProjectDashboard({
               <button
                 onClick={() => {
                   setDeleteModalOpen(false);
-                  setUsageAdminModalOpen(false);
                   setSettingsOpen(false);
                 }}
                 className="px-4 py-3 rounded-2xl border border-slate-800/70 bg-slate-900/30 hover:bg-slate-900/45"
@@ -1555,96 +1447,6 @@ export function ProjectDashboard({
             </div>
           </div>
 
-          {usageAdminModalOpen && (
-            <div className="fixed inset-0 z-[65] flex items-center justify-center p-4 sm:p-6">
-              <button
-                className="absolute inset-0 bg-black/70"
-                onClick={() => setUsageAdminModalOpen(false)}
-                aria-label="Close"
-              />
-              <div className="relative w-[560px] max-w-[94vw] rounded-3xl border border-slate-800/60 bg-slate-950/95 backdrop-blur p-4 sm:p-6 shadow-2xl">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-lg font-semibold">AI usage override</div>
-                    <div className="mt-1 text-sm text-slate-300">Admin verification required.</div>
-                  </div>
-                  <button
-                    onClick={() => setUsageAdminModalOpen(false)}
-                    className="p-2 rounded-2xl border border-slate-800/70 bg-slate-900/30 hover:bg-slate-900/45"
-                    aria-label="Close"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <div className="text-sm text-slate-300 mb-2">Admin panel password</div>
-                    <input
-                      type="password"
-                      value={usageAdminPassword}
-                      onChange={(e) => {
-                        setUsageAdminPassword(e.target.value);
-                        setUsageAdminError(null);
-                      }}
-                      placeholder="Enter current admin password"
-                      className="w-full px-4 py-3 rounded-2xl bg-slate-950/50 border border-slate-800/60 focus:outline-none focus:ring-2 focus:ring-blue-500/35"
-                    />
-                  </div>
-
-                  <label className="inline-flex items-center gap-3 text-sm text-slate-200 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={usageAdminUnlimited}
-                      onChange={(e) => setUsageAdminUnlimited(e.target.checked)}
-                      className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/40"
-                    />
-                    <span>Unlimited usage for this project</span>
-                  </label>
-
-                  {!usageAdminUnlimited && (
-                    <div>
-                      <div className="text-sm text-slate-300 mb-2">Usage count</div>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={usageAdminCount}
-                        onChange={(e) => setUsageAdminCount(Math.max(0, Number(e.target.value || 0)))}
-                        className="w-full px-4 py-3 rounded-2xl bg-slate-950/50 border border-slate-800/60 focus:outline-none focus:ring-2 focus:ring-blue-500/35"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {usageAdminError && (
-                  <div className="mt-4 p-3 rounded-2xl border border-red-500/30 bg-red-500/10 text-red-200 text-sm">
-                    {usageAdminError}
-                  </div>
-                )}
-
-                <div className="mt-6 flex items-center justify-end gap-3">
-                  <button
-                    onClick={() => setUsageAdminModalOpen(false)}
-                    className="px-4 py-3 rounded-2xl border border-slate-800/70 bg-slate-900/30 hover:bg-slate-900/45"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={submitUsageOverride}
-                    disabled={usageAdminSaving || !usageAdminPassword.trim()}
-                    className={`px-4 py-3 rounded-2xl border transition-colors ${
-                      !usageAdminSaving && usageAdminPassword.trim()
-                        ? 'bg-blue-500/20 border-blue-500/30 text-blue-200 hover:bg-blue-500/25'
-                        : 'bg-slate-900/20 border-slate-800/60 text-slate-500 cursor-not-allowed'
-                    }`}
-                  >
-                    {usageAdminSaving ? 'Applying...' : 'Apply Override'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

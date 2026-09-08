@@ -32,6 +32,9 @@ import {
   replaceSelectionWithLink,
 } from "../lib/linking";
 import { extractArticleAnchors } from "../lib/helpArticleFormatting";
+import { AdminOperationsConsole } from "../features/admin/AdminOperationsConsole";
+import { AdminOperationDialog } from "../features/admin/AdminOperationDialog";
+import type { AdminOperation } from "../features/admin/types";
 
 type BannerState = {
   enabled: boolean;
@@ -67,6 +70,12 @@ type ContextMenuState = {
   end: number;
 };
 
+type HelpOperation = {
+  operation: Omit<AdminOperation, "reason">;
+  title: string;
+  successMessage: string;
+} | null;
+
 type HoverPreviewState = {
   x: number;
   y: number;
@@ -97,6 +106,10 @@ type AdminProps = {
 };
 
 export default function Admin({ editorOnly = false }: AdminProps) {
+  return editorOnly ? <AdminEditor editorOnly /> : <AdminOperationsConsole />;
+}
+
+function AdminEditor({ editorOnly = true }: AdminProps) {
   const [authed, setAuthed] = useState<boolean>(false);
   const [appAdmin, setAppAdmin] = useState(false);
   const [accessReason, setAccessReason] = useState<string | null>(null);
@@ -115,6 +128,7 @@ export default function Admin({ editorOnly = false }: AdminProps) {
   const [articleSaving, setArticleSaving] = useState(false);
   const [articleCreating, setArticleCreating] = useState(false);
   const [articleDeleting, setArticleDeleting] = useState(false);
+  const [helpOperation, setHelpOperation] = useState<HelpOperation>(null);
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteNameInput, setDeleteNameInput] = useState("");
@@ -346,13 +360,14 @@ export default function Admin({ editorOnly = false }: AdminProps) {
     }
 
     if (link.target.type === "help") {
-      const article = articles.find((item) => item.id === link.target?.articleId);
+      const target = link.target;
+      const article = articles.find((item) => item.id === target.articleId);
       const missing = !article;
       return {
         title: article?.title || link.label,
         subtitle: article
           ? `/help/article/${article.slug}${article.is_published ? "" : " (Draft)"}`
-          : `Help article (${link.target.articleId})`,
+          : `Help article (${target.articleId})`,
         warning: missing
           ? "Reference unavailable."
           : (article && !article.is_published ? "Draft links may 404 publicly until published." : undefined),
@@ -361,11 +376,12 @@ export default function Admin({ editorOnly = false }: AdminProps) {
     }
 
     if (link.target.type === "help_anchor") {
-      const anchor = articleTeleportAnchors.find((item) => item.id === link.target?.anchorId);
+      const target = link.target;
+      const anchor = articleTeleportAnchors.find((item) => item.id === target.anchorId);
       const missing = !anchor;
       return {
         title: anchor?.title || link.label,
-        subtitle: anchor ? `Jump to #${anchor.id}` : `Section #${link.target.anchorId}`,
+        subtitle: anchor ? `Jump to #${anchor.id}` : `Section #${target.anchorId}`,
         warning: missing ? "Reference unavailable in this article." : undefined,
         actionHint: missing ? "Reference unavailable" : "Scrolls within this article",
       };
@@ -613,7 +629,7 @@ export default function Admin({ editorOnly = false }: AdminProps) {
     }
   }
 
-  async function createArticle() {
+  function createArticle() {
     const title = articleTitle.trim();
     if (!title) {
       setMsg({ kind: "err", text: "Article title is required." });
@@ -622,40 +638,25 @@ export default function Admin({ editorOnly = false }: AdminProps) {
 
     setArticleCreating(true);
     setMsg(null);
-    try {
-      const r = await adminFetch("/api/admin/help-articles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    setHelpOperation({
+      title: "Create help article",
+      successMessage: "Article created and audited.",
+      operation: {
+        resource: "help-articles",
+        kind: "create",
+        values: {
           title,
           slug: articleSlug,
           summary: articleSummary,
           content: articleContent,
-          isPublished: articlePublished,
-          sortOrder: articleSortOrder,
-        }),
-      });
-
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        const base = j.error || "Failed to create article.";
-        const codePart = j.code ? ` (${j.code})` : "";
-        const detailPart = j.detail ? ` ${j.detail}` : "";
-        setMsg({ kind: "err", text: `${base}${codePart}${detailPart}` });
-        return;
-      }
-
-      const created = j.article as HelpArticle;
-      await loadArticles(created?.id);
-      setMsg({ kind: "ok", text: "Article created." });
-    } catch {
-      setMsg({ kind: "err", text: "Network error while creating article." });
-    } finally {
-      setArticleCreating(false);
-    }
+          is_published: articlePublished,
+          sort_order: articleSortOrder,
+        },
+      },
+    });
   }
 
-  async function saveArticle() {
+  function saveArticle() {
     if (!selectedArticleId) {
       setMsg({ kind: "err", text: "Select an article first." });
       return;
@@ -668,67 +669,56 @@ export default function Admin({ editorOnly = false }: AdminProps) {
 
     setArticleSaving(true);
     setMsg(null);
-    try {
-      const r = await adminFetch(`/api/admin/help-articles?id=${encodeURIComponent(selectedArticleId)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    setHelpOperation({
+      title: "Update help article",
+      successMessage: "Article updated and audited.",
+      operation: {
+        resource: "help-articles",
+        kind: "update",
+        ids: [selectedArticleId],
+        values: {
           title,
           slug: articleSlug,
           summary: articleSummary,
           content: articleContent,
-          isPublished: articlePublished,
-          sortOrder: articleSortOrder,
-        }),
-      });
-
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        const base = j.error || "Failed to save article.";
-        const codePart = j.code ? ` (${j.code})` : "";
-        const detailPart = j.detail ? ` ${j.detail}` : "";
-        setMsg({ kind: "err", text: `${base}${codePart}${detailPart}` });
-        return;
-      }
-
-      await loadArticles();
-      setMsg({ kind: "ok", text: "Article updated." });
-    } catch {
-      setMsg({ kind: "err", text: "Network error while saving article." });
-    } finally {
-      setArticleSaving(false);
-    }
+          is_published: articlePublished,
+          sort_order: articleSortOrder,
+        },
+      },
+    });
   }
 
-  async function deleteArticle() {
+  function deleteArticle() {
     if (!selectedArticleId) return;
 
     setArticleDeleting(true);
     setMsg(null);
-    try {
-      const r = await adminFetch(`/api/admin/help-articles?id=${encodeURIComponent(selectedArticleId)}`, {
-        method: "DELETE",
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        const base = j.error || "Failed to delete article.";
-        const codePart = j.code ? ` (${j.code})` : "";
-        const detailPart = j.detail ? ` ${j.detail}` : "";
-        setMsg({ kind: "err", text: `${base}${codePart}${detailPart}` });
-        return;
-      }
+    setHelpOperation({
+      title: "Delete help article permanently",
+      successMessage: "Article deleted and audited.",
+      operation: { resource: "help-articles", kind: "delete", ids: [selectedArticleId] },
+    });
+  }
 
-      await loadArticles();
+  function cancelHelpOperation() {
+    setHelpOperation(null);
+    setArticleCreating(false);
+    setArticleSaving(false);
+    setArticleDeleting(false);
+  }
+
+  async function completeHelpOperation() {
+    const completed = helpOperation;
+    const deleted = completed?.operation.kind === "delete";
+    cancelHelpOperation();
+    if (deleted) {
       clearEditor();
       setShowDeleteModal(false);
       setDeleteNameInput("");
       setDeleteAcknowledge(false);
-      setMsg({ kind: "ok", text: "Article deleted." });
-    } catch {
-      setMsg({ kind: "err", text: "Network error while deleting article." });
-    } finally {
-      setArticleDeleting(false);
     }
+    await loadArticles();
+    setMsg({ kind: "ok", text: completed?.successMessage || "Help article operation completed and audited." });
   }
 
   function formatUpdatedAt(value: string | null) {
@@ -1580,6 +1570,12 @@ export default function Admin({ editorOnly = false }: AdminProps) {
             </div>
           </div>
         )}
+        <AdminOperationDialog
+          operation={helpOperation?.operation || null}
+          title={helpOperation?.title || "Confirm help article operation"}
+          onCancel={cancelHelpOperation}
+          onComplete={() => { void completeHelpOperation(); }}
+        />
       </div>
     </div>
   );

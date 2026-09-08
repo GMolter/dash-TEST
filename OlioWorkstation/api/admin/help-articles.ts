@@ -200,6 +200,10 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ articles: data || [] });
     }
 
+    // All help-article mutations use /api/admin/data so they receive the same
+    // prepare/execute confirmation, replay protection, and audit guarantees.
+    return res.status(405).json({ error: "Help article mutations must use the audited admin data endpoint." });
+
     if (req.method === "POST") {
       const body = parseBody(req.body);
       const title = String(body.title || "").trim();

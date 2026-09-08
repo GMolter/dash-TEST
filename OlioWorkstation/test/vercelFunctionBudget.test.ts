@@ -23,7 +23,10 @@ describe('Vercel Hobby serverless-function budget', () => {
 
     expect(functions).not.toContain('admin/help-article.ts');
     expect(functions).toContain('admin/help-articles.ts');
+    expect(functions).toContain('admin/data.ts');
+    expect(functions).toContain('auth/complete-password-reset.ts');
+    expect(functions).not.toContain('projects/ai-usage-admin.ts');
     expect(functions.some((entry) => entry.includes('.test.'))).toBe(false);
-    expect(functions).toHaveLength(HOBBY_FUNCTION_LIMIT);
+    expect(functions.length).toBeLessThanOrEqual(HOBBY_FUNCTION_LIMIT);
   });
 });
