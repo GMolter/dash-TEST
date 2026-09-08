@@ -16,7 +16,7 @@ import {
 
 type OperationKind =
   | "create" | "update" | "delete" | "reveal"
-  | "suspend" | "reactivate" | "reset-password"
+  | "ban" | "unban" | "reset-password"
   | "transfer-owner" | "regenerate-code"
   | "revoke" | "cancel" | "disconnect";
 
@@ -171,7 +171,7 @@ function applyId(query: any, resource: AdminResource, id: string) {
 
 function resourceActions(resource: AdminResource) {
   if (resource.key === "app-settings") return ["update"];
-  if (resource.guided === "users") return ["create", "update", "suspend", "reactivate", "reset-password", "delete"];
+  if (resource.guided === "users") return ["create", "update", "ban", "unban", "reset-password", "delete"];
   if (resource.guided === "launcher-device") return ["revoke"];
   if (resource.guided === "launcher-pairing") return ["cancel"];
   if (resource.guided === "calendar") return ["disconnect"];
@@ -194,7 +194,7 @@ function assertOperation(resource: AdminResource, operation: AdminOperation) {
   if (ids.length > 1 && (resource.guided || resource.key === "organizations" || resource.key === "app-settings")) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
-  if (ids.length > 1 && ["reveal", "suspend", "reactivate", "reset-password", "transfer-owner", "regenerate-code", "revoke", "cancel", "disconnect"].includes(operation.kind)) {
+  if (ids.length > 1 && ["reveal", "ban", "unban", "reset-password", "transfer-owner", "regenerate-code", "revoke", "cancel", "disconnect"].includes(operation.kind)) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
   operation.ids = ids;
@@ -352,7 +352,7 @@ async function impactPreview(service: any, resource: AdminResource, operation: A
 async function guardUserOperation(service: any, actorId: string, operation: AdminOperation) {
   const id = operation.ids?.[0];
   if (!id) return;
-  const lockingAction = ["delete", "suspend"].includes(operation.kind)
+  const lockingAction = ["delete", "ban"].includes(operation.kind)
     || (operation.kind === "update" && operation.values?.app_admin === false);
   if (lockingAction && id === actorId) throw new Error("SELF_LOCKOUT_BLOCKED");
   if (lockingAction) {
@@ -389,15 +389,20 @@ async function executeUser(service: any, operation: AdminOperation) {
     return { id: userId, email, force_password_change: true };
   }
   if (!id) throw new Error("TARGET_REQUIRED");
-  if (operation.kind === "suspend") {
+  if (operation.kind === "ban") {
     const { error } = await service.auth.admin.updateUserById(id, { ban_duration: "876000h" });
     if (error) throw error;
-    return { id, suspended: true };
+    const { data: verified, error: verifyError } = await service.auth.admin.getUserById(id);
+    if (verifyError || !verified.user?.banned_until) throw verifyError || new Error("BAN_NOT_APPLIED");
+    return { id, banned: true, banned_until: verified.user.banned_until };
   }
-  if (operation.kind === "reactivate") {
+  if (operation.kind === "unban") {
     const { error } = await service.auth.admin.updateUserById(id, { ban_duration: "none" });
     if (error) throw error;
-    return { id, suspended: false };
+    const { data: verified, error: verifyError } = await service.auth.admin.getUserById(id);
+    if (verifyError) throw verifyError;
+    if (verified.user?.banned_until && new Date(verified.user.banned_until).getTime() > Date.now()) throw new Error("UNBAN_NOT_APPLIED");
+    return { id, banned: false, banned_until: verified.user?.banned_until || null };
   }
   if (operation.kind === "reset-password") {
     const { data: current, error: lookupError } = await service.auth.admin.getUserById(id);

@@ -85,7 +85,7 @@ export const ADMIN_RESOURCES: Record<string, AdminResource> = {
       f("role", "Organization role", "select", { editable: true, create: true, options: ["member", "admin", "owner"] }),
       f("app_admin", "App admin", "boolean", { editable: true, create: true }),
       f("email_confirmed_at", "Email confirmed", "datetime"), f("last_sign_in_at", "Last sign in", "datetime"),
-      f("banned_until", "Suspended until", "datetime"), f("force_password_change", "Must change password", "boolean"),
+      f("banned_until", "Banned until", "datetime"), f("force_password_change", "Must change password", "boolean"),
       ...timestamps,
     ],
   },
@@ -229,7 +229,7 @@ export const ADMIN_RESOURCE_LIST = Object.values(ADMIN_RESOURCES).map((resource)
 
 function resourceActionsForCatalog(resource: AdminResource) {
   if (resource.key === "app-settings") return ["update"];
-  if (resource.guided === "users") return ["create", "update", "suspend", "reactivate", "reset-password", "delete"];
+  if (resource.guided === "users") return ["create", "update", "ban", "unban", "reset-password", "delete"];
   if (resource.guided === "launcher-device") return ["revoke"];
   if (resource.guided === "launcher-pairing") return ["cancel"];
   if (resource.guided === "calendar") return ["disconnect"];

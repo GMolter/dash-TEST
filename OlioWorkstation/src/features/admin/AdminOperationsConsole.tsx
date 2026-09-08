@@ -296,7 +296,7 @@ function FullPageStatus({ icon: Icon, title, detail, spinning = false, action }:
 }
 
 function operationTitle(kind: string, resource: string, count: number) {
-  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", suspend: "Suspend", reactivate: "Reactivate", "reset-password": "Reset password for", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel", disconnect: "Disconnect" };
+  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", ban: "Ban", unban: "Unban", "reset-password": "Reset password for", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel", disconnect: "Disconnect" };
   return `${names[kind] || "Change"} ${resource}`;
 }
 

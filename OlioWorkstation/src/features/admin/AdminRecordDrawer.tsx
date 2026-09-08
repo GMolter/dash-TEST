@@ -120,12 +120,12 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, revea
 }
 
 function GuidedActions({ actions, row, onOperation }: { actions: string[]; row: AdminRow; onOperation: Props["onOperation"] }) {
-  const isSuspended = !!row.banned_until && new Date(String(row.banned_until)).getTime() > Date.now();
+  const isBanned = !!row.banned_until && new Date(String(row.banned_until)).getTime() > Date.now();
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
       <div className="text-xs font-medium uppercase tracking-wider text-slate-500">Administrative actions</div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {actions.includes(isSuspended ? "reactivate" : "suspend") && <ActionButton icon={isSuspended ? UserCheck : Ban} label={isSuspended ? "Reactivate" : "Suspend"} onClick={() => onOperation(isSuspended ? "reactivate" : "suspend")} />}
+        {actions.includes(isBanned ? "unban" : "ban") && <ActionButton icon={isBanned ? UserCheck : Ban} label={isBanned ? "Unban account" : "Ban account"} onClick={() => onOperation(isBanned ? "unban" : "ban")} destructive={!isBanned} />}
         {actions.includes("regenerate-code") && <ActionButton icon={RotateCcw} label="Regenerate code" onClick={() => onOperation("regenerate-code")} />}
         {actions.includes("transfer-owner") && <TransferOwner onSubmit={(ownerId) => onOperation("transfer-owner", { owner_id: ownerId })} />}
         {actions.includes("cancel") && <ActionButton icon={ShieldOff} label="Cancel pairing" onClick={() => onOperation("cancel")} />}

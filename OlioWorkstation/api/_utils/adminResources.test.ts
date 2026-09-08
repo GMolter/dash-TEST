@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADMIN_RESOURCES, editableColumns, referenceTarget, selectedColumns, sensitiveColumns } from "./adminResources";
+import { ADMIN_RESOURCE_LIST, ADMIN_RESOURCES, editableColumns, referenceTarget, selectedColumns, sensitiveColumns } from "./adminResources";
 
 describe("admin resource registry", () => {
   it("allows only curated operational resources", () => {
@@ -45,5 +45,11 @@ describe("admin resource registry", () => {
     expect(referenceTarget("project-board-cards", "project_id")?.resource).toBe("projects");
     expect(referenceTarget("project-files", "parent_id")?.resource).toBe("project-files");
     expect(referenceTarget("projects", "id")).toBeNull();
+  });
+
+  it("advertises ban and unban as user lifecycle actions", () => {
+    const users = ADMIN_RESOURCE_LIST.find((resource) => resource.key === "users");
+    expect(users?.actions).toEqual(expect.arrayContaining(["ban", "unban"]));
+    expect(users?.actions).not.toEqual(expect.arrayContaining(["suspend", "reactivate"]));
   });
 });
