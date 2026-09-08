@@ -32,11 +32,17 @@ describe("admin resource registry", () => {
   });
 
   it("keeps guided system records out of generic editing", () => {
-    for (const key of ["launcher-devices", "launcher-pairings", "calendar-connections", "audit-log", "project-activity"]) {
+    for (const key of ["launcher-devices", "launcher-pairings", "audit-log", "project-activity"]) {
       const resource = ADMIN_RESOURCES[key];
       expect(resource.readOnly).toBe(true);
       expect(editableColumns(resource, false)).toHaveLength(0);
     }
+    expect(ADMIN_RESOURCES).not.toHaveProperty("calendar-connections");
+  });
+
+  it("allows the low-risk organization join code reveal without an audit prompt", () => {
+    const code = ADMIN_RESOURCES.organizations.fields.find((field) => field.name === "code");
+    expect(code).toMatchObject({ sensitive: true, auditReveal: false });
   });
 
   it("maps relational IDs to navigable admin resources", () => {

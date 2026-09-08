@@ -26,20 +26,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
+      if (event === 'INITIAL_SESSION') return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      if (event === 'INITIAL_SESSION') {
-        setLoading(false);
-      }
     });
 
-    const initAuth = async () => {
+    const refreshVerifiedSession = async (showLoading = false) => {
+      if (showLoading && mounted) setLoading(true);
       try {
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
+        let verifiedUser = currentSession?.user ?? null;
+        if (currentSession?.access_token) {
+          const { data: verified, error: userError } = await supabase.auth.getUser(currentSession.access_token);
+          if (!userError && verified.user) verifiedUser = verified.user;
+        }
         if (mounted) {
           setSession(currentSession);
-          setUser(currentSession?.user ?? null);
+          setUser(verifiedUser);
         }
       } catch (err) {
         console.error('Auth init error:', err);
@@ -47,14 +51,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError(err instanceof Error ? err.message : 'Failed to initialize auth');
         }
       } finally {
-        if (mounted) setLoading(false);
+        if (showLoading && mounted) setLoading(false);
       }
     };
 
-    initAuth();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshVerifiedSession();
+    };
+
+    void refreshVerifiedSession(true);
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
 
     return () => {
       mounted = false;
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
       subscription.unsubscribe();
     };
   }, []);
@@ -127,9 +139,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    setError(null);
+    setUser(null);
+    setSession(null);
     try {
-      setError(null);
-      await supabase.auth.signOut();
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+        if (localError) throw localError;
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Sign out failed';
       setError(errorMessage);

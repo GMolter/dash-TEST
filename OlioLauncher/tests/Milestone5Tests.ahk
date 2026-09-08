@@ -14,7 +14,6 @@
 #Include ..\src\TileRenderer.ahk
 #Include ..\src\ClipboardRenderer.ahk
 #Include ..\src\QuickPastesRenderer.ahk
-#Include ..\src\CalendarRenderer.ahk
 #Include ..\src\ClipboardPreviewWindow.ahk
 #Include ..\src\ScreenshotManager.ahk
 #Include ..\src\SettingsDialog.ahk
@@ -321,9 +320,8 @@ class Milestone5Tests {
             this.Assert(SettingsRenderer.Items[window.SettingsDialog.ConnectButton.Hwnd].Title
                 = "Connect Olio account",
                 "Connect action lacks an accessible native label.")
-            this.Assert(window.Buttons["calendar"].Enabled
-                && window.Buttons["networkAnalyzer"].Enabled = false,
-                "Calendar or deferred Network tile state is incorrect.")
+            this.Assert(window.Buttons["networkAnalyzer"].Enabled = false,
+                "Deferred Network tile state is incorrect.")
             source := FileRead(A_ScriptDir "\..\src\LauncherWindow.ahk", "UTF-8")
             this.Assert(!InStr(source, "ConnectionEndpointEdit")
                 && !InStr(source, "Olio Workstation HTTPS address"),

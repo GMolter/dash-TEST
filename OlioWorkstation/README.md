@@ -14,21 +14,6 @@ reviewed `quick-pastes:read` scope for newly approved devices and read-only, own
 synchronization through the existing `/api/launcher` function. Existing devices are not
 silently upgraded.
 
-Google Calendar integration uses the same `/api/launcher` boundary. Workstation owns the
-read-only Google OAuth grant and stores the refresh token with AES-256-GCM encryption;
-the launcher receives only bounded event fields for the remainder of the local day. Apply
-`supabase/migrations/20260815090000_add_launcher_google_calendar.sql` and configure these
-server-only variables in Vercel:
-
-- `GOOGLE_CALENDAR_CLIENT_ID`
-- `GOOGLE_CALENDAR_CLIENT_SECRET`
-- `GOOGLE_CALENDAR_REDIRECT_URI` (for example, `https://olio.one/api/launcher?oauth=google-calendar`)
-- `GOOGLE_OAUTH_STATE_SECRET`
-- `CALENDAR_TOKEN_ENCRYPTION_KEY` (32 random bytes encoded as 64 hex characters or base64)
-
-Enable the Google Calendar API and register the exact redirect URI in the Google Cloud
-OAuth client. None of these values may use the `VITE_` prefix.
-
 ## Commands
 
 The Vercel Hobby deployment is intentionally limited to 12 production files under
@@ -49,6 +34,13 @@ npm test
 ```
 
 The Vercel project Root Directory should be configured as `OlioWorkstation`.
+
+## Admin operations console
+
+The server-side admin console requires `ADMIN_PASSWORD`, `ADMIN_COOKIE_SECRET`, and a
+separate random `ADMIN_OPERATION_SECRET` in Vercel. Apply every Supabase migration through
+`20260908143000_remove_google_calendar.sql` before using admin mutations in a deployed
+environment. Admin accounts must also have `profiles.app_admin = true`.
 
 Client configuration requires `VITE_SUPABASE_URL` and the public Supabase anon key in
 `VITE_SUPABASE_ANON_KEY`. Never place `SUPABASE_SERVICE_ROLE_KEY` in a `VITE_` variable

@@ -18,7 +18,6 @@
 #Include ..\src\TileRenderer.ahk
 #Include ..\src\ClipboardRenderer.ahk
 #Include ..\src\QuickPastesRenderer.ahk
-#Include ..\src\CalendarRenderer.ahk
 #Include ..\src\ClipboardPreviewWindow.ahk
 #Include ..\src\SettingsDialog.ahk
 #Include ..\src\LauncherWindow.ahk
@@ -500,9 +499,8 @@ class Milestone7Tests {
         this.Assert(window.Buttons["settings"].Text = "Settings"
             && !window.PageDefinitions.Has("settings"),
             "Settings still routes through an intermediate launcher page.")
-        this.Assert(window.Buttons["calendar"].Enabled
-            && !window.Buttons["networkAnalyzer"].Enabled,
-            "Calendar or deferred Network control state is incorrect.")
+        this.Assert(!window.Buttons["networkAnalyzer"].Enabled,
+            "Deferred Network control state is incorrect.")
         this.Assert(window.AutoCloseOnDeactivate = false,
             "Visual-test isolation did not disable focus-loss close.")
         style := DllCall("GetWindowLongPtrW", "ptr", window.Gui.Hwnd,
@@ -721,10 +719,8 @@ class Milestone7Tests {
         this.Assert(!RegExMatch(launcherSource,
             "i)__quick_(create|edit|delete|reorder|favorite)"),
             "Launcher gained forbidden Quick Paste management.")
-        this.Assert(InStr(launcherSource,
-            'Key: "calendar"') && InStr(launcherSource, 'Title: "Calendar"')
-            && InStr(launcherSource, 'Key: "networkAnalyzer"'),
-            "Calendar replacement or deferred Network definition is missing.")
+        this.Assert(InStr(launcherSource, 'Key: "networkAnalyzer"'),
+            "Deferred Network definition is missing.")
 
         functionCount := 0
         apiRoot := A_ScriptDir "\..\..\OlioWorkstation\api"

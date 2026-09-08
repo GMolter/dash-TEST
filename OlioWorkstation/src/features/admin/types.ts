@@ -8,6 +8,7 @@ export type AdminField = {
   create?: boolean;
   required?: boolean;
   sensitive?: boolean;
+  auditReveal?: boolean;
   options?: string[];
 };
 
@@ -31,6 +32,7 @@ export type AdminListResponse = {
   actions: string[];
   redactedFields: string[];
   filterFields: string[];
+  sortFields: string[];
   page: number;
   pageSize: number;
   sort: string;

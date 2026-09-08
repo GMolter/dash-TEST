@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck, X } from "lucide-react";
 import { executeAdminOperation, prepareAdminOperation } from "./api";
 import type { AdminOperation, PreparedOperation } from "./types";
+import { humanizeAdminText } from "./adminFormat";
 
 type Props = {
   operation: Omit<AdminOperation, "reason"> | null;
@@ -97,14 +98,14 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
               {prepared.preview.changes.length > 0 && (
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                   <div className="text-xs uppercase tracking-wider text-slate-500">Fields changing</div>
-                  <div className="mt-2 flex flex-wrap gap-2">{prepared.preview.changes.map((field) => <span key={field} className="rounded-md bg-blue-400/10 px-2 py-1 text-xs text-blue-200">{field}</span>)}</div>
+                  <div className="mt-2 flex flex-wrap gap-2">{prepared.preview.changes.map((field) => <span key={field} className="rounded-md bg-blue-400/10 px-2 py-1 text-xs text-blue-200">{humanizeAdminText(field)}</span>)}</div>
                 </div>
               )}
               {Object.keys(prepared.preview.impact).length > 0 && (
                 <div className="rounded-xl border border-red-400/20 bg-red-400/5 p-3">
                   <div className="text-sm font-medium text-red-100">Related records that may be affected</div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-slate-300">
-                    {Object.entries(prepared.preview.impact).map(([label, count]) => <div key={label} className="flex justify-between rounded-lg bg-black/20 px-2 py-1"><span>{label}</span><span>{count}</span></div>)}
+                    {Object.entries(prepared.preview.impact).map(([label, count]) => <div key={label} className="flex justify-between rounded-lg bg-black/20 px-2 py-1"><span>{humanizeAdminText(label)}</span><span>{count}</span></div>)}
                   </div>
                 </div>
               )}

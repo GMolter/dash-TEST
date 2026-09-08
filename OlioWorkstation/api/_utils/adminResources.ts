@@ -8,6 +8,7 @@ export type AdminField = {
   create?: boolean;
   required?: boolean;
   sensitive?: boolean;
+  auditReveal?: boolean;
   options?: string[];
 };
 
@@ -23,7 +24,7 @@ export type AdminResource = {
   defaultSort: string;
   sortFields: string[];
   readOnly?: boolean;
-  guided?: "users" | "launcher-device" | "launcher-pairing" | "calendar" | "audit" | "activity";
+  guided?: "users" | "launcher-device" | "launcher-pairing" | "audit" | "activity";
 };
 
 export type AdminReferenceTarget = {
@@ -93,7 +94,7 @@ export const ADMIN_RESOURCES: Record<string, AdminResource> = {
     key: "organizations", label: "Organizations", group: "organizations", table: "organizations", primaryKey: "id",
     searchFields: ["name"], filterFields: ["owner_id"], defaultSort: "created_at", sortFields: ["created_at", "name"],
     fields: [f("id", "ID"), f("name", "Name", "text", { editable: true, create: true, required: true }),
-      f("code", "Join code", "text", { sensitive: true }), f("owner_id", "Owner ID", "text", { create: true, required: true }), f("created_at", "Created", "datetime")],
+      f("code", "Join code", "text", { sensitive: true, auditReveal: false }), f("owner_id", "Owner ID", "text", { create: true, required: true }), f("created_at", "Created", "datetime")],
   },
   projects: {
     key: "projects", label: "Projects", group: "projects", table: "projects", primaryKey: "id",
@@ -188,10 +189,6 @@ export const ADMIN_RESOURCES: Record<string, AdminResource> = {
     key: "launcher-pairings", label: "Launcher pairings", group: "integrations", table: "launcher_pairing_requests", primaryKey: "id", readOnly: true, guided: "launcher-pairing", searchFields: ["device_name", "status"], filterFields: ["owner_id", "status", "device_id"], defaultSort: "created_at", sortFields: ["created_at", "updated_at", "expires_at", "status"],
     fields: [f("id", "ID"), f("device_identifier", "Device identifier"), f("device_name", "Device name"), f("status", "Status"), f("owner_id", "Owner ID"), f("device_id", "Device ID"), f("created_at", "Created", "datetime"), f("expires_at", "Expires", "datetime"), f("approved_at", "Approved", "datetime"), f("exchanged_at", "Exchanged", "datetime"), f("last_poll_at", "Last poll", "datetime"), f("poll_count", "Poll count", "number"), f("updated_at", "Updated", "datetime")],
   },
-  "calendar-connections": {
-    key: "calendar-connections", label: "Calendar connections", group: "integrations", table: "google_calendar_connections", primaryKey: "owner_id", readOnly: true, guided: "calendar", searchFields: [], filterFields: ["owner_id"], defaultSort: "updated_at", sortFields: ["updated_at", "connected_at"],
-    fields: [f("owner_id", "Owner ID"), f("connected_at", "Connected", "datetime"), f("updated_at", "Updated", "datetime")],
-  },
   "help-articles": {
     key: "help-articles", label: "Help articles", group: "platform", table: "help_articles", primaryKey: "id", searchFields: ["slug", "title", "summary"], filterFields: ["is_published"], defaultSort: "updated_at", sortFields: ["updated_at", "created_at", "sort_order", "title", "slug"],
     fields: [f("id", "ID"), f("slug", "Slug", "text", { editable: true, create: true, required: true }), f("title", "Title", "text", { editable: true, create: true, required: true }), f("summary", "Summary", "textarea", { editable: true, create: true }), f("content", "Article content", "textarea", { editable: true, create: true }), f("is_published", "Published", "boolean", { editable: true, create: true }), f("sort_order", "Sort order", "number", { editable: true, create: true }), ...timestamps],
@@ -232,7 +229,6 @@ function resourceActionsForCatalog(resource: AdminResource) {
   if (resource.guided === "users") return ["create", "update", "ban", "unban", "reset-password", "delete"];
   if (resource.guided === "launcher-device") return ["revoke"];
   if (resource.guided === "launcher-pairing") return ["cancel"];
-  if (resource.guided === "calendar") return ["disconnect"];
   if (resource.readOnly) return resource.fields.some((field) => field.sensitive) ? ["reveal"] : [];
   return ["create", "update", "delete", ...(resource.fields.some((field) => field.sensitive) ? ["reveal"] : [])];
 }

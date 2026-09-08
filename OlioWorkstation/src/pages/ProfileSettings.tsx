@@ -12,7 +12,6 @@ import {
 import { User, LogOut, Building2, AlertTriangle, ExternalLink, Palette, X } from 'lucide-react';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { LauncherDevices } from '../components/LauncherDevices';
-import { GoogleCalendarConnection } from '../components/GoogleCalendarConnection';
 
 type ProfileSettingsProps = {
   appBackgroundTheme: AppBackgroundTheme;
@@ -39,6 +38,7 @@ export function ProfileSettings({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [previewTheme, setPreviewTheme] = useState<AppBackgroundTheme>(appBackgroundTheme);
   const [previewPreset, setPreviewPreset] = useState<AppBackgroundPreset>(appBackgroundPreset);
 
@@ -104,6 +104,14 @@ export function ProfileSettings({
       setError(result.error || 'Failed to delete organization');
       setLoading(false);
     }
+  };
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    await signOut();
+    window.history.replaceState({}, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   return (
@@ -209,17 +217,16 @@ export function ProfileSettings({
           </div>
         )}
 
-        <GoogleCalendarConnection />
-
         <LauncherDevices />
 
         <div className="border-t border-slate-700 pt-6">
           <button
-            onClick={() => signOut()}
-            className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2"
+            onClick={() => { void handleSignOut(); }}
+            disabled={signingOut}
+            className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:cursor-wait disabled:opacity-60"
           >
             <LogOut className="w-4 h-4" />
-            Sign Out
+            {signingOut ? 'Signing out…' : 'Sign Out'}
           </button>
         </div>
       </div>

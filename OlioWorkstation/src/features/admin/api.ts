@@ -69,3 +69,14 @@ export async function executeAdminOperation(operation: AdminOperation, prepared:
     body: JSON.stringify({ phase: "execute", operation, operationToken: prepared.operationToken, confirmation }),
   });
 }
+
+export async function revealAdminField(resource: string, id: string, field: string) {
+  return adminFetch("/api/admin/data", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      phase: "reveal",
+      operation: { resource, kind: "reveal", ids: [id], revealFields: [field] },
+    }),
+  });
+}

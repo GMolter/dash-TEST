@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { ArrowUpRight, ChevronLeft, ChevronRight, ChevronsUpDown, Database, Filter, Loader2, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, ChevronLeft, ChevronRight, Database, Filter, Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import type { AdminField, AdminListResponse, AdminReference, AdminRow } from "./types";
+import { adminFieldLabel, formatAdminValue } from "./adminFormat";
 
 type Props = {
   data: AdminListResponse | null;
@@ -31,7 +32,8 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
   const columns = useMemo(() => chooseColumns(data?.fields || [], rows), [data?.fields, rows]);
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row._admin_id));
   const editableFields = data?.fields.filter((field) => field.editable && !field.sensitive && ["text", "number", "boolean", "select"].includes(field.type)) || [];
-  const bulkAllowed = !!data && !["users", "organizations", "launcher-devices", "launcher-pairings", "calendar-connections", "app-settings", "audit-log", "project-activity"].includes(data.resource);
+  const bulkAllowed = !!data && !["users", "organizations", "launcher-devices", "launcher-pairings", "app-settings", "audit-log", "project-activity"].includes(data.resource);
+  const selectable = bulkAllowed && !!data?.actions.some((action) => action === "update" || action === "delete");
   const pageCount = Math.max(1, Math.ceil((data?.total || 0) / (data?.pageSize || 25)));
 
   function toggleAll() {
@@ -82,13 +84,13 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
         <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-white/[0.018] px-4 py-3">
           {Object.entries(filters).map(([name, value]) => (
             <button key={name} onClick={() => onFilters(Object.fromEntries(Object.entries(filters).filter(([key]) => key !== name)))} className="inline-flex items-center gap-1 rounded-lg border border-blue-400/20 bg-blue-500/10 px-2.5 py-1.5 text-xs text-blue-100">
-              {data?.fields.find((field) => field.name === name)?.label || name}: {String(value)} <X className="h-3 w-3" />
+              {data?.fields.find((field) => field.name === name) ? adminFieldLabel(data.fields.find((field) => field.name === name)!) : name}: {formatAdminValue(value, data?.fields.find((field) => field.name === name)?.type, name)} <X className="h-3 w-3" />
             </button>
           ))}
           {filterOpen && <>
             <select value={filterField} onChange={(event) => { setFilterField(event.target.value); setFilterValue(""); }} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white">
               <option value="">Choose field…</option>
-              {data?.filterFields.map((name) => <option key={name} value={name}>{data.fields.find((field) => field.name === name)?.label || name}</option>)}
+              {data?.filterFields.map((name) => { const field = data.fields.find((item) => item.name === name); return <option key={name} value={name}>{field ? adminFieldLabel(field) : name}</option>; })}
             </select>
             {data?.fields.find((field) => field.name === filterField)?.type === "boolean" ? (
               <select value={filterValue} onChange={(event) => setFilterValue(event.target.value)} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"><option value="">Choose value…</option><option value="true">Yes</option><option value="false">No</option></select>
@@ -109,7 +111,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
           </div>
           {bulkOpen && (
             <div className="flex w-full flex-wrap gap-2 rounded-xl border border-white/10 bg-slate-950/60 p-3">
-              <select value={bulkField} onChange={(event) => setBulkField(event.target.value)} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"><option value="">Choose field…</option>{editableFields.map((field) => <option key={field.name} value={field.name}>{field.label}</option>)}</select>
+              <select value={bulkField} onChange={(event) => setBulkField(event.target.value)} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"><option value="">Choose field…</option>{editableFields.map((field) => <option key={field.name} value={field.name}>{adminFieldLabel(field)}</option>)}</select>
               {editableFields.find((field) => field.name === bulkField)?.type === "boolean" ? (
                 <select value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"><option value="true">Enabled</option><option value="false">Disabled</option></select>
               ) : <input value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} placeholder="New value" className="min-w-48 flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" />}
@@ -120,21 +122,26 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-          <thead className="bg-slate-900/55 text-xs uppercase tracking-wider text-slate-500">
+        <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+          <thead className="bg-slate-900/55 text-xs tracking-wide text-slate-500">
             <tr>
-              <th className="w-12 px-4 py-3"><input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all visible records" className="accent-blue-500" /></th>
-              {columns.map((field) => <th key={field.name} className="px-3 py-3 font-medium"><button onClick={() => onSort(field.name)} className="inline-flex items-center gap-1 hover:text-slate-200">{field.label}<ChevronsUpDown className="h-3 w-3" /></button></th>)}
+              {selectable && <th className="w-12 px-4 py-3"><input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all visible records" className="accent-blue-500" /></th>}
+              {columns.map((field) => {
+                const sortable = !!data?.sortFields.includes(field.name);
+                const active = data?.sort === field.name;
+                const label = adminFieldLabel(field);
+                return <th key={field.name} className="px-3 py-3 font-medium">{sortable ? <button onClick={() => onSort(field.name)} className="inline-flex items-center gap-1.5 hover:text-slate-200">{label}{active && (data.direction === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}</button> : label}</th>;
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.06]">
             {loading ? (
-              <tr><td colSpan={columns.length + 1} className="h-56 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-blue-300" /><div className="mt-2 text-sm text-slate-500">Loading records…</div></td></tr>
+              <tr><td colSpan={columns.length + (selectable ? 1 : 0)} className="h-56 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-blue-300" /><div className="mt-2 text-sm text-slate-500">Loading records…</div></td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={columns.length + 1} className="h-56 text-center"><Database className="mx-auto h-7 w-7 text-slate-600" /><div className="mt-2 text-sm text-slate-500">No records found.</div></td></tr>
+              <tr><td colSpan={columns.length + (selectable ? 1 : 0)} className="h-56 text-center"><Database className="mx-auto h-7 w-7 text-slate-600" /><div className="mt-2 text-sm text-slate-500">No records found.</div></td></tr>
             ) : rows.map((row) => (
               <tr key={row._admin_id} className="cursor-pointer text-slate-300 transition hover:bg-blue-400/[0.055]">
-                <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={selected.has(row._admin_id)} onChange={() => toggleOne(row._admin_id)} aria-label={`Select ${row._admin_id}`} className="accent-blue-500" /></td>
+                {selectable && <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={selected.has(row._admin_id)} onChange={() => toggleOne(row._admin_id)} aria-label={`Select ${row._admin_id}`} className="accent-blue-500" /></td>}
                 {columns.map((field) => {
                   const reference = row._admin_refs?.[field.name];
                   return <td key={field.name} onClick={() => onOpen(row)} className="max-w-[260px] truncate px-3 py-3">
@@ -160,26 +167,21 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
 
 function chooseColumns(fields: AdminField[], rows: AdminRow[]) {
   const preferred = ["display_name", "email", "name", "title", "device_name", "code", "slug", "status", "role", "app_admin", "project_id", "owner_id", "user_id", "org_id", "updated_at", "created_at"];
+  const technical = new Set(["device_identifier", "icon", "favicon_url", "dorm_lat", "dorm_lng", "location_lat", "location_lng", "position", "sort_index", "sort_order", "order_index"]);
   const safe = fields.filter((field) => {
     if (field.sensitive || field.name === "temporary_password" || field.name === "id") return false;
     if (field.name.endsWith("_id") && !rows.some((row) => row._admin_refs?.[field.name])) return false;
-    return !["json", "textarea"].includes(field.type);
+    return !technical.has(field.name) && !["json", "textarea"].includes(field.type);
   });
   const rank = (name: string) => {
     const index = preferred.indexOf(name);
     return index === -1 ? preferred.length : index;
   };
-  return [...safe].sort((a, b) => rank(a.name) - rank(b.name)).slice(0, 6);
+  return [...safe].sort((a, b) => rank(a.name) - rank(b.name)).slice(0, 5);
 }
 
 function tableValue(value: unknown, field: AdminField) {
   if (value === null || value === undefined || value === "") return <span className="text-slate-600">—</span>;
   if (typeof value === "boolean") return <span className={`rounded-full px-2 py-1 text-xs ${value ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-400/10 text-slate-400"}`}>{value ? "Yes" : "No"}</span>;
-  if (field.type === "datetime") {
-    const date = new Date(String(value));
-    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
-  }
-  if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+  return formatAdminValue(value, field.type, field.name);
 }

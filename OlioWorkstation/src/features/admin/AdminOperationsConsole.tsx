@@ -4,11 +4,12 @@ import {
   LayoutDashboard, Loader2, LogOut, Menu, Plug, RefreshCw, Shield, ShieldAlert,
   Users, Wrench, X,
 } from "lucide-react";
-import { loadAdminOverview, loadAdminResource, loginAdmin, logoutAdmin } from "./api";
+import { loadAdminOverview, loadAdminResource, loginAdmin, logoutAdmin, revealAdminField } from "./api";
 import { AdminOperationDialog } from "./AdminOperationDialog";
 import { AdminRecordDrawer } from "./AdminRecordDrawer";
 import { AdminResourceTable } from "./AdminResourceTable";
 import type { AdminListResponse, AdminOperation, AdminOverview, AdminReference, AdminRow } from "./types";
+import { formatAdminValue, humanizeAdminText } from "./adminFormat";
 
 type AccessState = "checking" | "login" | "denied" | "ready";
 type PendingOperation = { operation: Omit<AdminOperation, "reason">; title: string } | null;
@@ -24,6 +25,34 @@ const NAVIGATION = [
   { key: "platform", label: "Platform", icon: LayoutDashboard },
   { key: "audit", label: "Audit", icon: Activity },
 ] as const;
+
+const RESOURCE_DESCRIPTIONS: Record<string, string> = {
+  users: "Manage accounts, access, roles, bans, and password resets.",
+  organizations: "Manage organizations, owners, members, and join codes.",
+  projects: "Review projects, limits, and the work connected to them.",
+  "project-board-columns": "Board columns used to organize project work.",
+  "project-board-cards": "Tasks and cards shown on project boards.",
+  "project-planner-steps": "Scheduled project steps and their completion status.",
+  "project-resources": "Links and supporting material attached to projects.",
+  "project-files": "File records and protected text content. Uploaded binaries are not shown.",
+  "project-activity": "Read-only history of activity within projects.",
+  pastes: "Saved pastes and their protected content.",
+  "quick-pastes": "Short reusable paste entries and protected content.",
+  secrets: "Secret records; protected values stay masked until revealed.",
+  quicklinks: "Saved links available from the dashboard.",
+  "quicklink-folders": "Folders used to organize saved links.",
+  triggers: "Configured automation triggers.",
+  "short-urls": "Shortened links and their destinations.",
+  "dashboard-todos": "Dashboard task items and completion state.",
+  "help-articles": "Published help and guidance shown inside Olio.",
+  "app-settings": "Application-wide settings. Change these carefully.",
+  "plugin-installations": "Installed plugins and their status.",
+  "classdash-settings": "ClassDash preferences and school configuration.",
+  "classdash-classes": "Classes and recurring schedules saved in ClassDash.",
+  "launcher-devices": "Authorized launcher devices and revoke controls.",
+  "launcher-pairings": "Launcher pairing requests and their current state.",
+  "audit-log": "Immutable history of sensitive reveals and administrative changes.",
+};
 
 export function AdminOperationsConsole() {
   const initial = readLocation();
@@ -54,6 +83,7 @@ export function AdminOperationsConsole() {
 
   const resources = overview?.resources || [];
   const sectionResources = useMemo(() => resources.filter((item) => item.group === section), [resources, section]);
+  const selectedResource = sectionResources.find((item) => item.key === resource);
 
   const bootstrap = useCallback(async () => {
     setAccessError(null);
@@ -190,6 +220,22 @@ export function AdminOperationsConsole() {
     });
   }
 
+  async function revealField(fieldName: string) {
+    const field = data?.fields.find((item) => item.name === fieldName);
+    if (!row || field?.auditReveal !== false) {
+      requestOperation("reveal", undefined, undefined, [fieldName]);
+      return;
+    }
+    setError(null);
+    try {
+      const response = await revealAdminField(resource, row._admin_id, fieldName);
+      setRevealed((current) => ({ ...current, ...(response.result || {}) }));
+      setToast("Protected value revealed for this session.");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Could not reveal this value.");
+    }
+  }
+
   function operationComplete(result: unknown) {
     if (pending?.operation.kind === "reveal" && result && typeof result === "object") {
       const next = result as Record<string, unknown>;
@@ -252,10 +298,21 @@ export function AdminOperationsConsole() {
 
           {section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : (
             <>
-              <div className="mb-4 flex flex-wrap gap-2">
-                {sectionResources.map((item) => <button key={item.key} onClick={() => selectResource(item.key)} className={`rounded-xl border px-3 py-2 text-sm ${resource === item.key ? "border-blue-400/30 bg-blue-500/15 text-blue-100" : "border-white/10 bg-white/[0.025] text-slate-400 hover:text-white"}`}>{item.label}</button>)}
-                {section === "platform" && <button onClick={() => navigate("/admin/editor")} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-sm text-slate-300"><BookOpenText className="h-4 w-4" /> Full help editor</button>}
-              </div>
+              <section className="mb-4 flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4 backdrop-blur-xl sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-xs text-blue-300">Current data view</div>
+                  <h2 className="mt-1 text-lg font-semibold text-white">{selectedResource?.label || "Choose a data view"}</h2>
+                  <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-400">{RESOURCE_DESCRIPTIONS[resource] || "Search, review, and manage these operational records."}</p>
+                </div>
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-end">
+                  <label className="text-xs text-slate-400">Data view
+                    <select value={resource} onChange={(event) => selectResource(event.target.value)} className="mt-1 block min-w-56 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-blue-400/50">
+                      {sectionResources.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+                    </select>
+                  </label>
+                  {section === "platform" && <button onClick={() => navigate("/admin/editor")} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-sm text-slate-300 hover:bg-white/5"><BookOpenText className="h-4 w-4" /> Help editor</button>}
+                </div>
+              </section>
               <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
                 onOpen={(nextRow) => { setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
@@ -267,7 +324,7 @@ export function AdminOperationsConsole() {
       </div>
 
       {data && (row || creating) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={data.actions} row={row} creating={creating} revealed={revealed}
-        onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => requestOperation("reveal", undefined, undefined, [field])} onOpenReference={openReference}
+        onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => { void revealField(field); }} onOpenReference={openReference}
         onOperation={(kind, values) => requestOperation(kind, values)} />}
       <AdminOperationDialog operation={pending?.operation || null} title={pending?.title || "Confirm admin operation"} onCancel={() => setPending(null)} onComplete={operationComplete} />
     </div>
@@ -279,11 +336,11 @@ function Overview({ overview, onNavigate }: { overview: AdminOverview | null; on
     ["users", "Users", Users, "people"], ["organizations", "Organizations", Building2, "organizations"],
     ["projects", "Projects", FolderKanban, "projects"], ["content", "Content records", Database, "content"],
     ["devices", "Launcher devices", Plug, "integrations"], ["pendingPairings", "Pending pairings", ShieldAlert, "integrations"],
-    ["calendars", "Calendars", Activity, "integrations"], ["audits", "Audit events", Shield, "audit"],
+    ["audits", "Audit events", Shield, "audit"],
   ] as const;
   return <div className="space-y-6">
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([key, label, Icon, section]) => <button key={key} onClick={() => onNavigate(section)} className="group rounded-2xl border border-white/10 bg-slate-950/45 p-5 text-left shadow-xl backdrop-blur-xl transition hover:border-blue-400/25 hover:bg-blue-500/[0.06]"><div className="flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/10"><Icon className="h-5 w-5 text-blue-300" /></div><span className="text-3xl font-semibold text-white">{overview?.metrics[key]?.toLocaleString() ?? "—"}</span></div><div className="mt-4 text-sm text-slate-400 group-hover:text-slate-200">{label}</div></button>)}</div>
-    <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 backdrop-blur-xl"><div className="flex items-center justify-between border-b border-white/10 px-5 py-4"><div><h2 className="font-semibold">Recent administrative activity</h2><p className="mt-1 text-xs text-slate-500">Sensitive values never appear in this trail.</p></div><button onClick={() => onNavigate("audit")} className="text-sm text-blue-300 hover:text-blue-200">View audit log</button></div><div className="divide-y divide-white/[0.06]">{overview?.recentAudit.length ? overview.recentAudit.map((event) => <div key={String(event.id)} className="grid gap-2 px-5 py-3 text-sm sm:grid-cols-[1fr_1fr_2fr_auto]"><span className="truncate text-slate-300">{String(event.actor_email || "Unknown admin")}</span><span className="capitalize text-blue-200">{String(event.action)} {String(event.resource)}</span><span className="truncate text-slate-500">{String(event.reason)}</span><span className="text-xs text-slate-600">{formatDate(event.created_at)}</span></div>) : <div className="px-5 py-12 text-center text-sm text-slate-500">No audit events yet. Apply the admin migration before performing operations.</div>}</div></section>
+    <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 backdrop-blur-xl"><div className="flex items-center justify-between border-b border-white/10 px-5 py-4"><div><h2 className="font-semibold">Recent administrative activity</h2><p className="mt-1 text-xs text-slate-500">Sensitive values never appear in this trail.</p></div><button onClick={() => onNavigate("audit")} className="text-sm text-blue-300 hover:text-blue-200">View audit log</button></div><div className="divide-y divide-white/[0.06]">{overview?.recentAudit.length ? overview.recentAudit.map((event) => <div key={String(event.id)} className="grid gap-2 px-5 py-3 text-sm sm:grid-cols-[1fr_1fr_2fr_auto]"><span className="truncate text-slate-300">{String(event.actor_email || "Unknown admin")}</span><span className="text-blue-200">{humanizeAdminText(String(event.action))} {humanizeAdminText(String(event.resource))}</span><span className="truncate text-slate-500">{String(event.reason)}</span><span className="text-xs text-slate-500">{formatAdminValue(event.created_at, "datetime")}</span></div>) : <div className="px-5 py-12 text-center text-sm text-slate-500">No audit events yet. Apply the admin migration before performing operations.</div>}</div></section>
   </div>;
 }
 
@@ -296,7 +353,7 @@ function FullPageStatus({ icon: Icon, title, detail, spinning = false, action }:
 }
 
 function operationTitle(kind: string, resource: string, count: number) {
-  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", ban: "Ban", unban: "Unban", "reset-password": "Reset password for", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel", disconnect: "Disconnect" };
+  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", ban: "Ban", unban: "Unban", "reset-password": "Reset password for", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel" };
   return `${names[kind] || "Change"} ${resource}`;
 }
 
@@ -308,9 +365,4 @@ function readLocation() {
 function navigate(path: string) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
-}
-
-function formatDate(value: unknown) {
-  const date = new Date(String(value || ""));
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
 }

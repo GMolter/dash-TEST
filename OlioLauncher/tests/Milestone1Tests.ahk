@@ -13,7 +13,6 @@
 #Include ..\src\TileRenderer.ahk
 #Include ..\src\ClipboardRenderer.ahk
 #Include ..\src\QuickPastesRenderer.ahk
-#Include ..\src\CalendarRenderer.ahk
 #Include ..\src\ClipboardPreviewWindow.ahk
 #Include ..\src\SettingsDialog.ahk
 #Include ..\src\LauncherWindow.ahk
@@ -129,16 +128,15 @@ class Milestone1Tests {
         this.Assert(window.Wordmark.Text = "Olio Launcher", "Launcher header title is incorrect.")
         this.Assert(FileExist(LauncherWindow.BrandIconPath()), "Launcher brand icon is missing.")
         this.Assert(window.AutoCloseOnDeactivate, "Launcher must close when another window is activated.")
-        this.Assert(window.Buttons["calendar"].Enabled = true, "Calendar must be enabled.")
         this.Assert(window.Buttons["networkAnalyzer"].Enabled = false, "Network Analyzer must be disabled.")
         this.Assert(window.Buttons["clipboard"].Enabled = true, "Foundation navigation must be enabled.")
         this.Assert(window.DesiredLogicalHeight = 286, "Compact panel height changed unexpectedly.")
         this.Assert(LauncherWindow.CenteredY(0, 1080, 286) = 397,
             "Panel is not vertically centered in its work area.")
         accents := Map()
-        for key in ["clipboard", "screenshot", "quickPastes", "calendar", "networkAnalyzer"]
+        for key in ["clipboard", "screenshot", "quickPastes", "networkAnalyzer"]
             accents[TileRenderer.Tiles[window.Buttons[key].Hwnd].Accent] := true
-        this.Assert(accents.Count = 5, "Tool accents must remain visually distinct.")
+        this.Assert(accents.Count = 4, "Tool accents must remain visually distinct.")
         settingsRect := Buffer(16, 0), clipboardRect := Buffer(16, 0)
         DllCall("GetWindowRect", "ptr", window.Buttons["settings"].Hwnd, "ptr", settingsRect)
         DllCall("GetWindowRect", "ptr", window.Buttons["clipboard"].Hwnd, "ptr", clipboardRect)
@@ -250,9 +248,8 @@ class Milestone1Tests {
         clipboardWindow.ActivateClipboardSelection(10)
         this.Assert(clipboardWindow.IsVisible(),
             "Selecting a Clipboard entry unexpectedly closed the launcher.")
-        this.Assert(clipboardWindow.Buttons["calendar"].Enabled
-            && !clipboardWindow.Buttons["networkAnalyzer"].Enabled,
-            "Calendar or deferred Network tile state changed on the Clipboard page.")
+        this.Assert(!clipboardWindow.Buttons["networkAnalyzer"].Enabled,
+            "Deferred Network tile state changed on the Clipboard page.")
 
         previewDib := Buffer(56, 0)
         NumPut("uint", 40, previewDib, 0)

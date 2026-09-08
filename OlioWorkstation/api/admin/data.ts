@@ -18,7 +18,7 @@ type OperationKind =
   | "create" | "update" | "delete" | "reveal"
   | "ban" | "unban" | "reset-password"
   | "transfer-owner" | "regenerate-code"
-  | "revoke" | "cancel" | "disconnect";
+  | "revoke" | "cancel";
 
 type AdminOperation = {
   resource: string;
@@ -174,7 +174,6 @@ function resourceActions(resource: AdminResource) {
   if (resource.guided === "users") return ["create", "update", "ban", "unban", "reset-password", "delete"];
   if (resource.guided === "launcher-device") return ["revoke"];
   if (resource.guided === "launcher-pairing") return ["cancel"];
-  if (resource.guided === "calendar") return ["disconnect"];
   if (resource.readOnly) return sensitiveColumns(resource).length ? ["reveal"] : [];
   const actions = ["create", "update", "delete"];
   if (sensitiveColumns(resource).length) actions.push("reveal");
@@ -194,7 +193,7 @@ function assertOperation(resource: AdminResource, operation: AdminOperation) {
   if (ids.length > 1 && (resource.guided || resource.key === "organizations" || resource.key === "app-settings")) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
-  if (ids.length > 1 && ["reveal", "ban", "unban", "reset-password", "transfer-owner", "regenerate-code", "revoke", "cancel", "disconnect"].includes(operation.kind)) {
+  if (ids.length > 1 && ["reveal", "ban", "unban", "reset-password", "transfer-owner", "regenerate-code", "revoke", "cancel"].includes(operation.kind)) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
   operation.ids = ids;
@@ -322,16 +321,16 @@ async function countTable(service: any, table: string, filter?: [string, string]
 }
 
 async function overview(service: any) {
-  const [users, organizations, projects, pastes, quickPastes, secrets, devices, pairings, calendars, audits] = await Promise.all([
+  const [users, organizations, projects, pastes, quickPastes, secrets, devices, pairings, audits] = await Promise.all([
     countTable(service, "profiles"), countTable(service, "organizations"), countTable(service, "projects"),
     countTable(service, "pastes"), countTable(service, "quick_pastes"), countTable(service, "secrets"),
     countTable(service, "launcher_devices"), countTable(service, "launcher_pairing_requests", ["status", "waiting"]),
-    countTable(service, "google_calendar_connections"), countTable(service, "admin_audit_log"),
+    countTable(service, "admin_audit_log"),
   ]);
   const { data: recent } = await service.from("admin_audit_log")
     .select("id,actor_email,action,resource,target_ids,reason,status,created_at")
     .order("created_at", { ascending: false }).limit(8);
-  return { metrics: { users, organizations, projects, content: pastes + quickPastes + secrets, devices, pendingPairings: pairings, calendars, audits }, recentAudit: recent || [], resources: ADMIN_RESOURCE_LIST };
+  return { metrics: { users, organizations, projects, content: pastes + quickPastes + secrets, devices, pendingPairings: pairings, audits }, recentAudit: recent || [], resources: ADMIN_RESOURCE_LIST };
 }
 
 async function impactPreview(service: any, resource: AdminResource, operation: AdminOperation) {
@@ -498,11 +497,6 @@ async function executeNormal(service: any, resource: AdminResource, operation: A
     if (error || !data) throw error || new Error("PAIRING_NOT_CANCELLABLE");
     return data;
   }
-  if (operation.kind === "disconnect" && resource.guided === "calendar") {
-    const { error } = await service.from(resource.table).delete().eq("owner_id", id);
-    if (error) throw error;
-    return { owner_id: id, disconnected: true };
-  }
   if (operation.kind === "update") {
     if (resource.fields.some((field) => field.name === "updated_at")) values.updated_at = new Date().toISOString();
     let query = service.from(resource.table).update(values);
@@ -558,7 +552,7 @@ export default async function handler(req: any, res: any) {
       const requestedRecord = queryValue(req, "record");
       if (requestedRecord && SAFE_ID.test(requestedRecord)) {
         const rows = await addReferences(service, resource, await fetchRows(service, resource, [requestedRecord], false));
-        return res.status(200).json({ rows, total: 1, resource: resource.key, label: resource.label, fields: resource.fields, actions: resourceActions(resource), redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], page: 1, pageSize, sort, direction: ascending ? "asc" : "desc" });
+        return res.status(200).json({ rows, total: rows.length, resource: resource.key, label: resource.label, fields: resource.fields, actions: resourceActions(resource), redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page: 1, pageSize, sort, direction: ascending ? "asc" : "desc" });
       }
 
       const listed = resource.key === "users"
@@ -573,7 +567,7 @@ export default async function handler(req: any, res: any) {
           return { rows: (data || []).map((row: any) => addAdminId(resource, row)), total: count || 0 };
         })();
       const rows = await addReferences(service, resource, listed.rows);
-      return res.status(200).json({ ...listed, rows, resource: resource.key, label: resource.label, fields: resource.fields, actions: resourceActions(resource), redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], page, pageSize, sort, direction: ascending ? "asc" : "desc" });
+      return res.status(200).json({ ...listed, rows, resource: resource.key, label: resource.label, fields: resource.fields, actions: resourceActions(resource), redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page, pageSize, sort, direction: ascending ? "asc" : "desc" });
     }
 
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -583,6 +577,20 @@ export default async function handler(req: any, res: any) {
     if (!operation || typeof operation !== "object") return res.status(400).json({ error: "Operation is required" });
     const resource = ADMIN_RESOURCES[String(operation.resource || "")];
     if (!resource) return res.status(404).json({ error: "Unknown admin resource" });
+
+    if (phase === "reveal") {
+      const ids = normalizeIds(operation.ids);
+      const requested = Array.isArray(operation.revealFields) ? [...new Set(operation.revealFields.map(String))] : [];
+      const allowed = new Set(resource.fields.filter((field) => field.sensitive && field.auditReveal === false).map((field) => field.name));
+      if (operation.kind !== "reveal" || ids.length !== 1 || !requested.length || requested.some((field) => !allowed.has(field))) {
+        return res.status(400).json({ error: "This field requires the normal audited reveal flow." });
+      }
+      const [row] = await fetchRows(service, resource, ids, true);
+      if (!row) return res.status(404).json({ error: "Record not found." });
+      const result = Object.fromEntries(requested.map((field) => [field, row[field]]));
+      return res.status(200).json({ ok: true, result });
+    }
+
     assertOperation(resource, operation);
     if (resource.key === "users") await guardUserOperation(service, access.userId, operation);
     const beforeRows = operation.kind === "create" ? [] : await fetchRows(service, resource, operation.ids || [], true);
@@ -591,7 +599,7 @@ export default async function handler(req: any, res: any) {
 
     if (phase === "prepare") {
       const operationId = randomUUID();
-      const destructive = ["delete", "revoke", "disconnect"].includes(operation.kind);
+      const destructive = ["delete", "revoke"].includes(operation.kind);
       const confirmation = destructive ? `DELETE ${operation.ids?.length || 1} ${resource.key}` : "CONFIRM";
       const impact = await impactPreview(service, resource, operation);
       const payload: TokenPayload = { v: 1, actor: access.userId, operationId, digest, fingerprint, confirmation, exp: Math.floor(Date.now() / 1000) + TOKEN_SECONDS };

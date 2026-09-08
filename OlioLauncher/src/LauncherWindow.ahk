@@ -1,7 +1,6 @@
 class LauncherWindow {
     __New(settings, navigateCallback, visualTestMode := false, clipboardManager := 0,
-        connectionManager := 0, quickPastesManager := 0, settingsApplyCallback := 0,
-        calendarManager := 0) {
+        connectionManager := 0, quickPastesManager := 0, settingsApplyCallback := 0) {
         this.Settings := settings
         this.NavigateCallback := navigateCallback
         this.SettingsApplyCallback := settingsApplyCallback
@@ -9,8 +8,6 @@ class LauncherWindow {
         this.ClipboardManager := clipboardManager
         this.ConnectionManager := connectionManager
         this.QuickPastesManager := quickPastesManager
-        this.CalendarManager := calendarManager
-        this.CalendarVisibleItems := []
         this.QuickVisibleItems := []
         this.QuickLastFeedback := ""
         this.QuickWheelRemainder := 0
@@ -72,8 +69,7 @@ class LauncherWindow {
             {Key: "clipboard", Accessible: "Clipboard History", Title: "Clipboard", Subtitle: "", Accent: 0x38BDF8, X: 16, Y: 64, W: 160, H: 64, Enabled: true},
             {Key: "screenshot", Accessible: "Dynamic Screenshot", Title: "Screenshot", Subtitle: "", Accent: 0x8B5CF6, X: 184, Y: 64, W: 160, H: 64, Enabled: true},
             {Key: "quickPastes", Accessible: "Quick Pastes", Title: "Quick Pastes", Subtitle: "", Accent: 0x34D399, X: 16, Y: 136, W: 328, H: 64, Enabled: true},
-            {Key: "calendar", Accessible: "Today's Google Calendar schedule", Title: "Calendar", Subtitle: "Today", Accent: 0xF59E0B, X: 16, Y: 208, W: 160, H: 56, Enabled: true},
-            {Key: "networkAnalyzer", Accessible: "Network Analyzer — Coming later", Title: "Network", Subtitle: "Later", Accent: 0x64748B, X: 184, Y: 208, W: 160, H: 56, Enabled: false}
+            {Key: "networkAnalyzer", Accessible: "Network Analyzer — Coming later", Title: "Network", Subtitle: "Later", Accent: 0x64748B, X: 16, Y: 208, W: 328, H: 56, Enabled: false}
         ]
 
         for definition in definitions {
@@ -92,8 +88,7 @@ class LauncherWindow {
         this.PageDefinitions := Map(
             "clipboard", {Title: "Clipboard History", Subtitle: "History will appear here.", Accent: 0x38BDF8},
             "screenshot", {Title: "Dynamic Screenshot", Subtitle: "Drag to select an area.", Accent: 0x8B5CF6},
-            "quickPastes", {Title: "Quick Pastes", Subtitle: "Launcher access begins in Milestone 6.", Accent: 0x34D399},
-            "calendar", {Title: "Today's Schedule", Subtitle: "The rest of your day.", Accent: 0xF59E0B}
+            "quickPastes", {Title: "Quick Pastes", Subtitle: "Launcher access begins in Milestone 6.", Accent: 0x34D399}
         )
         this.BackButton := this.Gui.Add("Custom",
             "ClassButton x232 y14 w112 h36 Hidden 0x5401000B", "Back to tools")
@@ -113,7 +108,6 @@ class LauncherWindow {
         this.CreateClipboardControls()
         this.CreateConnectionControls()
         this.CreateQuickPastesControls()
-        this.CreateCalendarControls()
 
         this.Gui.SetFont("s8 cFCA5A5", "Segoe UI Variable Text")
         this.StatusText := this.Gui.AddText("x16 y278 w328 h28 +Wrap Hidden", "")
@@ -309,40 +303,6 @@ class LauncherWindow {
         return button
     }
 
-    CreateCalendarControls() {
-        this.CalendarControls := []
-        this.Gui.SetFont("s9 c94A3B8", "Segoe UI Variable Text")
-        this.CalendarStatus := this.Gui.AddText(
-            "x16 y102 w328 h28 +0x200 Hidden", "Ready to load today's schedule.")
-        this.CalendarControls.Push(this.CalendarStatus)
-
-        this.CalendarRefreshButton := this.AddCalendarButton(
-            "x238 y62 w106 h34 Hidden", "Refresh", 0xF59E0B)
-        this.ButtonKeysByHwnd[this.CalendarRefreshButton.Hwnd] := "__calendar_refresh"
-
-        this.Gui.SetFont("s9 cE2E8F0", "Segoe UI Variable Text")
-        this.CalendarList := this.Gui.Add("Custom",
-            "ClassListBox x16 y136 w328 h278 Hidden Background020617 cE2E8F0 0x50211051")
-        CalendarRenderer.Register(this.CalendarList, this)
-        this.CalendarControls.Push(this.CalendarList)
-
-        this.Gui.SetFont("s8 c94A3B8", "Segoe UI Variable Text")
-        this.CalendarFooter := this.Gui.AddText(
-            "x16 y416 w328 h18 +0x200 Hidden", "Not updated yet")
-        this.CalendarControls.Push(this.CalendarFooter)
-
-        this.CalendarConnectButton := this.AddCalendarButton(
-            "x16 y438 w328 h42 Hidden", "Open Calendar Settings", 0x38BDF8)
-        this.ButtonKeysByHwnd[this.CalendarConnectButton.Hwnd] := "__calendar_settings"
-    }
-
-    AddCalendarButton(options, title, accent) {
-        button := this.Gui.Add("Custom", "ClassButton " options " 0x5001000B", title)
-        TileRenderer.Register(button, title, "", accent, true)
-        this.CalendarControls.Push(button)
-        return button
-    }
-
     ApplyWorkstationWindowStyle() {
         try {
             cornerPreference := 2 ; DWMWCP_ROUND
@@ -378,8 +338,7 @@ class LauncherWindow {
         this.Buttons["clipboard"].Move(metric(16), metric(64), columnWidth, metric(64))
         this.Buttons["screenshot"].Move(rightColumn, metric(64), columnWidth, metric(64))
         this.Buttons["quickPastes"].Move(metric(16), metric(136), inner, metric(64))
-        this.Buttons["calendar"].Move(metric(16), metric(208), columnWidth, metric(56))
-        this.Buttons["networkAnalyzer"].Move(rightColumn, metric(208), columnWidth, metric(56))
+        this.Buttons["networkAnalyzer"].Move(metric(16), metric(208), inner, metric(56))
         this.BackButton.Move(utilityX, metric(14), metric(112), metric(36))
         this.BackLabel.Move(utilityX + metric(40), metric(16), metric(62), metric(32))
         this.PageTitle.Move(metric(16), metric(62), inner, metric(34))
@@ -412,11 +371,6 @@ class LauncherWindow {
         this.QuickPasteButton.Move(logicalWidth - metric(120), metric(438), metric(104), metric(42))
         this.QuickSettingsButton.Move(metric(16), metric(438), inner, metric(42))
 
-        this.CalendarStatus.Move(metric(16), metric(102), inner, metric(28))
-        this.CalendarRefreshButton.Move(logicalWidth - metric(122), metric(62), metric(106), metric(34))
-        this.CalendarList.Move(metric(16), metric(136), inner, metric(278))
-        this.CalendarFooter.Move(metric(16), metric(416), inner, metric(18))
-        this.CalendarConnectButton.Move(metric(16), metric(438), inner, metric(42))
     }
 
     ApplyTheme() {
@@ -429,8 +383,7 @@ class LauncherWindow {
                 "Segoe UI Variable Text")
         for control in [this.PageSubtitle, this.ClipboardStatus,
             this.ConnectionNameLabel, this.ConnectionStatus, this.QuickStatus,
-            this.QuickSearchLabel, this.QuickFooter, this.CalendarStatus,
-            this.CalendarFooter]
+            this.QuickSearchLabel, this.QuickFooter]
             control.SetFont("c" ThemeManager.Hex("MutedText"),
                 "Segoe UI Variable Text")
         this.StatusText.SetFont("c" ThemeManager.Hex("ErrorText"),
@@ -443,7 +396,7 @@ class LauncherWindow {
             try control.Opt("Background" ThemeManager.Hex("LauncherSurface")
                 " c" ThemeManager.Hex("Text"))
         }
-        for control in [this.ClipboardList, this.QuickPasteList, this.CalendarList] {
+        for control in [this.ClipboardList, this.QuickPasteList] {
             try control.Opt("Background" ThemeManager.Hex("LauncherWindow")
                 " c" ThemeManager.Hex("Text"))
         }
@@ -451,8 +404,6 @@ class LauncherWindow {
         try DllCall("InvalidateRect", "ptr", this.ClipboardList.Hwnd,
             "ptr", 0, "int", true)
         try DllCall("InvalidateRect", "ptr", this.QuickPasteList.Hwnd,
-            "ptr", 0, "int", true)
-        try DllCall("InvalidateRect", "ptr", this.CalendarList.Hwnd,
             "ptr", 0, "int", true)
     }
 
@@ -498,7 +449,6 @@ class LauncherWindow {
     IsNavigationContext() {
         if !WinActive("ahk_id " this.Gui.Hwnd)
             || this.PageKey = "clipboard" || this.PageKey = "quickPastes"
-            || this.PageKey = "calendar"
             return false
         focused := DllCall("GetFocus", "ptr")
         if !focused
@@ -643,8 +593,6 @@ class LauncherWindow {
             control.Visible := false
         for control in this.QuickPastesControls
             control.Visible := false
-        for control in this.CalendarControls
-            control.Visible := false
         this.PageKey := key
         if key = "clipboard" {
             this.PageSubtitle.Visible := false
@@ -678,19 +626,6 @@ class LauncherWindow {
                 this.QuickSettingsButton.Focus()
             else
                 this.QuickPasteList.Focus()
-        } else if key = "calendar" {
-            this.PageSubtitle.Visible := false
-            for control in this.CalendarControls
-                control.Visible := true
-            if IsObject(this.CalendarManager)
-                this.CalendarManager.Refresh()
-            this.RefreshCalendar()
-            if this.CalendarVisibleItems.Length
-                this.CalendarList.Focus()
-            else if this.CalendarRefreshButton.Enabled
-                this.CalendarRefreshButton.Focus()
-            else
-                this.CalendarConnectButton.Focus()
         } else {
             this.Navigation.Controls := [this.BackButton]
             this.BackButton.Focus()
@@ -709,8 +644,6 @@ class LauncherWindow {
         for control in this.ConnectionControls
             control.Visible := false
         for control in this.QuickPastesControls
-            control.Visible := false
-        for control in this.CalendarControls
             control.Visible := false
         for control in this.PageControls
             control.Visible := false
@@ -756,7 +689,6 @@ class LauncherWindow {
     CurrentLogicalHeight() {
         baseHeight := this.PageKey = "clipboard" ? 500
             : this.PageKey = "quickPastes" ? 500
-            : this.PageKey = "calendar" ? 500
             : this.PageKey = "settings" ? 400
             : (this.HasVisibleStatus ? 318 : 286)
         return Round(baseHeight * this.ScaleFactor)
@@ -1162,83 +1094,6 @@ class LauncherWindow {
         }
     }
 
-    OnCalendarChanged(state, detail) {
-        if IsObject(this.SettingsDialog) && this.SettingsDialog.IsVisible()
-            this.SettingsDialog.OnCalendarChanged(state, detail)
-        if this.PageKey = "calendar" {
-            focused := DllCall("GetFocus", "ptr")
-            this.RefreshCalendar()
-            if state = "ready" && this.CalendarVisibleItems.Length
-                && (!focused || focused = this.CalendarRefreshButton.Hwnd)
-                this.CalendarList.Focus()
-        }
-    }
-
-    RefreshCalendar() {
-        manager := this.CalendarManager
-        this.CalendarStatus.Text := IsObject(manager) ? manager.Detail
-            : "Calendar synchronization is unavailable in this isolated mode."
-        this.CalendarVisibleItems := IsObject(manager) ? manager.RemainingItems() : []
-        DllCall("SendMessageW", "ptr", this.CalendarList.Hwnd,
-            "uint", 0x0184, "uptr", 0, "ptr", 0)
-        for item in this.CalendarVisibleItems {
-            accessible := item.TimeText() ", " item.SafeTitle(120)
-            if item.Location
-                accessible .= ", " item.SafeLocation(100)
-            DllCall("SendMessageW", "ptr", this.CalendarList.Hwnd,
-                "uint", 0x0180, "uptr", 0, "str", accessible, "ptr")
-        }
-        if this.CalendarVisibleItems.Length
-            DllCall("SendMessageW", "ptr", this.CalendarList.Hwnd,
-                "uint", 0x0186, "uptr", 0, "ptr", 0)
-        dpi := DllCall("GetDpiForWindow", "ptr", this.Gui.Hwnd, "uint")
-        if !dpi
-            dpi := 96
-        DllCall("SendMessageW", "ptr", this.CalendarList.Hwnd,
-            "uint", 0x01A0, "uptr", 0, "ptr", Round(76 * dpi / 96))
-        DllCall("InvalidateRect", "ptr", this.CalendarList.Hwnd,
-            "ptr", 0, "int", true)
-
-        hasCredential := IsObject(this.ConnectionManager)
-            && this.ConnectionManager.Credential
-        busy := IsObject(manager) && manager.RequestBusy
-        needsSettings := !hasCredential || !IsObject(manager)
-            || manager.State = "disconnected" || manager.State = "revoked"
-            || manager.State = "calendar-not-connected"
-            || manager.State = "scope-required"
-            || manager.State = "calendar-reconnect-required"
-        TileRenderer.SetEnabled(this.CalendarRefreshButton, hasCredential && !busy)
-        TileRenderer.SetEnabled(this.CalendarConnectButton, true)
-        this.CalendarConnectButton.Visible := needsSettings
-        this.CalendarFooter.Text := IsObject(manager)
-            ? manager.LastSyncDisplay() : "Not updated yet"
-        this.Navigation.Controls := [this.BackButton, this.CalendarRefreshButton,
-            this.CalendarList]
-        if needsSettings
-            this.Navigation.Controls.Push(this.CalendarConnectButton)
-        TileRenderer.RefreshAll()
-    }
-
-    RefreshCalendarNow() {
-        if IsObject(this.CalendarManager)
-            this.CalendarManager.Refresh()
-    }
-
-    OpenCalendarSettings() {
-        if !IsObject(this.ConnectionManager)
-            return false
-        origin := LauncherWindow.SafeWorkstationOrigin(this.ConnectionManager.Origin)
-        if !origin
-            return false
-        try {
-            Run(origin "/profile")
-            return true
-        } catch {
-            this.CalendarStatus.Text := "Calendar settings could not be opened."
-            return false
-        }
-    }
-
     OnConnectionChanged(state, detail) {
         if IsObject(this.SettingsDialog) && this.SettingsDialog.IsVisible()
             this.SettingsDialog.OnConnectionChanged(state, detail)
@@ -1309,7 +1164,7 @@ class LauncherWindow {
         try this.SettingsDialog := SettingsDialog(this.Gui, this.Settings,
             (action, changes) => this.ApplySettingsRequest(action, changes),
             (*) => this.OnSettingsDialogClosed(), this.VisualTestMode,
-            this.ConnectionManager, this.CalendarManager)
+            this.ConnectionManager)
         catch {
             this.SettingsDialog := 0
             this.AutoCloseOnDeactivate := previousAutoClose
@@ -1452,8 +1307,6 @@ class LauncherWindow {
                 case "__quick_copy": this.CopyQuickPasteSelection()
                 case "__quick_paste": this.PasteQuickPasteSelection()
                 case "__quick_settings": this.OpenPreferences()
-                case "__calendar_refresh": this.RefreshCalendarNow()
-                case "__calendar_settings": this.OpenCalendarSettings()
                 default:
                     if key = "settings"
                         this.OpenPreferences()

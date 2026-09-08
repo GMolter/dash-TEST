@@ -50,7 +50,6 @@ On the Clipboard History page:
 - Delete removes the selected card.
 - Clear all always asks for confirmation, with No selected by default.
 
-Calendar replaces Send to Phone and shows the rest of today's Google Calendar schedule.
 Network Analyzer remains disabled. Dynamic Screenshot is active.
 Secure account connection and read-only Quick Pastes are available. Quick Paste creation,
 editing, deletion, reordering, and other management remain in Workstation.
@@ -76,21 +75,6 @@ Profile Settings provides a separate confirmed revoke action.
 Existing devices approved before the Milestone 6 migration retain only
 `connection:status`; they are not silently broadened. If Quick Pastes reports that a new
 approval is required, disconnect and approve that launcher again.
-
-## Google Calendar
-
-1. In Olio Workstation, open **Profile Settings**, find **Google Calendar**, and choose
-   **Connect calendar**. Google asks only for read-only Calendar access.
-2. Open the launcher's **Calendar** tile. It loads ongoing and upcoming events through
-   the end of the local day; event times are displayed in the Windows local time zone.
-3. Use **Refresh** on the Calendar page for an immediate update. The Account page in
-   launcher **Settings** also has **Refresh schedule** for the same manual action.
-
-The launcher refreshes quietly about 15 seconds after startup and every two hours after
-that. Only the current day's bounded event view is cached locally. The cache is protected
-with Windows DPAPI for the current Windows user, tied to the launcher device ID, replaced
-after successful refresh, and removed when it is stale or the account/calendar is
-disconnected. A network failure leaves a valid current-day cache visible.
 
 ## Quick Pastes
 
@@ -184,13 +168,10 @@ file. Supported values and safe defaults are:
 
 Internal non-sensitive fields include `settingsSchemaVersion` (currently 2),
 `lastSelected`, remembered monitor name/coordinates, the stable device UUID, safe device
-name, and connection display timestamps. Quick Paste rows, calendar events, synchronization
+name, and connection display timestamps. Quick Paste rows and synchronization
 timestamps, clipboard data, pixels, credentials, tokens, email, and account identity are absent.
 
 Quick Paste data and synchronization timestamps are deliberately absent from this file.
-The separate `%LOCALAPPDATA%\OlioLauncher\calendar-cache.bin` contains only a DPAPI-encrypted
-current-day Calendar cache; it is not JSON and cannot be read by another Windows user.
-
 The production Workstation origin is built in as `https://olio.one`; users do not enter
 or store an API address. Isolated protocol tests may inject a non-production HTTPS origin
 in memory, but normal settings cannot override the product endpoint.

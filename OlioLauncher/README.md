@@ -5,8 +5,7 @@ the approved Milestones 1–7 behavior: one
 resident process, Focus Key activation, right-edge
 placement, native navigation, validated local settings, optional per-user startup,
 redacted diagnostics, memory-only clipboard history, clipboard-only screen capture, a
-secure Olio account connection, private read-only Quick Pastes, and a read-only Google
-Calendar view for the rest of the current day.
+secure Olio account connection, and private read-only Quick Pastes.
 
 The shell uses a compact Workstation-themed grid of owner-drawn native Windows button
 controls, with slate surfaces, spatial keyboard focus, a compact settings pill, and the
@@ -40,12 +39,8 @@ covers titles, contents, categories, and favorites without a separate category s
 Favorite (pinned) results remain at the top, and the owner-drawn list uses accelerated,
 high-resolution-aware wheel scrolling. Selecting a result copies it through Clipboard
 History's suppression path; refresh and explicit paste are also available. Management
-remains in Workstation. No offline Quick Paste cache exists. Calendar replaces the old
-Send to Phone placeholder. It keeps only the current day's schedule in a user-bound,
-Windows DPAPI-encrypted local cache, refreshes quietly shortly after startup and about
-every two hours, and also supports manual refresh from the Calendar page or Settings.
-The cache is discarded when it belongs to another day/device or the account/calendar is
-disconnected. Network Analyzer remains disabled and executes no action.
+remains in Workstation. No offline Quick Paste cache exists. Network Analyzer remains
+disabled and executes no action.
 
 Milestone 7 adds a compact standalone native Settings window that opens directly from
 the launcher. Its primary General, Clipboard & paste, and Account tabs keep everyday

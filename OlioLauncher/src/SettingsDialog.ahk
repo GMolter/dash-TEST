@@ -480,13 +480,12 @@ class SettingsDialog {
     static LogicalHeight := 620
 
     __New(parentGui, settings, applyCallback, closedCallback := 0,
-        testMode := false, connectionManager := 0, calendarManager := 0) {
+        testMode := false, connectionManager := 0) {
         this.ParentGui := parentGui
         this.Settings := settings
         this.ApplyCallback := applyCallback
         this.ClosedCallback := closedCallback
         this.ConnectionManager := connectionManager
-        this.CalendarManager := calendarManager
         this.Closed := false
         this.TestMode := testMode
         this.Loading := true
@@ -717,16 +716,6 @@ class SettingsDialog {
         this.AccountNote := this.PageText(page, "x232 y412 w492 h44 +Wrap",
             "Resetting launcher settings never disconnects this device.")
         this.MutedTextControls.Push(this.AccountNote)
-
-        this.CalendarEyebrow := this.PageText(page, "x232 y468 w190 h20", "TODAY'S SCHEDULE")
-        this.MutedTextControls.Push(this.CalendarEyebrow)
-        this.CalendarStatus := this.PageText(page, "x232 y494 w320 h44 +Wrap",
-            "Calendar has not been refreshed yet.")
-        this.MutedTextControls.Push(this.CalendarStatus)
-        this.CalendarRefreshButton := this.PageControl(page,
-            this.AddDrawnButton("x570 y486 w154 h40", "action", "Refresh schedule", "",
-                0xF59E0B, "Refresh today's Google Calendar schedule"))
-        this.BindAction(this.CalendarRefreshButton, (*) => this.RefreshCalendarNow())
 
         this.ConnectButton := this.PageControl(page,
             this.AddDrawnButton("x232 y334 w492 h40", "action", "Connect Olio account", "",
@@ -1114,7 +1103,6 @@ class SettingsDialog {
         this.FocusKeyError.Text := ""
         this.PendingSave := false
         this.RefreshConnectionControls()
-        this.RefreshCalendarControls()
         this.Loading := false
     }
 
@@ -1261,30 +1249,6 @@ class SettingsDialog {
             this.RefreshConnectionControls()
     }
 
-    OnCalendarChanged(*) {
-        if !this.Closed
-            this.RefreshCalendarControls()
-    }
-
-    RefreshCalendarNow() {
-        if !IsObject(this.CalendarManager)
-            return false
-        return this.CalendarManager.Refresh()
-    }
-
-    RefreshCalendarControls() {
-        if !IsObject(this.CalendarRefreshButton)
-            return
-        manager := this.CalendarManager
-        this.CalendarStatus.Text := IsObject(manager) ? manager.Detail
-            : "Calendar controls are unavailable in this isolated window."
-        hasCredential := IsObject(this.ConnectionManager)
-            && this.ConnectionManager.Credential
-        busy := IsObject(manager) && manager.RequestBusy
-        SettingsRenderer.SetEnabled(this.CalendarRefreshButton,
-            IsObject(manager) && hasCredential && !busy)
-    }
-
     RefreshConnectionControls() {
         manager := this.ConnectionManager
         state := IsObject(manager) ? manager.State : "unavailable"
@@ -1351,7 +1315,6 @@ class SettingsDialog {
             SettingsRenderer.SetSelected(tab, key = section)
         this.InlineStatus.Visible := false
         this.RefreshConnectionControls()
-        this.RefreshCalendarControls()
         DllCall("SendMessageW", "ptr", this.Gui.Hwnd, "uint", 0x000B,
             "ptr", 1, "ptr", 0)
         DllCall("RedrawWindow", "ptr", this.Gui.Hwnd, "ptr", 0, "ptr", 0,

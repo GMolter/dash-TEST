@@ -28,6 +28,7 @@ describe("AdminResourceTable entity references", () => {
         actions: ["update"],
         redactedFields: [],
         filterFields: [],
+        sortFields: ["name"],
         page: 1,
         pageSize: 25,
         sort: "name",

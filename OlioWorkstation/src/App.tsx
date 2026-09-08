@@ -460,6 +460,10 @@ function App() {
     />
   ) : null;
 
+  if (!authLoading && user?.app_metadata?.force_password_change === true) {
+    return <ForcedPasswordChange />;
+  }
+
   if (view.type === 'launcher-authorization') {
     const access = launcherAuthorizationAccess(authLoading, !!user, allowOnboarding);
     if (access === 'loading') {
@@ -467,10 +471,6 @@ function App() {
     }
     if (access === 'sign-in') return <Onboarding />;
     return <LauncherAuthorization requestId={view.requestId} displayCode={view.displayCode} />;
-  }
-
-  if (!authLoading && user?.app_metadata?.force_password_change === true) {
-    return <ForcedPasswordChange />;
   }
 
   if (view.type === 'projects-center') {

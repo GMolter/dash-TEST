@@ -91,7 +91,7 @@ class TileRenderer {
             if result
                 return result
             result := QuickPastesRenderer.DrawItem(lParam)
-            return result ? result : CalendarRenderer.DrawItem(lParam)
+            return result
         }
         catch as drawError {
             this.LastDrawError := Type(drawError) ": " drawError.Message

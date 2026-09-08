@@ -5,9 +5,6 @@ class OlioApp {
     static Screenshot := 0
     static Connection := 0
     static QuickPastes := 0
-    static Calendar := 0
-    static CalendarRefreshCallback := 0
-    static CalendarRefreshIntervalMs := 7200000
     static PendingActivation := false
     static FocusCallback := 0
     static FocusReleaseCallback := 0
@@ -38,13 +35,11 @@ class OlioApp {
             ? 0 : LauncherConnection(this.Settings)
         this.QuickPastes := IsObject(this.Connection)
             ? QuickPastesClient(this.Connection) : 0
-        this.Calendar := IsObject(this.Connection)
-            ? CalendarClient(this.Connection) : 0
         this.Screenshot := ScreenshotManager(this.Clipboard,
             (status, previous, result) => this.OnScreenshotFinished(status, previous, result))
         this.Window := LauncherWindow(this.Settings, (key) => this.OnNavigate(key),
             mode = "--visual-test", this.Clipboard, this.Connection, this.QuickPastes,
-            (action, changes) => this.ApplySettings(action, changes), this.Calendar)
+            (action, changes) => this.ApplySettings(action, changes))
         if IsObject(this.Connection) {
             this.Connection.ChangedCallback := (state, detail) =>
                 this.OnConnectionChanged(state, detail)
@@ -54,13 +49,6 @@ class OlioApp {
         if IsObject(this.QuickPastes)
             this.QuickPastes.ChangedCallback := (state, detail) =>
                 this.Window.OnQuickPastesChanged(state, detail)
-        if IsObject(this.Calendar)
-            this.Calendar.ChangedCallback := (state, detail) =>
-                this.Window.OnCalendarChanged(state, detail)
-        if IsObject(this.Calendar) {
-            this.CalendarRefreshCallback := (*) => this.RefreshCalendarInBackground()
-            SetTimer(this.CalendarRefreshCallback, -15000)
-        }
         this.Clipboard.ChangedCallback := (status) => this.Window.OnClipboardHistoryChanged(status)
         this.Clipboard.Start()
         this.FocusGesture := FocusKeyGesture(350)
@@ -177,15 +165,6 @@ class OlioApp {
         else if state = "disconnected"
             this.QuickPastes.Clear("disconnected",
                 "Connect an Olio account in Settings.")
-        if !IsObject(this.Calendar)
-            return
-        if state = "connected" && !this.Calendar.Items.Length
-            this.Calendar.SetState("connected", "Ready to load today's schedule.")
-        else if state = "revoked"
-            this.Calendar.Clear("revoked",
-                "This launcher was revoked. Connect again in Settings.")
-        else if state = "disconnected"
-            this.Calendar.Clear("disconnected", "Connect an Olio account in Settings.")
     }
 
     static OnCredentialCleared(reason) {
@@ -195,16 +174,6 @@ class OlioApp {
             : "Connect an Olio account in Settings."
         if IsObject(this.QuickPastes)
             this.QuickPastes.Clear(state, detail)
-        if IsObject(this.Calendar)
-            this.Calendar.Clear(state, detail)
-    }
-
-    static RefreshCalendarInBackground() {
-        if IsObject(this.Calendar) && IsObject(this.Connection)
-            && this.Connection.Credential
-            this.Calendar.Refresh()
-        if IsObject(this.CalendarRefreshCallback)
-            SetTimer(this.CalendarRefreshCallback, this.CalendarRefreshIntervalMs)
     }
 
     static OnScreenshotFinished(status, previous, result) {
@@ -312,10 +281,6 @@ class OlioApp {
             this.Screenshot.Shutdown(false)
         if IsObject(this.QuickPastes)
             this.QuickPastes.Shutdown()
-        if IsObject(this.Calendar)
-            this.Calendar.Shutdown()
-        if IsObject(this.CalendarRefreshCallback)
-            try SetTimer(this.CalendarRefreshCallback, 0)
         if IsObject(this.Clipboard)
             this.Clipboard.Shutdown()
         if IsObject(this.Connection)
