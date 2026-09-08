@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADMIN_RESOURCE_LIST, ADMIN_RESOURCES, editableColumns, referenceTarget, selectedColumns, sensitiveColumns } from "./adminResources";
+import { ADMIN_ACCOUNT_SCOPES, ADMIN_RESOURCE_LIST, ADMIN_RESOURCES, editableColumns, referenceTarget, selectedColumns, sensitiveColumns } from "./adminResources";
 
 describe("admin resource registry", () => {
   it("allows only curated operational resources", () => {
@@ -57,5 +57,14 @@ describe("admin resource registry", () => {
     const users = ADMIN_RESOURCE_LIST.find((resource) => resource.key === "users");
     expect(users?.actions).toEqual(expect.arrayContaining(["ban", "unban"]));
     expect(users?.actions).not.toEqual(expect.arrayContaining(["suspend", "reactivate"]));
+  });
+
+  it("uses an explicit allowlist for every account-management relationship", () => {
+    expect(ADMIN_ACCOUNT_SCOPES.users).toBe("self");
+    expect(ADMIN_ACCOUNT_SCOPES.quicklinks).toBe("user-or-organization");
+    expect(ADMIN_ACCOUNT_SCOPES["project-files"]).toBe("project-related");
+    expect(ADMIN_ACCOUNT_SCOPES["launcher-devices"]).toBe("owner");
+    expect(ADMIN_ACCOUNT_SCOPES).not.toHaveProperty("app-settings");
+    for (const key of Object.keys(ADMIN_ACCOUNT_SCOPES)) expect(ADMIN_RESOURCES).toHaveProperty(key);
   });
 });

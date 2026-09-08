@@ -67,3 +67,17 @@ export type AdminOverview = {
   recentAudit: Array<Record<string, unknown>>;
   resources: Array<{ key: string; label: string; group: string; actions: string[] }>;
 };
+
+export type AdminUserAccountOverview = {
+  user: AdminRow;
+  userFields: AdminField[];
+  userActions: string[];
+  totalRecords: number;
+  resources: Array<{
+    key: string;
+    label: string;
+    group: string;
+    total: number | null;
+    unavailable: boolean;
+  }>;
+};

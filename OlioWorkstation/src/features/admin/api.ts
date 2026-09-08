@@ -1,5 +1,5 @@
 import { supabase } from "../../lib/supabase";
-import type { AdminListResponse, AdminOperation, AdminOverview, PreparedOperation } from "./types";
+import type { AdminListResponse, AdminOperation, AdminOverview, AdminUserAccountOverview, PreparedOperation } from "./types";
 
 async function adminFetch(path: string, init?: RequestInit) {
   const { data } = await supabase.auth.getSession();
@@ -40,6 +40,7 @@ export async function loadAdminResource(input: {
   direction?: "asc" | "desc";
   filters?: Record<string, unknown>;
   recordId?: string;
+  accountUserId?: string;
 }): Promise<AdminListResponse> {
   const params = new URLSearchParams({
     resource: input.resource,
@@ -51,6 +52,12 @@ export async function loadAdminResource(input: {
   if (input.direction) params.set("direction", input.direction);
   if (input.filters && Object.keys(input.filters).length) params.set("filters", JSON.stringify(input.filters));
   if (input.recordId) params.set("record", input.recordId);
+  if (input.accountUserId) params.set("accountUserId", input.accountUserId);
+  return adminFetch(`/api/admin/data?${params.toString()}`);
+}
+
+export async function loadAdminUserAccount(userId: string): Promise<AdminUserAccountOverview> {
+  const params = new URLSearchParams({ resource: "user-account", userId });
   return adminFetch(`/api/admin/data?${params.toString()}`);
 }
 

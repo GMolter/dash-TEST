@@ -32,6 +32,10 @@ export type AdminReferenceTarget = {
   labelFields: string[];
 };
 
+export type AdminAccountScope =
+  | "self" | "organizations" | "projects" | "project-related"
+  | "user" | "organization" | "user-or-organization" | "owner" | "actor";
+
 const REFERENCE_FIELDS: Record<string, AdminReferenceTarget> = {
   user_id: { resource: "users", labelFields: ["display_name", "email"] },
   owner_id: { resource: "users", labelFields: ["display_name", "email"] },
@@ -223,6 +227,34 @@ export const ADMIN_RESOURCE_LIST = Object.values(ADMIN_RESOURCES).map((resource)
   group: resource.group,
   actions: resourceActionsForCatalog(resource),
 }));
+
+// Explicit account relationships used by the admin account workspace. Keeping these
+// in the registry prevents a client from choosing arbitrary tables or join columns.
+export const ADMIN_ACCOUNT_SCOPES: Record<string, AdminAccountScope> = {
+  users: "self",
+  organizations: "organizations",
+  projects: "projects",
+  "project-board-columns": "project-related",
+  "project-board-cards": "project-related",
+  "project-planner-steps": "project-related",
+  "project-resources": "project-related",
+  "project-files": "project-related",
+  "project-activity": "project-related",
+  pastes: "user-or-organization",
+  "quick-pastes": "user",
+  secrets: "organization",
+  quicklinks: "user-or-organization",
+  "quicklink-folders": "user-or-organization",
+  triggers: "organization",
+  "short-urls": "organization",
+  "dashboard-todos": "user",
+  "plugin-installations": "user",
+  "classdash-settings": "user",
+  "classdash-classes": "user",
+  "launcher-devices": "owner",
+  "launcher-pairings": "owner",
+  "audit-log": "actor",
+};
 
 function resourceActionsForCatalog(resource: AdminResource) {
   if (resource.key === "app-settings") return ["update"];

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Ban, Eye, KeyRound, Pencil, RotateCcw, Save, ShieldOff, Trash2, UserCheck, X } from "lucide-react";
+import { ArrowUpRight, Ban, Eye, KeyRound, Pencil, RotateCcw, Save, ShieldOff, Trash2, UserCheck, UserRoundCog, X } from "lucide-react";
 import type { AdminField, AdminReference, AdminRow } from "./types";
 import { AdminDisplayValue, adminFieldLabel } from "./adminFormat";
 import { loadAdminResource } from "./api";
@@ -14,10 +14,11 @@ type Props = {
   onClose: () => void;
   onReveal: (field: string) => void;
   onOpenReference: (reference: AdminReference) => void;
+  onOpenAccount?: (row: AdminRow) => void;
   onOperation: (kind: string, values?: Record<string, unknown>) => void;
 };
 
-export function AdminRecordDrawer({ label, fields, actions, row, creating, revealed, onClose, onReveal, onOpenReference, onOperation }: Props) {
+export function AdminRecordDrawer({ label, fields, actions, row, creating, revealed, onClose, onReveal, onOpenReference, onOpenAccount, onOperation }: Props) {
   const [editing, setEditing] = useState(creating);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [temporaryPassword, setTemporaryPassword] = useState("");
@@ -97,6 +98,9 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, revea
         </header>
 
         <div className="flex-1 space-y-5 overflow-y-auto p-5">
+          {!creating && actions.includes("reset-password") && onOpenAccount && (
+            <button onClick={() => onOpenAccount(row!)} className="flex w-full items-center justify-between rounded-2xl border border-blue-400/25 bg-blue-500/10 px-4 py-3 text-left text-blue-100 hover:bg-blue-500/15"><span className="flex items-center gap-3"><UserRoundCog className="h-5 w-5" /><span><span className="block text-sm font-medium">Open account management</span><span className="mt-0.5 block text-xs text-slate-400">See this user’s profile, projects, content, utilities, integrations, devices, and activity.</span></span></span><ArrowUpRight className="h-4 w-4 shrink-0" /></button>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             {primaryFields.map(renderField)}
           </div>

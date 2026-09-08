@@ -7,11 +7,13 @@ import { getSupabaseServiceConfig } from "../_utils/supabaseConfig.js";
 import {
   ADMIN_RESOURCE_LIST,
   ADMIN_RESOURCES,
+  ADMIN_ACCOUNT_SCOPES,
   editableColumns,
   referenceTarget,
   selectedColumns,
   sensitiveColumns,
   type AdminResource,
+  type AdminAccountScope,
 } from "../_utils/adminResources.js";
 
 type OperationKind =
@@ -43,7 +45,15 @@ const MAX_PAGE_SIZE = 100;
 const MAX_BULK = 50;
 const TOKEN_SECONDS = 5 * 60;
 const SAFE_ID = /^[a-zA-Z0-9_:.,@+\-]{1,300}$/;
+const SAFE_USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const AUDIT_REDACT = /(password|secret|token|credential|hash|cipher|content|webhook|url|\bcode\b)/i;
+const NO_MATCH_ID = "00000000-0000-0000-0000-000000000000";
+
+type AccountContext = {
+  userId: string;
+  organizationId: string | null;
+  projectIds: string[];
+};
 
 function parseBody(raw: any) {
   if (!raw) return {};
@@ -333,6 +343,77 @@ async function overview(service: any) {
   return { metrics: { users, organizations, projects, content: pastes + quickPastes + secrets, devices, pendingPairings: pairings, audits }, recentAudit: recent || [], resources: ADMIN_RESOURCE_LIST };
 }
 
+async function userAccountContext(service: any, userId: string): Promise<AccountContext> {
+  const { data: profile, error } = await service.from("profiles").select("id,org_id").eq("id", userId).maybeSingle();
+  if (error) throw error;
+  if (!profile) throw new Error("TARGET_NOT_FOUND");
+  const organizationId = profile.org_id ? String(profile.org_id) : null;
+  const projectIds: string[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    let query = service.from("projects").select("id").order("id", { ascending: true }).range(offset, offset + 999);
+    query = organizationId
+      ? query.or(`user_id.eq.${userId},org_id.eq.${organizationId}`)
+      : query.eq("user_id", userId);
+    const { data, error: projectError } = await query;
+    if (projectError) throw projectError;
+    const page = data || [];
+    projectIds.push(...page.map((item: { id: unknown }) => String(item.id)));
+    if (page.length < 1000) break;
+  }
+  return { userId, organizationId, projectIds };
+}
+
+function applyAccountScope(query: any, scope: AdminAccountScope, context: AccountContext) {
+  const { userId, organizationId, projectIds } = context;
+  if (scope === "self") return query.eq("id", userId);
+  if (scope === "organizations") {
+    return organizationId
+      ? query.or(`id.eq.${organizationId},owner_id.eq.${userId}`)
+      : query.eq("owner_id", userId);
+  }
+  if (scope === "projects") {
+    return organizationId
+      ? query.or(`user_id.eq.${userId},org_id.eq.${organizationId}`)
+      : query.eq("user_id", userId);
+  }
+  if (scope === "project-related") return query.in("project_id", projectIds.length ? projectIds : [NO_MATCH_ID]);
+  if (scope === "user") return query.eq("user_id", userId);
+  if (scope === "organization") return query.eq("org_id", organizationId || NO_MATCH_ID);
+  if (scope === "user-or-organization") {
+    return organizationId
+      ? query.or(`user_id.eq.${userId},org_id.eq.${organizationId}`)
+      : query.eq("user_id", userId);
+  }
+  if (scope === "owner") return query.eq("owner_id", userId);
+  return query.eq("actor_id", userId);
+}
+
+async function userAccountOverview(service: any, userId: string) {
+  const context = await userAccountContext(service, userId);
+  const users = ADMIN_RESOURCES.users;
+  const [user] = await addReferences(service, users, await fetchRows(service, users, [userId], false));
+  const resources = await Promise.all(Object.entries(ADMIN_ACCOUNT_SCOPES)
+    .filter(([key]) => key !== "users")
+    .map(async ([key, scope]) => {
+      const resource = ADMIN_RESOURCES[key];
+      const countColumn = resource.primaryKey.split(",")[0];
+      let query = service.from(resource.table).select(countColumn, { count: "exact", head: true });
+      query = applyAccountScope(query, scope, context);
+      const { count, error } = await query;
+      return {
+        key, label: resource.label, group: resource.group,
+        total: error ? null : (count || 0), unavailable: !!error,
+      };
+    }));
+  return {
+    user,
+    userFields: users.fields,
+    userActions: resourceActions(users),
+    resources,
+    totalRecords: resources.reduce((sum, item) => sum + (item.total || 0), 1),
+  };
+}
+
 async function impactPreview(service: any, resource: AdminResource, operation: AdminOperation) {
   const counts: Record<string, number> = {};
   const id = operation.ids?.[0];
@@ -537,6 +618,11 @@ export default async function handler(req: any, res: any) {
     if (req.method === "GET") {
       const key = queryValue(req, "resource") || "overview";
       if (key === "overview") return res.status(200).json(await overview(service));
+      if (key === "user-account") {
+        const userId = queryValue(req, "userId");
+        if (!SAFE_USER_ID.test(userId)) return res.status(400).json({ error: "A valid user account is required." });
+        return res.status(200).json(await userAccountOverview(service, userId));
+      }
       const resource = ADMIN_RESOURCES[key];
       if (!resource) return res.status(404).json({ error: "Unknown admin resource" });
       const page = Math.max(1, Math.floor(Number(queryValue(req, "page")) || 1));
@@ -548,17 +634,26 @@ export default async function handler(req: any, res: any) {
       let filters: Record<string, unknown> = {};
       try { filters = JSON.parse(queryValue(req, "filters") || "{}"); } catch { filters = {}; }
       filters = Object.fromEntries(Object.entries(filters).filter(([name]) => resource.filterFields?.includes(name)));
+      const accountUserId = queryValue(req, "accountUserId");
+      if (accountUserId && !SAFE_USER_ID.test(accountUserId)) return res.status(400).json({ error: "Invalid account scope." });
+      const accountScope = accountUserId ? ADMIN_ACCOUNT_SCOPES[resource.key] : undefined;
+      if (accountUserId && !accountScope) return res.status(400).json({ error: "This data view is not available in account management." });
+      const accountContext = accountUserId ? await userAccountContext(service, accountUserId) : null;
+      const actions = accountContext ? resourceActions(resource).filter((action) => action !== "create") : resourceActions(resource);
 
       const requestedRecord = queryValue(req, "record");
       if (requestedRecord && SAFE_ID.test(requestedRecord)) {
         const rows = await addReferences(service, resource, await fetchRows(service, resource, [requestedRecord], false));
-        return res.status(200).json({ rows, total: rows.length, resource: resource.key, label: resource.label, fields: resource.fields, actions: resourceActions(resource), redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page: 1, pageSize, sort, direction: ascending ? "asc" : "desc" });
+        return res.status(200).json({ rows, total: rows.length, resource: resource.key, label: resource.label, fields: resource.fields, actions, redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page: 1, pageSize, sort, direction: ascending ? "asc" : "desc" });
       }
 
-      const listed = resource.key === "users"
+      const listed = accountContext && resource.key === "users"
+        ? { rows: await fetchRows(service, resource, [accountContext.userId], false), total: 1 }
+        : resource.key === "users"
         ? await listUsers(service, resource, page, pageSize, search, sort, ascending, filters)
         : await (async () => {
           let query = service.from(resource.table).select(selectedColumns(resource, false).join(","), { count: "exact" });
+          if (accountContext && accountScope) query = applyAccountScope(query, accountScope, accountContext);
           if (search && resource.searchFields.length) query = query.or(resource.searchFields.map((field) => `${field}.ilike.%${search}%`).join(","));
           for (const [name, value] of Object.entries(filters)) query = value === null ? query.is(name, null) : query.eq(name, value);
           query = query.order(sort, { ascending }).range((page - 1) * pageSize, page * pageSize - 1);
@@ -567,7 +662,7 @@ export default async function handler(req: any, res: any) {
           return { rows: (data || []).map((row: any) => addAdminId(resource, row)), total: count || 0 };
         })();
       const rows = await addReferences(service, resource, listed.rows);
-      return res.status(200).json({ ...listed, rows, resource: resource.key, label: resource.label, fields: resource.fields, actions: resourceActions(resource), redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page, pageSize, sort, direction: ascending ? "asc" : "desc" });
+      return res.status(200).json({ ...listed, rows, resource: resource.key, label: resource.label, fields: resource.fields, actions, redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page, pageSize, sort, direction: ascending ? "asc" : "desc" });
     }
 
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
