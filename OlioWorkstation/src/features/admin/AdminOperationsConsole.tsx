@@ -227,12 +227,6 @@ export function AdminOperationsConsole() {
     selectResource("users");
   }
 
-  function manageAccount() {
-    if (!accountUserId) return;
-    selectAccountResource("users");
-    setRequestedRecord(accountUserId);
-  }
-
   function openReference(reference: AdminReference) {
     const target = resources.find((item) => item.key === reference.resource);
     if (!target) return;
@@ -285,6 +279,14 @@ export function AdminOperationsConsole() {
     setPending({
       title: operationTitle(kind, data?.label || resource, targetIds.length || 1),
       operation: { resource, kind, ids: kind === "create" ? undefined : targetIds, values, revealFields },
+    });
+  }
+
+  function requestAccountOperation(kind: string, values?: Record<string, unknown>) {
+    if (!accountUserId) return;
+    setPending({
+      title: operationTitle(kind, "account", 1),
+      operation: { resource: "users", kind, ids: [accountUserId], values },
     });
   }
 
@@ -366,7 +368,7 @@ export function AdminOperationsConsole() {
           {error && <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
           {section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : accountUserId ? (
-            <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onManageAccount={manageAccount} onOpenReference={openReference} onSelectResource={selectAccountResource}>
+            <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
               {resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
                 onOpen={(nextRow) => { setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => undefined}
@@ -438,7 +440,8 @@ function operationTitle(kind: string, resource: string, count: number) {
 function readLocation() {
   const query = new URLSearchParams(window.location.search);
   const account = query.get("account") || "";
-  return { section: account ? "people" : query.get("section") || "overview", resource: query.get("resource") || (account ? "" : "users"), record: query.get("record") || "", account };
+  const requestedResource = query.get("resource") || "";
+  return { section: account ? "people" : query.get("section") || "overview", resource: account ? (requestedResource === "users" ? "" : requestedResource) : requestedResource || "users", record: account ? "" : query.get("record") || "", account };
 }
 
 function navigate(path: string) {

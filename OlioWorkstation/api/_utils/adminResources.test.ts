@@ -61,10 +61,13 @@ describe("admin resource registry", () => {
 
   it("uses an explicit allowlist for every account-management relationship", () => {
     expect(ADMIN_ACCOUNT_SCOPES.users).toBe("self");
-    expect(ADMIN_ACCOUNT_SCOPES.quicklinks).toBe("user-or-organization");
+    expect(ADMIN_ACCOUNT_SCOPES.quicklinks).toBe("user");
+    expect(ADMIN_ACCOUNT_SCOPES.projects).toBe("user");
     expect(ADMIN_ACCOUNT_SCOPES["project-files"]).toBe("project-related");
     expect(ADMIN_ACCOUNT_SCOPES["launcher-devices"]).toBe("owner");
     expect(ADMIN_ACCOUNT_SCOPES).not.toHaveProperty("app-settings");
+    expect(ADMIN_ACCOUNT_SCOPES).not.toHaveProperty("secrets");
+    expect(ADMIN_ACCOUNT_SCOPES).not.toHaveProperty("triggers");
     for (const key of Object.keys(ADMIN_ACCOUNT_SCOPES)) expect(ADMIN_RESOURCES).toHaveProperty(key);
   });
 });

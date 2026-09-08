@@ -351,9 +351,7 @@ async function userAccountContext(service: any, userId: string): Promise<Account
   const projectIds: string[] = [];
   for (let offset = 0; ; offset += 1000) {
     let query = service.from("projects").select("id").order("id", { ascending: true }).range(offset, offset + 999);
-    query = organizationId
-      ? query.or(`user_id.eq.${userId},org_id.eq.${organizationId}`)
-      : query.eq("user_id", userId);
+    query = query.eq("user_id", userId);
     const { data, error: projectError } = await query;
     if (projectError) throw projectError;
     const page = data || [];
@@ -643,7 +641,24 @@ export default async function handler(req: any, res: any) {
 
       const requestedRecord = queryValue(req, "record");
       if (requestedRecord && SAFE_ID.test(requestedRecord)) {
-        const rows = await addReferences(service, resource, await fetchRows(service, resource, [requestedRecord], false));
+        let requestedRows: Record<string, any>[];
+        if (accountContext && accountScope) {
+          if (resource.key === "users") {
+            requestedRows = requestedRecord === accountContext.userId
+              ? await fetchRows(service, resource, [requestedRecord], false)
+              : [];
+          } else {
+            let recordQuery = service.from(resource.table).select(selectedColumns(resource, false).join(","));
+            recordQuery = applyAccountScope(recordQuery, accountScope, accountContext);
+            recordQuery = applyId(recordQuery, resource, requestedRecord);
+            const { data: accountRecord, error: recordError } = await recordQuery.maybeSingle();
+            if (recordError) throw recordError;
+            requestedRows = accountRecord ? [addAdminId(resource, accountRecord)] : [];
+          }
+        } else {
+          requestedRows = await fetchRows(service, resource, [requestedRecord], false);
+        }
+        const rows = await addReferences(service, resource, requestedRows);
         return res.status(200).json({ rows, total: rows.length, resource: resource.key, label: resource.label, fields: resource.fields, actions, redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page: 1, pageSize, sort, direction: ascending ? "asc" : "desc" });
       }
 

@@ -7,7 +7,7 @@ describe("AdminUserAccountPage", () => {
   it("shows the complete account summary and opens related data by name", async () => {
     const user = userEvent.setup();
     const onSelectResource = vi.fn();
-    const onManageAccount = vi.fn();
+    const onAccountOperation = vi.fn();
     render(<AdminUserAccountPage
       overview={{
         user: {
@@ -38,7 +38,7 @@ describe("AdminUserAccountPage", () => {
       error={null}
       selectedResource=""
       onBack={vi.fn()}
-      onManageAccount={onManageAccount}
+      onAccountOperation={onAccountOperation}
       onOpenReference={vi.fn()}
       onSelectResource={onSelectResource}
     />);
@@ -50,6 +50,11 @@ describe("AdminUserAccountPage", () => {
     await user.click(screen.getByRole("button", { name: /Quick links/ }));
     expect(onSelectResource).toHaveBeenCalledWith("quicklinks");
     await user.click(screen.getByRole("button", { name: /Edit account and access/ }));
-    expect(onManageAccount).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Edit account and access" })).toBeInTheDocument();
+    await user.clear(screen.getByLabelText(/Display name/));
+    await user.type(screen.getByLabelText(/Display name/), "Gavin Smith");
+    await user.click(screen.getByRole("button", { name: "Review changes" }));
+    expect(onAccountOperation).toHaveBeenCalledWith("update", { display_name: "Gavin Smith" });
   });
 });

@@ -172,7 +172,7 @@ function FieldInput({ field, value, onChange }: { field: AdminField; value: unkn
   return <input type={type} value={formatInputValue(value, field.type)} onChange={(event) => onChange(event.target.value)} className={classes} />;
 }
 
-function ReferenceInput({ field, value, initialLabel, onChange }: { field: AdminField; value: unknown; initialLabel?: string; onChange: (value: unknown) => void }) {
+export function ReferenceInput({ field, value, initialLabel, onChange }: { field: AdminField; value: unknown; initialLabel?: string; onChange: (value: unknown) => void }) {
   const resource = referenceResource(field.name)!;
   const [query, setQuery] = useState(initialLabel || "");
   const [options, setOptions] = useState<AdminRow[]>([]);
