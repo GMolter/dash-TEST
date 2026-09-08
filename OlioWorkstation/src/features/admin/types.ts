@@ -11,7 +11,16 @@ export type AdminField = {
   options?: string[];
 };
 
-export type AdminRow = Record<string, unknown> & { _admin_id: string };
+export type AdminReference = {
+  id: string;
+  label: string;
+  resource: string;
+};
+
+export type AdminRow = Record<string, unknown> & {
+  _admin_id: string;
+  _admin_refs?: Record<string, AdminReference>;
+};
 
 export type AdminListResponse = {
   rows: AdminRow[];

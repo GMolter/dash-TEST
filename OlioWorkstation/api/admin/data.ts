@@ -8,6 +8,7 @@ import {
   ADMIN_RESOURCE_LIST,
   ADMIN_RESOURCES,
   editableColumns,
+  referenceTarget,
   selectedColumns,
   sensitiveColumns,
   type AdminResource,
@@ -110,6 +111,53 @@ function resourceId(resource: AdminResource, row: Record<string, any>) {
 
 function addAdminId(resource: AdminResource, row: Record<string, any>) {
   return { ...row, _admin_id: resourceId(resource, row) };
+}
+
+function referenceLabel(targetKey: string, row: Record<string, unknown>, labelFields: string[]) {
+  const values = labelFields.map((field) => String(row[field] || "").trim()).filter(Boolean);
+  if (values.length > 1 && values[0].toLowerCase() !== values[1].toLowerCase()) return `${values[0]} · ${values[1]}`;
+  if (values.length) return values[0];
+  const label = ADMIN_RESOURCES[targetKey]?.label || "Record";
+  return `Unnamed ${label.replace(/s$/, "").toLowerCase()}`;
+}
+
+async function addReferences(service: any, resource: AdminResource, rows: Record<string, any>[]) {
+  if (!rows.length) return rows;
+  const fields = resource.fields
+    .map((field) => ({ field: field.name, target: referenceTarget(resource.key, field.name) }))
+    .filter((item): item is { field: string; target: NonNullable<ReturnType<typeof referenceTarget>> } => !!item.target);
+  if (!fields.length) return rows;
+
+  const lookups = new Map<string, Map<string, { id: string; label: string; resource: string }>>();
+  await Promise.all(fields.map(async ({ field, target }) => {
+    const targetResource = ADMIN_RESOURCES[target.resource];
+    if (!targetResource || targetResource.primaryKey.includes(",")) return;
+    const ids = [...new Set(rows.map((row) => row[field]).filter((value) => value !== null && value !== undefined && value !== "").map(String))];
+    if (!ids.length) return;
+    const columns = [...new Set([targetResource.primaryKey, ...target.labelFields])];
+    const { data, error } = await service.from(targetResource.table).select(columns.join(",")).in(targetResource.primaryKey, ids);
+    if (error) return;
+    const byId = new Map<string, { id: string; label: string; resource: string }>();
+    for (const item of data || []) {
+      const id = String(item[targetResource.primaryKey]);
+      byId.set(id, { id, label: referenceLabel(target.resource, item, target.labelFields), resource: target.resource });
+    }
+    lookups.set(field, byId);
+  }));
+
+  return rows.map((row) => {
+    const references: Record<string, { id: string; label: string; resource: string }> = {};
+    for (const { field, target } of fields) {
+      const id = row[field];
+      if (id === null || id === undefined || id === "") continue;
+      references[field] = lookups.get(field)?.get(String(id)) || {
+        id: String(id),
+        label: `Unknown ${(ADMIN_RESOURCES[target.resource]?.label || "record").replace(/s$/, "").toLowerCase()}`,
+        resource: target.resource,
+      };
+    }
+    return Object.keys(references).length ? { ...row, _admin_refs: references } : row;
+  });
 }
 
 function applyId(query: any, resource: AdminResource, id: string) {
@@ -504,7 +552,7 @@ export default async function handler(req: any, res: any) {
 
       const requestedRecord = queryValue(req, "record");
       if (requestedRecord && SAFE_ID.test(requestedRecord)) {
-        const rows = await fetchRows(service, resource, [requestedRecord], false);
+        const rows = await addReferences(service, resource, await fetchRows(service, resource, [requestedRecord], false));
         return res.status(200).json({ rows, total: 1, resource: resource.key, label: resource.label, fields: resource.fields, actions: resourceActions(resource), redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], page: 1, pageSize, sort, direction: ascending ? "asc" : "desc" });
       }
 
@@ -519,7 +567,8 @@ export default async function handler(req: any, res: any) {
           if (error) throw error;
           return { rows: (data || []).map((row: any) => addAdminId(resource, row)), total: count || 0 };
         })();
-      return res.status(200).json({ ...listed, resource: resource.key, label: resource.label, fields: resource.fields, actions: resourceActions(resource), redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], page, pageSize, sort, direction: ascending ? "asc" : "desc" });
+      const rows = await addReferences(service, resource, listed.rows);
+      return res.status(200).json({ ...listed, rows, resource: resource.key, label: resource.label, fields: resource.fields, actions: resourceActions(resource), redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], page, pageSize, sort, direction: ascending ? "asc" : "desc" });
     }
 
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });

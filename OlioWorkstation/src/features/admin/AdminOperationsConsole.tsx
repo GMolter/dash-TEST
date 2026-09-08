@@ -8,7 +8,7 @@ import { loadAdminOverview, loadAdminResource, loginAdmin, logoutAdmin } from ".
 import { AdminOperationDialog } from "./AdminOperationDialog";
 import { AdminRecordDrawer } from "./AdminRecordDrawer";
 import { AdminResourceTable } from "./AdminResourceTable";
-import type { AdminListResponse, AdminOperation, AdminOverview, AdminRow } from "./types";
+import type { AdminListResponse, AdminOperation, AdminOverview, AdminReference, AdminRow } from "./types";
 
 type AccessState = "checking" | "login" | "denied" | "ready";
 type PendingOperation = { operation: Omit<AdminOperation, "reason">; title: string } | null;
@@ -140,6 +140,24 @@ export function AdminOperationsConsole() {
     setRequestedRecord("");
   }
 
+  function openReference(reference: AdminReference) {
+    const target = resources.find((item) => item.key === reference.resource);
+    if (!target) return;
+    setSection(target.group);
+    setResource(reference.resource);
+    setRequestedRecord(reference.id);
+    setPage(1);
+    setSearchInput("");
+    setSearch("");
+    setSort(undefined);
+    setFilters({});
+    setSelected(new Set());
+    setRow(null);
+    setCreating(false);
+    setRevealed({});
+    setMobileOpen(false);
+  }
+
   async function login(event: React.FormEvent) {
     event.preventDefault();
     setLoginBusy(true);
@@ -240,7 +258,7 @@ export function AdminOperationsConsole() {
               </div>
               <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
-                onOpen={(nextRow) => { setRow(nextRow); setCreating(false); setRevealed({}); }} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
+                onOpen={(nextRow) => { setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
                 onPage={setPage} onSort={(field) => { setPage(1); setSort(field); setDirection((current) => sort === field && current === "asc" ? "desc" : "asc"); }}
                 onBulkDelete={() => requestOperation("delete", undefined, [...selected])} onBulkUpdate={(field, value) => requestOperation("update", { [field]: value }, [...selected])} />
             </>
@@ -249,7 +267,7 @@ export function AdminOperationsConsole() {
       </div>
 
       {data && (row || creating) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={data.actions} row={row} creating={creating} revealed={revealed}
-        onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => requestOperation("reveal", undefined, undefined, [field])}
+        onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => requestOperation("reveal", undefined, undefined, [field])} onOpenReference={openReference}
         onOperation={(kind, values) => requestOperation(kind, values)} />}
       <AdminOperationDialog operation={pending?.operation || null} title={pending?.title || "Confirm admin operation"} onCancel={() => setPending(null)} onComplete={operationComplete} />
     </div>

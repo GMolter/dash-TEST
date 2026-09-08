@@ -26,12 +26,49 @@ export type AdminResource = {
   guided?: "users" | "launcher-device" | "launcher-pairing" | "calendar" | "audit" | "activity";
 };
 
+export type AdminReferenceTarget = {
+  resource: string;
+  labelFields: string[];
+};
+
+const REFERENCE_FIELDS: Record<string, AdminReferenceTarget> = {
+  user_id: { resource: "users", labelFields: ["display_name", "email"] },
+  owner_id: { resource: "users", labelFields: ["display_name", "email"] },
+  actor_id: { resource: "users", labelFields: ["display_name", "email"] },
+  org_id: { resource: "organizations", labelFields: ["name"] },
+  organization_id: { resource: "organizations", labelFields: ["name"] },
+  project_id: { resource: "projects", labelFields: ["name"] },
+  column_id: { resource: "project-board-columns", labelFields: ["name"] },
+  folder_id: { resource: "quicklink-folders", labelFields: ["name"] },
+  device_id: { resource: "launcher-devices", labelFields: ["device_name"] },
+};
+
+export function referenceTarget(resourceKey: string, fieldName: string): AdminReferenceTarget | null {
+  if (resourceKey === "project-files" && fieldName === "parent_id") {
+    return { resource: "project-files", labelFields: ["name"] };
+  }
+  return REFERENCE_FIELDS[fieldName] || null;
+}
+
+const REFERENCE_LABELS: Record<string, string> = {
+  user_id: "User",
+  owner_id: "Owner",
+  actor_id: "Administrator",
+  org_id: "Organization",
+  organization_id: "Organization",
+  project_id: "Project",
+  column_id: "Board column",
+  folder_id: "Folder",
+  parent_id: "Parent item",
+  device_id: "Device",
+};
+
 const f = (
   name: string,
   label: string,
   type: AdminFieldType = "text",
   options: Partial<AdminField> = {},
-): AdminField => ({ name, label, type, ...options });
+): AdminField => ({ name, label: REFERENCE_LABELS[name] || label, type, ...options });
 
 const timestamps = [f("created_at", "Created", "datetime"), f("updated_at", "Updated", "datetime")];
 

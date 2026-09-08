@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, ChevronsUpDown, Database, Filter, Loader2, Plus, Search, Trash2, X } from "lucide-react";
-import type { AdminField, AdminListResponse, AdminRow } from "./types";
+import { ArrowUpRight, ChevronLeft, ChevronRight, ChevronsUpDown, Database, Filter, Loader2, Plus, Search, Trash2, X } from "lucide-react";
+import type { AdminField, AdminListResponse, AdminReference, AdminRow } from "./types";
 
 type Props = {
   data: AdminListResponse | null;
@@ -12,6 +12,7 @@ type Props = {
   onFilters: (value: Record<string, unknown>) => void;
   onSelection: (next: Set<string>) => void;
   onOpen: (row: AdminRow) => void;
+  onOpenReference: (reference: AdminReference) => void;
   onCreate: () => void;
   onPage: (page: number) => void;
   onSort: (field: string) => void;
@@ -19,15 +20,15 @@ type Props = {
   onBulkUpdate: (field: string, value: unknown) => void;
 };
 
-export function AdminResourceTable({ data, loading, search, filters, selected, onSearch, onFilters, onSelection, onOpen, onCreate, onPage, onSort, onBulkDelete, onBulkUpdate }: Props) {
+export function AdminResourceTable({ data, loading, search, filters, selected, onSearch, onFilters, onSelection, onOpen, onOpenReference, onCreate, onPage, onSort, onBulkDelete, onBulkUpdate }: Props) {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkField, setBulkField] = useState("");
   const [bulkValue, setBulkValue] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterField, setFilterField] = useState("");
   const [filterValue, setFilterValue] = useState("");
-  const columns = useMemo(() => chooseColumns(data?.fields || []), [data?.fields]);
   const rows = data?.rows || [];
+  const columns = useMemo(() => chooseColumns(data?.fields || [], rows), [data?.fields, rows]);
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row._admin_id));
   const editableFields = data?.fields.filter((field) => field.editable && !field.sensitive && ["text", "number", "boolean", "select"].includes(field.type)) || [];
   const bulkAllowed = !!data && !["users", "organizations", "launcher-devices", "launcher-pairings", "calendar-connections", "app-settings", "audit-log", "project-activity"].includes(data.resource);
@@ -134,7 +135,12 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
             ) : rows.map((row) => (
               <tr key={row._admin_id} className="cursor-pointer text-slate-300 transition hover:bg-blue-400/[0.055]">
                 <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={selected.has(row._admin_id)} onChange={() => toggleOne(row._admin_id)} aria-label={`Select ${row._admin_id}`} className="accent-blue-500" /></td>
-                {columns.map((field) => <td key={field.name} onClick={() => onOpen(row)} className="max-w-[260px] truncate px-3 py-3">{tableValue(row[field.name], field)}</td>)}
+                {columns.map((field) => {
+                  const reference = row._admin_refs?.[field.name];
+                  return <td key={field.name} onClick={() => onOpen(row)} className="max-w-[260px] truncate px-3 py-3">
+                    {reference ? <button onClick={(event) => { event.stopPropagation(); onOpenReference(reference); }} className="inline-flex max-w-full items-center gap-1.5 truncate font-medium text-blue-200 hover:text-blue-100 hover:underline"><span className="truncate">{reference.label}</span><ArrowUpRight className="h-3.5 w-3.5 shrink-0" /></button> : tableValue(row[field.name], field)}
+                  </td>;
+                })}
               </tr>
             ))}
           </tbody>
@@ -152,9 +158,13 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
   );
 }
 
-function chooseColumns(fields: AdminField[]) {
-  const preferred = ["display_name", "email", "name", "title", "device_name", "code", "slug", "status", "role", "app_admin", "owner_id", "user_id", "org_id", "updated_at", "created_at"];
-  const safe = fields.filter((field) => !field.sensitive && field.name !== "temporary_password");
+function chooseColumns(fields: AdminField[], rows: AdminRow[]) {
+  const preferred = ["display_name", "email", "name", "title", "device_name", "code", "slug", "status", "role", "app_admin", "project_id", "owner_id", "user_id", "org_id", "updated_at", "created_at"];
+  const safe = fields.filter((field) => {
+    if (field.sensitive || field.name === "temporary_password" || field.name === "id") return false;
+    if (field.name.endsWith("_id") && !rows.some((row) => row._admin_refs?.[field.name])) return false;
+    return !["json", "textarea"].includes(field.type);
+  });
   const rank = (name: string) => {
     const index = preferred.indexOf(name);
     return index === -1 ? preferred.length : index;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Ban, Eye, KeyRound, Pencil, RotateCcw, Save, ShieldOff, Trash2, UserCheck, X } from "lucide-react";
-import type { AdminField, AdminRow } from "./types";
+import { ArrowUpRight, Ban, Eye, KeyRound, Pencil, RotateCcw, Save, ShieldOff, Trash2, UserCheck, X } from "lucide-react";
+import type { AdminField, AdminReference, AdminRow } from "./types";
 
 type Props = {
   label: string;
@@ -11,10 +11,11 @@ type Props = {
   revealed: Record<string, unknown>;
   onClose: () => void;
   onReveal: (field: string) => void;
+  onOpenReference: (reference: AdminReference) => void;
   onOperation: (kind: string, values?: Record<string, unknown>) => void;
 };
 
-export function AdminRecordDrawer({ label, fields, actions, row, creating, revealed, onClose, onReveal, onOperation }: Props) {
+export function AdminRecordDrawer({ label, fields, actions, row, creating, revealed, onClose, onReveal, onOpenReference, onOperation }: Props) {
   const [editing, setEditing] = useState(creating);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [temporaryPassword, setTemporaryPassword] = useState("");
@@ -57,7 +58,7 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, revea
           <div>
             <div className="text-xs uppercase tracking-[0.18em] text-blue-300">{label}</div>
             <h2 className="mt-1 text-xl font-semibold text-white">{creating ? `Create ${singular(label)}` : recordTitle(row!)}</h2>
-            {!creating && <p className="mt-1 max-w-lg truncate text-xs text-slate-500">{row?._admin_id}</p>}
+            {!creating && <p className="mt-1 max-w-lg truncate text-xs text-slate-500">Record ID · {row?._admin_id}</p>}
           </div>
           <div className="flex items-center gap-2">
             {!creating && actions.includes("update") && !editing && <button onClick={() => setEditing(true)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"><Pencil className="h-4 w-4" /> Edit</button>}
@@ -70,6 +71,7 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, revea
             {visibleFields.map((field) => {
               const editable = editing && (creating ? field.create : field.editable);
               const revealedValue = revealed[field.name];
+              const reference = row?._admin_refs?.[field.name];
               return (
                 <div key={field.name} className={field.type === "textarea" || field.type === "json" ? "sm:col-span-2" : ""}>
                   <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -83,7 +85,9 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, revea
                   ) : editable ? (
                     <FieldInput field={field} value={values[field.name]} onChange={(value) => setValues((current) => ({ ...current, [field.name]: value }))} />
                   ) : (
-                    <div className="min-h-10 break-words rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2 text-sm text-slate-200">{displayValue(revealedValue ?? row?.[field.name])}</div>
+                    <div className="min-h-10 break-words rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2 text-sm text-slate-200">
+                      {reference ? <button onClick={() => onOpenReference(reference)} className="inline-flex items-center gap-1.5 font-medium text-blue-200 hover:text-blue-100 hover:underline"><span>{reference.label}</span><ArrowUpRight className="h-3.5 w-3.5" /></button> : displayValue(revealedValue ?? row?.[field.name])}
+                    </div>
                   )}
                 </div>
               );

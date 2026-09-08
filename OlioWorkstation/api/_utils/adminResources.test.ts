@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADMIN_RESOURCES, editableColumns, selectedColumns, sensitiveColumns } from "./adminResources";
+import { ADMIN_RESOURCES, editableColumns, referenceTarget, selectedColumns, sensitiveColumns } from "./adminResources";
 
 describe("admin resource registry", () => {
   it("allows only curated operational resources", () => {
@@ -37,5 +37,13 @@ describe("admin resource registry", () => {
       expect(resource.readOnly).toBe(true);
       expect(editableColumns(resource, false)).toHaveLength(0);
     }
+  });
+
+  it("maps relational IDs to navigable admin resources", () => {
+    expect(referenceTarget("projects", "user_id")?.resource).toBe("users");
+    expect(referenceTarget("projects", "org_id")?.resource).toBe("organizations");
+    expect(referenceTarget("project-board-cards", "project_id")?.resource).toBe("projects");
+    expect(referenceTarget("project-files", "parent_id")?.resource).toBe("project-files");
+    expect(referenceTarget("projects", "id")).toBeNull();
   });
 });
