@@ -60,5 +60,6 @@ describe("AdminUserAccountPage", () => {
     await user.type(screen.getByLabelText(/Display name/), "Gavin Smith");
     await user.click(screen.getByRole("button", { name: "Review changes" }));
     expect(onAccountOperation).toHaveBeenCalledWith("update", { display_name: "Gavin Smith" });
+    expect(onAccountOperation.mock.calls[onAccountOperation.mock.calls.length - 1][1]).not.toHaveProperty("app_admin");
   });
 });

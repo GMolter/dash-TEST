@@ -224,6 +224,9 @@ function assertOperation(resource: AdminResource, operation: AdminOperation) {
   if (operation.kind === "reset-password") allowed.add("temporary_password");
   if (operation.kind === "transfer-owner") allowed.add("owner_id");
   const values = operation.values && typeof operation.values === "object" ? operation.values : {};
+  if (resource.key === "users" && Object.prototype.hasOwnProperty.call(values, "app_admin")) {
+    throw new Error("ADMIN_ACCESS_REQUIRES_REVIEW");
+  }
   if (["create", "update", "reset-password", "transfer-owner"].includes(operation.kind)) {
     const names = Object.keys(values);
     if (!names.length || names.some((name) => !allowed.has(name))) throw new Error("INVALID_FIELDS");
@@ -795,6 +798,9 @@ export default async function handler(req: any, res: any) {
       throw error;
     }
   } catch (error: any) {
+    if (error?.message === "ADMIN_ACCESS_REQUIRES_REVIEW") {
+      return res.status(400).json({ error: "Administrator access cannot be changed through Update account. Refresh the app and use Request administrator access, then approve the request in an owner's Pending reviews tab. To remove access, use Remove administrator access." });
+    }
     if (["42703", "42P01", "PGRST204", "PGRST205", "PGRST202"].includes(error?.code)) {
       console.error("admin database schema unavailable", { code: error.code });
       return res.status(503).json({ error: "Admin database setup is incomplete. Apply the latest Supabase migrations, including 20260908120000_admin_operations_console.sql and 20260908170000_add_app_owners_and_admin_reviews.sql, then refresh." });

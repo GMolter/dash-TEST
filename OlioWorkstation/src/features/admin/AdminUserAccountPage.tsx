@@ -172,14 +172,12 @@ function accountChanges(user: AdminRow, form: AccountForm) {
     display_name: form.displayName.trim(),
     org_id: form.organizationId,
     role: form.role,
-    app_admin: form.appAdmin,
   };
   const current: Record<string, unknown> = {
     email: String(user.email || ""),
     display_name: String(user.display_name || ""),
     org_id: user.org_id ? String(user.org_id) : null,
     role: String(user.role || "member"),
-    app_admin: user.app_admin === true,
   };
   return Object.fromEntries(Object.entries(next).filter(([key, value]) => value !== current[key]));
 }
