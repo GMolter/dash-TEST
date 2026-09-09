@@ -698,7 +698,7 @@ function AdminEditor({ editorOnly = true }: AdminProps) {
 
   const isWideEditorLayout = true;
 
-  if (checkingAccess) return <div className="min-h-screen bg-slate-950 p-8 text-slate-400">Checking access…</div>;
+  if (checkingAccess) return <div className="min-h-screen bg-slate-950" />;
   if (!authed || !appAdmin) return <NotFound />;
 
   return (

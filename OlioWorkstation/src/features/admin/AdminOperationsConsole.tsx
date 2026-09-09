@@ -2,7 +2,7 @@ import { NotFound } from "../../pages/NotFound";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity, BookOpenText, Building2, Database, FolderKanban, Gauge,
-  LayoutDashboard, Loader2, Menu, Plug, RefreshCw, Shield, ShieldAlert,
+  LayoutDashboard, Menu, Plug, RefreshCw, Shield, ShieldAlert,
   ShieldCheck, Users, Wrench, X, ChevronDown, ArrowRight,
 } from "lucide-react";
 import { loadAdminOverview, loadAdminResource, loadAdminUserAccount, revealAdminField } from "./api";
@@ -312,7 +312,7 @@ export function AdminOperationsConsole() {
     void loadAdminOverview().then(setOverview).catch(() => undefined);
   }
 
-  if (access === "checking") return <FullPageStatus icon={Loader2} title="Checking admin access" detail="Verifying your account." spinning />;
+  if (access === "checking") return <div className="min-h-screen bg-slate-950" />;
   if (access === "denied") return <NotFound />;
   if (access === "error") return <FullPageStatus icon={ShieldAlert} title="Unable to load admin" detail={accessError || "Please try again."} action={<button onClick={() => void bootstrap()}>Retry</button>} />;
 
