@@ -39,8 +39,13 @@ The Vercel project Root Directory should be configured as `OlioWorkstation`.
 
 The server-side admin console requires `ADMIN_PASSWORD`, `ADMIN_COOKIE_SECRET`, and a
 separate random `ADMIN_OPERATION_SECRET` in Vercel. Apply every Supabase migration through
-`20260908143000_remove_google_calendar.sql` before using admin mutations in a deployed
-environment. Admin accounts must also have `profiles.app_admin = true`.
+`20260909170000_assign_application_owners.sql` before using admin mutations in a deployed
+environment. This assigns protected ownership to `gavin@olio.one` and
+`gmolter8@gmail.com`; both profiles must already exist. Owners are also app admins.
+Regular admins cannot change owner accounts. Admin promotion requires a reason and
+approval in an owner's Pending reviews tab; access flags are not ordinary editable fields.
+Dashboard installation changes refresh in active user sessions within 30 seconds,
+and when the user returns to the tab.
 
 Client configuration requires `VITE_SUPABASE_URL` and the public Supabase anon key in
 `VITE_SUPABASE_ANON_KEY`. Never place `SUPABASE_SERVICE_ROLE_KEY` in a `VITE_` variable

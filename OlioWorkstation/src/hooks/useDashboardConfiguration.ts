@@ -122,10 +122,22 @@ export function useDashboardConfiguration() {
   useLayoutEffect(() => {
     void refresh();
     const onChange = () => void refresh();
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    // Admin changes happen in another session, so local events alone are insufficient.
+    const refreshInterval = window.setInterval(onVisible, 30_000);
     window.addEventListener(DASHBOARD_CONFIGURATION_CHANGED_EVENT, onChange);
     const onStorage = (event: StorageEvent) => { if (user && event.key === configurationKey(user.id)) { const cached = readConfigurationCache(user.id); if (cached) { setInstallations(cached.installations); setStoredModules(cached.modules); setLoading(false); } } };
     window.addEventListener('storage', onStorage);
-    return () => { ++requestId.current; window.removeEventListener('storage', onStorage); window.removeEventListener(DASHBOARD_CONFIGURATION_CHANGED_EVENT, onChange); };
+    return () => {
+      ++requestId.current;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(DASHBOARD_CONFIGURATION_CHANGED_EVENT, onChange);
+    };
   }, [refresh]);
 
   const installedPluginIds = useMemo(

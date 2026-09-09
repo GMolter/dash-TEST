@@ -275,10 +275,11 @@ function sanitizeAudit(resource: AdminResource, value: unknown): any {
 async function fetchRows(service: any, resource: AdminResource, ids: string[], includeSensitive: boolean) {
   if (resource.key === "users") {
     return Promise.all(ids.map(async (id) => {
-      const [{ data: profile }, { data: authData, error: authError }] = await Promise.all([
+      const [{ data: profile, error: profileError }, { data: authData, error: authError }] = await Promise.all([
         service.from("profiles").select("id,email,display_name,org_id,role,app_admin,app_owner,created_at,updated_at").eq("id", id).maybeSingle(),
         service.auth.admin.getUserById(id),
       ]);
+      if (profileError) throw profileError;
       if (authError || !authData?.user) throw new Error("TARGET_NOT_FOUND");
       const user = authData.user;
       return addAdminId(resource, {
@@ -794,6 +795,10 @@ export default async function handler(req: any, res: any) {
       throw error;
     }
   } catch (error: any) {
+    if (["42703", "42P01", "PGRST204", "PGRST205", "PGRST202"].includes(error?.code)) {
+      console.error("admin database schema unavailable", { code: error.code });
+      return res.status(503).json({ error: "Admin database setup is incomplete. Apply the latest Supabase migrations, including 20260908120000_admin_operations_console.sql and 20260908170000_add_app_owners_and_admin_reviews.sql, then refresh." });
+    }
     const status = statusForError(error);
     console.error("admin data request failed", { code: String(error?.code || error?.message || "UNKNOWN").slice(0, 100) });
     return res.status(status).json({ error: status === 500 ? "Admin operation failed." : String(error?.message || error?.code || "Invalid request") });

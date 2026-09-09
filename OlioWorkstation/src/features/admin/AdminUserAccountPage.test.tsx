@@ -26,7 +26,8 @@ describe("AdminUserAccountPage", () => {
           { name: "role", label: "Organization role", type: "select" },
           { name: "created_at", label: "Created", type: "datetime" },
         ],
-        userActions: ["update", "ban", "reset-password"],
+        canManage: true,
+        userActions: ["update", "ban", "reset-password", "request-admin"],
         totalRecords: 5,
         resources: [
           { key: "projects", label: "Projects", group: "projects", total: 2, unavailable: false },
@@ -52,6 +53,9 @@ describe("AdminUserAccountPage", () => {
     await user.click(screen.getByRole("button", { name: /Edit account and access/ }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Edit account and access" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Request administrator access" }));
+    expect(onAccountOperation).toHaveBeenCalledWith("request-admin");
     await user.clear(screen.getByLabelText(/Display name/));
     await user.type(screen.getByLabelText(/Display name/), "Gavin Smith");
     await user.click(screen.getByRole("button", { name: "Review changes" }));

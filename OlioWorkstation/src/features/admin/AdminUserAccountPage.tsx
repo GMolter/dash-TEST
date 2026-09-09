@@ -92,13 +92,14 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
             <a href={`mailto:${email}`} className="mt-1 block truncate text-sm text-slate-400 hover:text-blue-200">{email}</a>
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge label={banned ? "Banned" : "Active"} tone={banned ? "red" : "green"} />
+              {user.app_owner === true && <Badge label="App owner" tone="amber" />}
               {user.app_admin === true && <Badge label="App admin" tone="blue" />}
               {user.force_password_change === true && <Badge label="Password change required" tone="amber" />}
               {Boolean(user.role) && <Badge label={String(user.role)} />}
             </div>
           </div>
         </div>
-        <button onClick={() => setEditing((value) => !value)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button>
+        <button disabled={overview.canManage === false} onClick={() => setEditing((value) => !value)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button>
       </div>
       <div className="mt-5 grid gap-3 border-t border-white/8 pt-4 sm:grid-cols-2 xl:grid-cols-4">
         <div><div className="text-xs text-slate-500">User ID</div><div className="mt-1 break-all text-sm text-slate-300">{String(user._admin_id)}</div></div>
@@ -108,7 +109,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
       </div>
     </section>
 
-    {editing && <section className="rounded-2xl border border-blue-400/20 bg-slate-950/55 p-5 shadow-xl shadow-blue-950/10 backdrop-blur-xl">
+    {editing && overview.canManage !== false && <section className="rounded-2xl border border-blue-400/20 bg-slate-950/55 p-5 shadow-xl shadow-blue-950/10 backdrop-blur-xl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h3 className="font-semibold text-white">Edit account and access</h3><p className="mt-1 text-sm text-slate-400">Changes stay on this page and go through the normal confirmation and audit review.</p></div>
         <button disabled={!form.email.trim() || Object.keys(changes).length === 0} onClick={() => onAccountOperation("update", changes)} className="inline-flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2 text-sm font-medium text-blue-100 disabled:opacity-40"><Save className="h-4 w-4" /> Review changes</button>
@@ -122,8 +123,11 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
           <ReferenceInput key={`${user._admin_id}:organization:${organizationInputVersion}`} field={{ name: "org_id", label: "Organization", type: "text" }} value={form.organizationId} initialLabel={form.organizationId === String(user.org_id || "") ? user._admin_refs?.org_id?.label : undefined} onChange={(value) => setForm((current) => ({ ...current, organizationId: value ? String(value) : null }))} />
         </div>
         <label className="text-xs font-medium text-slate-400">Organization role<select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-sm capitalize text-white outline-none focus:border-blue-400/50"><option value="member">Member</option><option value="admin">Admin</option><option value="owner">Owner</option></select></label>
-        <label className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-slate-900/60 px-3 text-sm text-slate-200 sm:col-span-2"><input type="checkbox" checked={form.appAdmin} onChange={(event) => setForm((current) => ({ ...current, appAdmin: event.target.checked }))} className="h-4 w-4 accent-blue-500" /><span><span className="block font-medium">Application administrator</span><span className="block text-xs text-slate-500">Can unlock and use this operations console.</span></span></label>
-      </div>
+        <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 sm:col-span-2">
+          <p className="text-sm text-amber-100">Administrator access requires a reason and approval from an application owner.</p>
+          {user.app_admin !== true && overview.userActions.includes("request-admin") && <button onClick={() => onAccountOperation("request-admin")} className="mt-3 rounded-xl border border-amber-400/30 px-3 py-2 text-sm text-amber-100">Request administrator access</button>}
+          {user.app_admin === true && user.app_owner !== true && overview.userActions.includes("revoke-admin") && <button onClick={() => onAccountOperation("revoke-admin")} className="mt-3 rounded-xl border border-red-400/30 px-3 py-2 text-sm text-red-200">Remove administrator access</button>}
+        </div>      </div>
 
       <div className="mt-5 grid gap-4 border-t border-white/8 pt-5 lg:grid-cols-[1fr_auto]">
         {overview.userActions.includes("reset-password") && <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4"><div className="flex items-center gap-2 text-sm font-medium text-white"><KeyRound className="h-4 w-4 text-blue-300" /> Set a temporary password</div><p className="mt-1 text-xs text-slate-400">The user must replace it before the rest of the app will open.</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><input aria-label="Temporary password" type="password" value={temporaryPassword} onChange={(event) => setTemporaryPassword(event.target.value)} placeholder="At least 12 characters" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" /><button disabled={temporaryPassword.length < 12} onClick={() => onAccountOperation("reset-password", { temporary_password: temporaryPassword })} className="rounded-xl border border-blue-400/25 bg-blue-500/10 px-3 py-2 text-sm text-blue-100 disabled:opacity-40">Review password reset</button></div></div>}
@@ -184,3 +188,4 @@ function Badge({ label, tone = "slate" }: { label: string; tone?: "slate" | "gre
   const colors = { slate: "bg-white/5 text-slate-300", green: "bg-emerald-400/10 text-emerald-200", red: "bg-red-400/10 text-red-200", blue: "bg-blue-400/10 text-blue-200", amber: "bg-amber-400/10 text-amber-200" };
   return <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${colors[tone]}`}>{label}</span>;
 }
+
