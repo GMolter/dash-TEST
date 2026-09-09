@@ -46,6 +46,10 @@ environment. This assigns protected ownership to `gavin@olio.one` and
 `gmolter8@gmail.com`; both profiles must already exist. Owners are also app admins.
 Regular admins cannot change owner accounts. Admin promotion requires a reason and
 approval in an owner's Pending reviews tab; access flags are not ordinary editable fields.
+Apply `20260909190000_review_account_deletions.sql` to enable account deletion requests
+in the same queue. Deletion requires a reason and owner approval with a typed confirmation.
+Owner accounts cannot be deleted through this flow. Review history survives deletion;
+database constraint failures leave the account and its pending request unchanged.
 Dashboard installation changes refresh in active user sessions within 30 seconds,
 and when the user returns to the tab.
 

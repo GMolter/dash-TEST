@@ -49,7 +49,7 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
   "dashboard-todos": "Dashboard task items and completion state.",
   "help-articles": "Published help and guidance shown inside Olio.",
   "app-settings": "Application-wide settings. Change these carefully.",
-  "admin-access-requests": "Owner review queue for requests to grant application-administrator access.",
+  "admin-access-requests": "Review admin access and account deletion requests.",
   "plugin-installations": "Installed plugins and their status.",
   "classdash-settings": "ClassDash preferences and school configuration.",
   "classdash-classes": "Classes and recurring schedules saved in ClassDash.",
@@ -303,9 +303,9 @@ export function AdminOperationsConsole() {
     setRow(null);
     setRevealed({});
     setSelected(new Set());
-    setToast(completedKind === "request-admin" ? "Admin access request sent to the owners for review."
-      : completedKind === "approve-admin" ? "Admin access approved and audited."
-      : completedKind === "reject-admin" ? "Admin access request rejected and audited."
+    setToast(completedKind === "request-delete" ? "Account deletion sent to the owners for review." : completedKind === "request-admin" ? "Admin access request sent to the owners for review."
+      : completedKind === "approve-admin" ? "Request approved and audited."
+      : completedKind === "reject-admin" ? "Request rejected and audited."
       : "Admin operation completed and audited.");
     void refreshResource();
     if (accountUserId) void refreshAccount();
@@ -413,7 +413,7 @@ function Overview({ overview, onNavigate }: { overview: AdminOverview | null; on
     <div className="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 bg-slate-950/25 py-5">{counts.map(([key, label, section]) => <button key={key} onClick={() => onNavigate(section)} className="px-3 text-left sm:px-6 hover:text-blue-200"><div className="text-2xl font-semibold">{overview?.metrics[key]?.toLocaleString() ?? "—"}</div><div className="mt-1 text-xs text-slate-400 sm:text-sm">{label}</div></button>)}</div>
     {(pendingReviews > 0 || pendingPairings > 0) && <section className="space-y-2">
       <h2 className="text-sm font-medium text-slate-400">Needs attention</h2>
-      {pendingReviews > 0 && <button onClick={() => onNavigate("reviews")} className="flex w-full items-center gap-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-left text-sm text-amber-100"><ShieldCheck className="h-4 w-4" /><span className="flex-1">{pendingReviews} admin access request{pendingReviews === 1 ? "" : "s"} to review</span><ArrowRight className="h-4 w-4" /></button>}
+      {pendingReviews > 0 && <button onClick={() => onNavigate("reviews")} className="flex w-full items-center gap-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-left text-sm text-amber-100"><ShieldCheck className="h-4 w-4" /><span className="flex-1">{pendingReviews} account request{pendingReviews === 1 ? "" : "s"} to review</span><ArrowRight className="h-4 w-4" /></button>}
       {pendingPairings > 0 && <button onClick={() => onNavigate("integrations")} className="flex w-full items-center gap-3 rounded-xl border border-white/10 p-4 text-left text-sm text-slate-200"><Plug className="h-4 w-4" /><span className="flex-1">{pendingPairings} pending device pairing{pendingPairings === 1 ? "" : "s"}</span><ArrowRight className="h-4 w-4" /></button>}
     </section>}
     <section>
@@ -432,7 +432,7 @@ function FullPageStatus({ icon: Icon, title, detail, spinning = false, action }:
 }
 
 function operationTitle(kind: string, resource: string, count: number) {
-  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", ban: "Ban", unban: "Unban", "reset-password": "Reset password for", "request-admin": "Request administrator access for", "revoke-admin": "Remove administrator access from", "approve-admin": "Approve", "reject-admin": "Reject", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel" };
+  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", ban: "Ban", unban: "Unban", "reset-password": "Reset password for", "request-delete": "Request account deletion for", "request-admin": "Request administrator access for", "revoke-admin": "Remove administrator access from", "approve-admin": "Approve", "reject-admin": "Reject", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel" };
   return `${names[kind] || "Change"} ${resource}`;
 }
 
@@ -447,5 +447,6 @@ function navigate(path: string) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
+
 
 

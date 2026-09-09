@@ -208,9 +208,9 @@ export const ADMIN_RESOURCES: Record<string, AdminResource> = {
     fields: [f("id", "ID"), f("banner_enabled", "Banner enabled", "boolean", { editable: true }), f("banner_text", "Banner text", "textarea", { editable: true }), f("help_docs", "Legacy help docs", "textarea", { editable: true }), f("updated_at", "Updated", "datetime")],
   },
   "admin-access-requests": {
-    key: "admin-access-requests", label: "Pending admin reviews", group: "reviews", table: "admin_access_requests", primaryKey: "id", readOnly: true, guided: "admin-review",
-    searchFields: ["requested_by_email", "reason", "status"], filterFields: ["status", "target_user_id", "requested_by"], defaultSort: "created_at", sortFields: ["created_at", "updated_at", "reviewed_at", "status"],
-    fields: [f("id", "Request ID"), f("target_user_id", "Requested administrator"), f("requested_by", "Requested by"), f("requested_by_email", "Requester email"), f("reason", "Promotion reason", "textarea"), f("status", "Status", "select", { options: ["pending", "approved", "rejected"] }), f("reviewed_by", "Reviewed by"), f("review_reason", "Review reason", "textarea"), f("created_at", "Requested", "datetime"), f("reviewed_at", "Reviewed", "datetime"), f("updated_at", "Updated", "datetime")],
+    key: "admin-access-requests", label: "Pending reviews", group: "reviews", table: "admin_access_requests", primaryKey: "id", readOnly: true, guided: "admin-review",
+    searchFields: ["requested_by_email", "reason", "status"], filterFields: ["status", "request_kind", "target_user_id", "requested_by"], defaultSort: "created_at", sortFields: ["created_at", "updated_at", "reviewed_at", "status"],
+    fields: [f("id", "Request ID"), f("request_kind", "Request type", "select", { options: ["admin_promotion", "account_deletion"] }), f("target_user_id", "Account"), f("requested_by", "Requested by"), f("requested_by_email", "Requester email"), f("reason", "Request reason", "textarea"), f("status", "Status", "select", { options: ["pending", "approved", "rejected"] }), f("reviewed_by", "Reviewed by"), f("review_reason", "Review reason", "textarea"), f("created_at", "Requested", "datetime"), f("reviewed_at", "Reviewed", "datetime"), f("updated_at", "Updated", "datetime")],
   },
   "audit-log": {
     key: "audit-log", label: "Admin audit log", group: "audit", table: "admin_audit_log", primaryKey: "id", readOnly: true, guided: "audit", searchFields: ["actor_email", "action", "resource", "reason", "status"], filterFields: ["actor_id", "action", "resource", "status"], defaultSort: "created_at", sortFields: ["created_at", "completed_at", "actor_email", "action", "resource", "status"],
@@ -266,10 +266,11 @@ export const ADMIN_ACCOUNT_SCOPES: Record<string, AdminAccountScope> = {
 
 function resourceActionsForCatalog(resource: AdminResource) {
   if (resource.key === "app-settings") return ["update"];
-  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "ban", "unban", "reset-password", "delete"];
+  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "ban", "unban", "reset-password", "request-delete"];
   if (resource.guided === "launcher-device") return ["revoke"];
   if (resource.guided === "launcher-pairing") return ["cancel"];
   if (resource.guided === "admin-review") return ["approve-admin", "reject-admin"];
   if (resource.readOnly) return resource.fields.some((field) => field.sensitive) ? ["reveal"] : [];
   return ["create", "update", "delete", ...(resource.fields.some((field) => field.sensitive) ? ["reveal"] : [])];
 }
+

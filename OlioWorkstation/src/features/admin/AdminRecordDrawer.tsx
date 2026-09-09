@@ -145,9 +145,10 @@ function GuidedActions({ actions, row, onOperation }: { actions: string[]; row: 
     <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
       <div className="text-xs font-medium uppercase tracking-wider text-slate-500">Administrative actions</div>
       <div className="mt-3 flex flex-wrap gap-2">
+        {actions.includes("request-delete") && <ActionButton icon={Trash2} label="Request account deletion" onClick={() => onOperation("request-delete")} destructive />}
         {!row.app_admin && actions.includes("request-admin") && <ActionButton icon={ShieldCheck} label="Request admin access" onClick={() => onOperation("request-admin")} />}
         {row.app_admin === true && row.app_owner !== true && actions.includes("revoke-admin") && <ActionButton icon={ShieldOff} label="Remove admin access" onClick={() => onOperation("revoke-admin")} destructive />}
-        {row.status === "pending" && actions.includes("approve-admin") && <ActionButton icon={ShieldCheck} label="Approve admin access" onClick={() => onOperation("approve-admin")} />}
+        {row.status === "pending" && actions.includes("approve-admin") && <ActionButton icon={ShieldCheck} label={row.request_kind === "account_deletion" ? "Approve account deletion" : "Approve admin access"} destructive={row.request_kind === "account_deletion"} onClick={() => onOperation("approve-admin")} />}
         {row.status === "pending" && actions.includes("reject-admin") && <ActionButton icon={XCircle} label="Reject request" onClick={() => onOperation("reject-admin")} destructive />}
         {actions.includes(isBanned ? "unban" : "ban") && <ActionButton icon={isBanned ? UserCheck : Ban} label={isBanned ? "Unban account" : "Ban account"} onClick={() => onOperation(isBanned ? "unban" : "ban")} destructive={!isBanned} />}
         {actions.includes("regenerate-code") && <ActionButton icon={RotateCcw} label="Regenerate code" onClick={() => onOperation("regenerate-code")} />}
@@ -265,3 +266,4 @@ function isSecondaryField(field: AdminField) {
     "sort_index", "sort_order", "order_index",
   ].includes(field.name);
 }
+

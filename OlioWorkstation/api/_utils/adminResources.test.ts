@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { ADMIN_ACCOUNT_SCOPES, ADMIN_RESOURCE_LIST, ADMIN_RESOURCES, editableColumns, referenceTarget, selectedColumns, sensitiveColumns } from "./adminResources";
 
 describe("admin resource registry", () => {
+  it("routes account deletion through requests instead of direct deletion", () => {
+    const users = ADMIN_RESOURCE_LIST.find((resource) => resource.key === "users");
+    expect(users?.actions).toContain("request-delete");
+    expect(users?.actions).not.toContain("delete");
+    expect(ADMIN_RESOURCES["admin-access-requests"].fields.find((field) => field.name === "request_kind")?.options).toContain("account_deletion");
+  });
   it("allows only curated operational resources", () => {
     expect(ADMIN_RESOURCES.users.guided).toBe("users");
     expect(ADMIN_RESOURCES.projects.fields.map((field) => field.name)).toContain("ai_plan_usage_count");

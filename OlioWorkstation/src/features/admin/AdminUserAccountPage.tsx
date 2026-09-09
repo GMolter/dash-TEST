@@ -133,7 +133,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
         {overview.userActions.includes("reset-password") && <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4"><div className="flex items-center gap-2 text-sm font-medium text-white"><KeyRound className="h-4 w-4 text-blue-300" /> Set a temporary password</div><p className="mt-1 text-xs text-slate-400">The user must replace it before the rest of the app will open.</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><input aria-label="Temporary password" type="password" value={temporaryPassword} onChange={(event) => setTemporaryPassword(event.target.value)} placeholder="At least 12 characters" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" /><button disabled={temporaryPassword.length < 12} onClick={() => onAccountOperation("reset-password", { temporary_password: temporaryPassword })} className="rounded-xl border border-blue-400/25 bg-blue-500/10 px-3 py-2 text-sm text-blue-100 disabled:opacity-40">Review password reset</button></div></div>}
         <div className="flex flex-wrap content-start gap-2 lg:max-w-64">
           {overview.userActions.includes(banned ? "unban" : "ban") && <button onClick={() => onAccountOperation(banned ? "unban" : "ban")} className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${banned ? "border-emerald-400/25 bg-emerald-400/5 text-emerald-200" : "border-red-400/25 bg-red-400/5 text-red-200"}`}>{banned ? <UserCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}{banned ? "Unban account" : "Ban account"}</button>}
-          {overview.userActions.includes("delete") && <button onClick={() => onAccountOperation("delete")} className="inline-flex items-center gap-2 rounded-xl border border-red-400/25 bg-red-400/5 px-3 py-2 text-sm text-red-200"><Trash2 className="h-4 w-4" /> Delete permanently</button>}
+          {overview.userActions.includes("request-delete") && <button onClick={() => onAccountOperation("request-delete")} className="inline-flex items-center gap-2 rounded-xl border border-red-400/25 bg-red-400/5 px-3 py-2 text-sm text-red-200"><Trash2 className="h-4 w-4" /> Request account deletion</button>}
         </div>
       </div>
     </section>}
@@ -186,4 +186,5 @@ function Badge({ label, tone = "slate" }: { label: string; tone?: "slate" | "gre
   const colors = { slate: "bg-white/5 text-slate-300", green: "bg-emerald-400/10 text-emerald-200", red: "bg-red-400/10 text-red-200", blue: "bg-blue-400/10 text-blue-200", amber: "bg-amber-400/10 text-amber-200" };
   return <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${colors[tone]}`}>{label}</span>;
 }
+
 
