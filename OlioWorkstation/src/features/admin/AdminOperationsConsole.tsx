@@ -1,10 +1,11 @@
+import { NotFound } from "../../pages/NotFound";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity, BookOpenText, Building2, Database, FolderKanban, Gauge,
-  LayoutDashboard, Loader2, LogOut, Menu, Plug, RefreshCw, Shield, ShieldAlert,
+  LayoutDashboard, Loader2, Menu, Plug, RefreshCw, Shield, ShieldAlert,
   ShieldCheck, Users, Wrench, X, ChevronDown, ArrowRight,
 } from "lucide-react";
-import { loadAdminOverview, loadAdminResource, loadAdminUserAccount, loginAdmin, logoutAdmin, revealAdminField } from "./api";
+import { loadAdminOverview, loadAdminResource, loadAdminUserAccount, revealAdminField } from "./api";
 import { AdminOperationDialog } from "./AdminOperationDialog";
 import { AdminRecordDrawer } from "./AdminRecordDrawer";
 import { AdminResourceTable } from "./AdminResourceTable";
@@ -12,7 +13,7 @@ import { AdminUserAccountPage } from "./AdminUserAccountPage";
 import type { AdminListResponse, AdminOperation, AdminOverview, AdminReference, AdminRow, AdminUserAccountOverview } from "./types";
 import { formatAdminValue, humanizeAdminText } from "./adminFormat";
 
-type AccessState = "checking" | "login" | "denied" | "ready";
+type AccessState = "checking" | "error" | "denied" | "ready";
 type PendingOperation = { operation: Omit<AdminOperation, "reason">; title: string } | null;
 
 const NAVIGATION = [
@@ -72,8 +73,6 @@ export function AdminOperationsConsole() {
   const [data, setData] = useState<AdminListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [password, setPassword] = useState("");
-  const [loginBusy, setLoginBusy] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(["projects", "content", "utilities", "integrations", "platform"].includes(initial.section));
   const [searchInput, setSearchInput] = useState("");
@@ -112,7 +111,7 @@ export function AdminOperationsConsole() {
       }
     } catch (nextError) {
       const status = (nextError as Error & { status?: number }).status;
-      setAccess(status === 403 ? "denied" : "login");
+      setAccess(status && [401, 403, 404].includes(status) ? "denied" : "error");
       if (status && status !== 401) setAccessError(nextError instanceof Error ? nextError.message : "Admin access failed.");
     }
   }, [accountUserId, resource, section]);
@@ -132,7 +131,7 @@ export function AdminOperationsConsole() {
       setAccountOverview(await loadAdminUserAccount(accountUserId));
     } catch (nextError) {
       const status = (nextError as Error & { status?: number }).status;
-      if (status === 401) setAccess("login");
+      if (status === 401 || status === 404) setAccess("denied");
       else if (status === 403) setAccess("denied");
       else setAccountError(nextError instanceof Error ? nextError.message : "Could not load this account.");
     } finally { setAccountLoading(false); }
@@ -154,7 +153,7 @@ export function AdminOperationsConsole() {
       if (!sort) { setSort(next.sort); setDirection(next.direction); }
     } catch (nextError) {
       const status = (nextError as Error & { status?: number }).status;
-      if (status === 401) setAccess("login");
+      if (status === 401 || status === 404) setAccess("denied");
       else if (status === 403) setAccess("denied");
       else setError(nextError instanceof Error ? nextError.message : "Could not load records.");
     } finally { setLoading(false); }
@@ -258,32 +257,6 @@ export function AdminOperationsConsole() {
     setMobileOpen(false);
   }
 
-  async function login(event: React.FormEvent) {
-    event.preventDefault();
-    setLoginBusy(true);
-    setAccessError(null);
-    try {
-      await loginAdmin(password);
-      setPassword("");
-      await bootstrap();
-    } catch (nextError) {
-      const status = (nextError as Error & { status?: number }).status;
-      if (status === 403) setAccess("denied");
-      setAccessError(nextError instanceof Error ? nextError.message : "Login failed.");
-    } finally { setLoginBusy(false); }
-  }
-
-  async function logout() {
-    try { await logoutAdmin(); } catch { /* cookie may already be expired */ }
-    setOverview(null);
-    setData(null);
-    setAccess("login");
-    setRow(null);
-    setRevealed({});
-    setAccountUserId("");
-    setAccountOverview(null);
-  }
-
   function requestOperation(kind: string, values?: Record<string, unknown>, ids?: string[], revealFields?: string[]) {
     const targetIds = ids || (row ? [row._admin_id] : []);
     setPending({
@@ -339,9 +312,9 @@ export function AdminOperationsConsole() {
     void loadAdminOverview().then(setOverview).catch(() => undefined);
   }
 
-  if (access === "checking") return <FullPageStatus icon={Loader2} title="Checking admin access" detail="Verifying both your app account and admin session." spinning />;
-  if (access === "login") return <AdminLogin password={password} busy={loginBusy} error={accessError} onPassword={setPassword} onSubmit={login} />;
-  if (access === "denied") return <FullPageStatus icon={ShieldAlert} title="Admin access blocked" detail={accessError || "This signed-in account does not have app-admin permission."} action={<button onClick={logout} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-200">Clear admin session</button>} />;
+  if (access === "checking") return <FullPageStatus icon={Loader2} title="Checking admin access" detail="Verifying your account." spinning />;
+  if (access === "denied") return <NotFound />;
+  if (access === "error") return <FullPageStatus icon={ShieldAlert} title="Unable to load admin" detail={accessError || "Please try again."} action={<button onClick={() => void bootstrap()}>Retry</button>} />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
@@ -369,7 +342,6 @@ export function AdminOperationsConsole() {
           </nav>
           <div className="space-y-2 border-t border-white/10 pt-4">
             <a href="/" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white"><LayoutDashboard className="h-4 w-4" /> Back to Olio</a>
-            <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white"><LogOut className="h-4 w-4" /> Lock admin console</button>
           </div>
         </aside>
 
@@ -455,10 +427,6 @@ function activityLabel(action: string, resource: string) {
   const accessLabels: Record<string, string> = { "request-admin": "Admin access requested", "approve-admin": "Admin access approved", "reject-admin": "Admin access declined", "revoke-admin": "Admin access removed" };
   return accessLabels[action] || `${humanizeAdminText(action)} · ${humanizeAdminText(resource)}`;
 }
-function AdminLogin({ password, busy, error, onPassword, onSubmit }: { password: string; busy: boolean; error: string | null; onPassword: (value: string) => void; onSubmit: (event: React.FormEvent) => void }) {
-  return <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-white"><div className="mx-auto flex min-h-[80vh] max-w-md items-center"><form onSubmit={onSubmit} className="w-full rounded-3xl border border-white/10 bg-slate-950/50 p-7 shadow-2xl backdrop-blur-xl"><div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/25 bg-blue-500/15"><Shield className="h-6 w-6 text-blue-300" /></div><h1 className="mt-5 text-2xl font-semibold">Unlock Olio Admin</h1><p className="mt-2 text-sm leading-6 text-slate-400">Your signed-in account must be an app admin. The second-factor password creates a 12-hour HttpOnly session.</p><label className="mt-6 block text-sm text-slate-300">Admin password<input autoFocus type="password" value={password} onChange={(event) => onPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-white outline-none focus:border-blue-400/50" /></label>{error && <div className="mt-3 rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-sm text-red-200">{error}</div>}<button disabled={busy || !password} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 py-2.5 font-medium text-blue-100 disabled:opacity-40">{busy && <Loader2 className="h-4 w-4 animate-spin" />} Unlock console</button></form></div></div>;
-}
-
 function FullPageStatus({ icon: Icon, title, detail, spinning = false, action }: { icon: typeof Shield; title: string; detail: string; spinning?: boolean; action?: React.ReactNode }) {
   return <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-center text-white"><div className="max-w-md rounded-3xl border border-white/10 bg-slate-950/50 p-8 backdrop-blur-xl"><Icon className={`mx-auto h-8 w-8 text-blue-300 ${spinning ? "animate-spin" : ""}`} /><h1 className="mt-4 text-xl font-semibold">{title}</h1><p className="mt-2 text-sm leading-6 text-slate-400">{detail}</p>{action && <div className="mt-5">{action}</div>}</div></div>;
 }
@@ -479,4 +447,5 @@ function navigate(path: string) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
+
 

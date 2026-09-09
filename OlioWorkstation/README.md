@@ -37,8 +37,10 @@ The Vercel project Root Directory should be configured as `OlioWorkstation`.
 
 ## Admin operations console
 
-The server-side admin console requires `ADMIN_PASSWORD`, `ADMIN_COOKIE_SECRET`, and a
-separate random `ADMIN_OPERATION_SECRET` in Vercel. Apply every Supabase migration through
+The admin console uses the signed-in account's server-verified admin access, without
+an unlock password or admin cookie. Unauthorized visitors see the 404 page.
+Keep a random `ADMIN_OPERATION_SECRET` in Vercel for signed operation confirmations.
+Apply every Supabase migration through
 `20260909170000_assign_application_owners.sql` before using admin mutations in a deployed
 environment. This assigns protected ownership to `gavin@olio.one` and
 `gmolter8@gmail.com`; both profiles must already exist. Owners are also app admins.

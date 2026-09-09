@@ -2,52 +2,11 @@ export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
 
-function b64urlFromBase64(b64: string) {
-  return b64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-
 function readBearerToken(req: any) {
   const raw = req.headers?.authorization || req.headers?.Authorization || "";
   const value = String(raw);
   if (!value.toLowerCase().startsWith("bearer ")) return null;
   return value.slice(7).trim() || null;
-}
-
-function readAdminSessionCookie(req: any) {
-  const header = req.headers?.cookie || "";
-  const match = header.match(/(?:^|;\s*)admin_session=([^;]+)/);
-  return match ? match[1] : null;
-}
-
-async function hasValidAdminPasswordSession(req: any) {
-  try {
-    const secret = process.env.ADMIN_COOKIE_SECRET || process.env.ADMIN_PASSWORD;
-    if (!secret) return false;
-
-    const token = readAdminSessionCookie(req);
-    if (!token) return false;
-
-    const parts = token.split(".");
-    if (parts.length !== 3) return false;
-
-    const payload = `${parts[0]}.${parts[1]}`;
-    const sig = parts[2];
-
-    const { createHmac, timingSafeEqual } = await import("crypto");
-    const expected = b64urlFromBase64(
-      createHmac("sha256", secret).update(payload).digest("base64")
-    );
-
-    if (sig.length !== expected.length) return false;
-    if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
-
-    const issuedAt = Number(parts[1]);
-    if (!Number.isFinite(issuedAt)) return false;
-    const age = Math.floor(Date.now() / 1000) - issuedAt;
-    return age >= 0 && age <= 60 * 60 * 12;
-  } catch {
-    return false;
-  }
 }
 
 async function isAppAdmin(req: any, supabase: any) {
@@ -171,16 +130,10 @@ export default async function handler(req: any, res: any) {
 
     const supabase = createClient(url, serviceKey);
 
-    const hasSession = await hasValidAdminPasswordSession(req);
-    if (!hasSession) {
-      if (isGet) return res.status(200).json({ articles: [], warning: "Unauthorized Account" });
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
     const appAdmin = await isAppAdmin(req, supabase);
     if (!appAdmin) {
-      if (isGet) return res.status(200).json({ articles: [], warning: "Unauthorized Account" });
-      return res.status(403).json({ error: "Unauthorized Account" });
+      
+      return res.status(404).json({ error: "Not found" });
     }
 
     if (isGet) {
@@ -367,3 +320,4 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({ error: "Internal error", detail });
   }
 }
+

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { isAuthed } from "./session.js";
+
 import { getSupabaseServiceConfig } from "./supabaseConfig.js";
 
 type AccessResult =
@@ -69,17 +69,7 @@ export async function resolveAppAdminFromRequest(req: any): Promise<AccessResult
   return { ok: true, userId: userData.user.id, email: profile.email || null, appOwner: profile.app_owner === true };
 }
 
-export async function requireAdminAccess(
-  req: any,
-  options?: { requirePasswordSession?: boolean }
-): Promise<AccessResult> {
-  const requirePasswordSession = options?.requirePasswordSession ?? true;
-
-  if (requirePasswordSession) {
-    const cookieSecret = process.env.ADMIN_COOKIE_SECRET || process.env.ADMIN_PASSWORD;
-    if (!cookieSecret) return { ok: false, status: 403, error: "Unauthorized Account" };
-    if (!isAuthed(req, cookieSecret)) return { ok: false, status: 401, error: "Unauthorized" };
-  }
-
-  return resolveAppAdminFromRequest(req);
+export async function requireAdminAccess(req: any): Promise<AccessResult> {
+  const access = await resolveAppAdminFromRequest(req);
+  return access.ok ? access : { ok: false, status: 404, error: "Not found" };
 }

@@ -15,18 +15,6 @@ async function adminFetch(path: string, init?: RequestInit) {
   return body;
 }
 
-export async function loginAdmin(password: string) {
-  return adminFetch("/api/admin/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  });
-}
-
-export async function logoutAdmin() {
-  return adminFetch("/api/admin/logout", { method: "POST" });
-}
-
 export async function loadAdminOverview(): Promise<AdminOverview> {
   return adminFetch("/api/admin/data?resource=overview");
 }
@@ -87,3 +75,4 @@ export async function revealAdminField(resource: string, id: string, field: stri
     }),
   });
 }
+

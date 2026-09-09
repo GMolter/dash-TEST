@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { NotFound } from "./NotFound";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
   LayoutDashboard,
-  Shield,
-  LogOut,
   Save,
   Megaphone,
   FileText,
@@ -110,13 +109,12 @@ export default function Admin({ editorOnly = false }: AdminProps) {
 }
 
 function AdminEditor({ editorOnly = true }: AdminProps) {
+  const [checkingAccess, setCheckingAccess] = useState(true);
   const [authed, setAuthed] = useState<boolean>(false);
   const [appAdmin, setAppAdmin] = useState(false);
-  const [accessReason, setAccessReason] = useState<string | null>(null);
+  const [, setAccessReason] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>(editorOnly ? "help-docs" : "overview");
 
-  const [password, setPassword] = useState("");
-  const [loginErr, setLoginErr] = useState<string | null>(null);
 
   const [banner, setBanner] = useState<BannerState>({ enabled: false, text: "" });
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -515,7 +513,7 @@ function AdminEditor({ editorOnly = true }: AdminProps) {
         setAppAdmin(false);
       }
     }
-    bootstrap();
+    void bootstrap().finally(() => { if (!cancelled) setCheckingAccess(false); });
     return () => {
       cancelled = true;
     };
@@ -569,36 +567,6 @@ function AdminEditor({ editorOnly = true }: AdminProps) {
     window.dispatchEvent(new PopStateEvent("popstate"));
   }
 
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
-    setLoginErr(null);
-
-    const r = await adminFetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-
-    if (!r.ok) {
-      const j = await r.json().catch(() => ({}));
-      setLoginErr(j.error || j.detail || "Login failed");
-      return;
-    }
-
-    setPassword("");
-    setAuthed(true);
-    await loadSettings();
-    await loadArticles();
-  }
-
-  async function logout() {
-    await adminFetch("/api/admin/logout", { method: "POST" });
-    setAuthed(false);
-    setAppAdmin(false);
-    setAccessReason(null);
-    setArticles([]);
-    clearEditor();
-  }
 
   async function saveBanner() {
     if (!canSaveBanner) {
@@ -730,92 +698,8 @@ function AdminEditor({ editorOnly = true }: AdminProps) {
 
   const isWideEditorLayout = true;
 
-  if (!authed) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
-        <div className="relative z-10 max-w-5xl mx-auto px-6 py-12">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-blue-200">App Admin</h1>
-              <p className="text-sm text-slate-400">Enter your admin password to unlock controls.</p>
-            </div>
-          </div>
-
-          <div className="mt-10 max-w-md">
-            <form
-              onSubmit={login}
-              className="rounded-2xl bg-slate-950/45 border border-slate-700/70 backdrop-blur p-6 shadow-lg"
-            >
-              <label className="block text-sm text-slate-300">Admin password</label>
-              <input
-                className="mt-2 w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-slate-100 placeholder:text-slate-600 outline-none focus:border-blue-500/50"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="********"
-                autoFocus
-              />
-
-              {loginErr && <div className="mt-3 text-red-400 text-sm">{loginErr}</div>}
-
-              <button className="mt-4 w-full rounded-xl bg-blue-500/15 border border-blue-500/30 hover:border-blue-400/40 text-white py-2 font-medium transition">
-                Unlock
-              </button>
-
-              <p className="mt-3 text-xs text-slate-500">
-                This uses an HttpOnly session cookie. The password is not retained after login.
-              </p>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!appAdmin) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
-        <div className="relative z-10 max-w-5xl mx-auto px-6 py-10 space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center">
-                <LayoutDashboard className="w-5 h-5 text-blue-300" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-semibold text-blue-200">App Admin Panel</h1>
-                <p className="text-sm text-slate-400">Password session is active.</p>
-              </div>
-            </div>
-            <button
-              onClick={logout}
-              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-slate-900/70 hover:bg-slate-800 border border-slate-700 text-slate-100 transition"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
-            <h2 className="text-lg font-semibold text-amber-100">Data Access Blocked</h2>
-            <p className="mt-2 text-sm text-amber-50/90">
-              You can open this page with the admin password, but only app-admin accounts can view or change admin data.
-            </p>
-            {accessReason && (
-              <p className="mt-3 text-xs text-amber-100/80">
-                Reason: {accessReason}
-              </p>
-            )}
-            <p className="mt-3 text-xs text-amber-100/80">
-              Ask a database administrator to set <code>profiles.app_admin = true</code> for your account.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (checkingAccess) return <div className="min-h-screen bg-slate-950 p-8 text-slate-400">Checking access…</div>;
+  if (!authed || !appAdmin) return <NotFound />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
@@ -856,13 +740,7 @@ function AdminEditor({ editorOnly = true }: AdminProps) {
               <RefreshCw className="w-4 h-4" />
               {loadingSettings || loadingArticles ? "Refreshing..." : "Refresh"}
             </button>
-            <button
-              onClick={logout}
-              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-slate-900/70 hover:bg-slate-800 border border-slate-700 text-slate-100 transition"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
+
           </div>
         </div>
 
@@ -1580,3 +1458,4 @@ function AdminEditor({ editorOnly = true }: AdminProps) {
     </div>
   );
 }
+

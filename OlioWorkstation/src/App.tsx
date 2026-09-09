@@ -520,7 +520,8 @@ function App() {
   }
 
   if (view.type === 'admin-editor') {
-    if (!user && allowOnboarding) return <Onboarding />;
+    if (authLoading) return <div className="min-h-screen bg-slate-950" />;
+    if (!user) return <NotFound />;
     return (
       <>
         {floatingNavigation}
@@ -529,7 +530,9 @@ function App() {
     );
   }
 
-  if (view.type === 'admin' && user) {
+  if (view.type === 'admin') {
+    if (authLoading) return <div className="min-h-screen bg-slate-950" />;
+    if (!user) return <NotFound />;
     return <Admin />;
   }
 
