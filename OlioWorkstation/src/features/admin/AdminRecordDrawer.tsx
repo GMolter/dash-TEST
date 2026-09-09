@@ -214,9 +214,9 @@ export function ReferenceInput({ field, value, initialLabel, onChange }: { field
   </div>;
 }
 
-function referenceResource(fieldName: string) {
+export function referenceResource(fieldName: string) {
   return ({
-    user_id: "users", owner_id: "users", actor_id: "users",
+    target_user_id: "users", requested_by: "users", reviewed_by: "users", user_id: "users", owner_id: "users", actor_id: "users",
     org_id: "organizations", organization_id: "organizations",
     project_id: "projects", column_id: "project-board-columns",
     folder_id: "quicklink-folders", device_id: "launcher-devices",
@@ -266,4 +266,5 @@ function isSecondaryField(field: AdminField) {
     "sort_index", "sort_order", "order_index",
   ].includes(field.name);
 }
+
 

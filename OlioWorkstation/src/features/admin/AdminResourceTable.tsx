@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { ReferenceInput, referenceResource } from "./AdminRecordDrawer";
+import { useEffect, useId, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronLeft, ChevronRight, Database, Filter, Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import type { AdminField, AdminListResponse, AdminReference, AdminRow } from "./types";
-import { adminFieldLabel, formatAdminValue } from "./adminFormat";
+import { adminFieldLabel, formatAdminValue, humanizeAdminText } from "./adminFormat";
 
 type Props = {
   data: AdminListResponse | null;
@@ -29,6 +30,9 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
   const [filterField, setFilterField] = useState("");
   const [filterValue, setFilterValue] = useState("");
   const rows = data?.rows || [];
+  const suggestionsId = useId();
+  const activeFilterField = data?.fields.find((field) => field.name === filterField);
+  useEffect(() => { setFilterField(""); setFilterValue(""); setFilterOpen(false); }, [data?.resource]);
   const columns = useMemo(() => chooseColumns(data?.fields || [], rows), [data?.fields, rows]);
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row._admin_id));
   const editableFields = data?.fields.filter((field) => field.editable && !field.sensitive && ["text", "number", "boolean", "select"].includes(field.type)) || [];
@@ -88,13 +92,20 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
             </button>
           ))}
           {filterOpen && <>
-            <select value={filterField} onChange={(event) => { setFilterField(event.target.value); setFilterValue(""); }} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white">
+            <select aria-label="Filter field" value={filterField} onChange={(event) => { setFilterField(event.target.value); setFilterValue(""); }} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white">
               <option value="">Choose field…</option>
               {data?.filterFields.map((name) => { const field = data.fields.find((item) => item.name === name); return <option key={name} value={name}>{field ? adminFieldLabel(field) : name}</option>; })}
             </select>
-            {data?.fields.find((field) => field.name === filterField)?.type === "boolean" ? (
-              <select value={filterValue} onChange={(event) => setFilterValue(event.target.value)} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"><option value="">Choose value…</option><option value="true">Yes</option><option value="false">No</option></select>
-            ) : <input value={filterValue} onChange={(event) => setFilterValue(event.target.value)} placeholder="Exact value" className="min-w-44 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" />}
+            {activeFilterField?.type === "boolean" ? (
+              <select aria-label="Filter value" value={filterValue} onChange={(event) => setFilterValue(event.target.value)} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"><option value="">Choose value…</option><option value="true">Yes</option><option value="false">No</option></select>
+            ) : activeFilterField?.options?.length ? (
+              <select aria-label="Filter value" value={filterValue} onChange={(event) => setFilterValue(event.target.value)} className="min-w-44 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"><option value="">Choose value…</option>{activeFilterField.options.map((value) => <option key={value} value={value}>{humanizeAdminText(value)}</option>)}</select>
+            ) : activeFilterField && referenceResource(activeFilterField.name) ? (
+              <ReferenceInput key={`${data?.resource}:${filterField}`} field={activeFilterField} value={filterValue} onChange={(value) => setFilterValue(String(value ?? ""))} />
+            ) : <>
+              <input aria-label="Filter value" disabled={!activeFilterField} type={activeFilterField?.type === "number" ? "number" : activeFilterField?.type === "date" ? "date" : "text"} list={suggestionsId} value={filterValue} onChange={(event) => setFilterValue(event.target.value)} placeholder={activeFilterField ? "Choose or enter a value" : "Choose a field first"} className="min-w-44 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-40" />
+              <datalist id={suggestionsId}>{[...new Set(rows.map((row) => row[filterField]).filter((value) => typeof value === "string" || typeof value === "number").map(String))].sort().map((value) => <option key={value} value={value} />)}</datalist>
+            </>}
             <button disabled={!filterField || filterValue === ""} onClick={applyFilter} className="rounded-lg border border-blue-400/25 bg-blue-500/10 px-3 py-2 text-sm text-blue-100 disabled:opacity-40">Apply</button>
           </>}
           {Object.keys(filters).length > 0 && <button onClick={() => onFilters({})} className="ml-auto text-xs text-slate-400 hover:text-white">Clear filters</button>}
@@ -185,3 +196,4 @@ function tableValue(value: unknown, field: AdminField) {
   if (typeof value === "boolean") return <span className={`rounded-full px-2 py-1 text-xs ${value ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-400/10 text-slate-400"}`}>{value ? "Yes" : "No"}</span>;
   return formatAdminValue(value, field.type, field.name);
 }
+

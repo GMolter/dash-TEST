@@ -4,6 +4,27 @@ import { describe, expect, it, vi } from "vitest";
 import { AdminResourceTable } from "./AdminResourceTable";
 
 describe("AdminResourceTable entity references", () => {
+  it("offers every declared status and resets the value when changing fields", async () => {
+    const user = userEvent.setup();
+    const onFilters = vi.fn();
+    render(<AdminResourceTable data={{ resource: "admin-access-requests", label: "Pending reviews", rows: [], total: 0,
+      fields: [{ name: "status", label: "Status", type: "select", options: ["pending", "approved", "rejected"] }, { name: "enabled", label: "Enabled", type: "boolean" }],
+      actions: [], redactedFields: [], filterFields: ["status", "enabled"], sortFields: [], page: 1, pageSize: 25, sort: "status", direction: "asc",
+    }} loading={false} search="" filters={{}} selected={new Set()} onSearch={vi.fn()} onFilters={onFilters} onSelection={vi.fn()} onOpen={vi.fn()} onOpenReference={vi.fn()} onCreate={vi.fn()} onPage={vi.fn()} onSort={vi.fn()} onBulkDelete={vi.fn()} onBulkUpdate={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    await user.selectOptions(screen.getByLabelText("Filter field"), "status");
+    expect(screen.getByRole("option", { name: "Approved" })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Filter value"), "pending");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onFilters).toHaveBeenCalledWith({ status: "pending" });
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    await user.selectOptions(screen.getByLabelText("Filter value"), "approved");
+    await user.selectOptions(screen.getByLabelText("Filter field"), "enabled");
+    expect(screen.getByLabelText("Filter value")).toHaveValue("");
+    await user.selectOptions(screen.getByLabelText("Filter value"), "false");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onFilters).toHaveBeenCalledWith({ enabled: false });
+  });
   it("shows a readable linked name instead of a foreign-key string", async () => {
     const user = userEvent.setup();
     const onOpenReference = vi.fn();
