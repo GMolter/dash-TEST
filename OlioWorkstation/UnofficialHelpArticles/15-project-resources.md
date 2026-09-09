@@ -7,13 +7,14 @@ Sort Order: 15
 
 ## 🔎 Table of Contents
 
-1. [What is the Resources Tab?](olio://help-anchor/what-is-the-resources-tab)
-2. [Adding a Resource](olio://help-anchor/adding-a-resource)
-3. [Categories](olio://help-anchor/categories)
-4. [Editing a Resource](olio://help-anchor/editing-a-resource)
-5. [Deleting a Resource](olio://help-anchor/deleting-a-resource)
-6. [Opening Links](olio://help-anchor/opening-links)
-7. [Tips](olio://help-anchor/tips)
+1. [🧩 What is the Resources Tab?](olio://help-anchor/what-is-the-resources-tab)
+2. [➕ Adding a Resource](olio://help-anchor/adding-a-resource)
+3. [🏷️ Categories](olio://help-anchor/categories)
+4. [✏️ Editing a Resource](olio://help-anchor/editing-a-resource)
+5. [🗑️ Deleting a Resource](olio://help-anchor/deleting-a-resource)
+6. [🌐 Opening Links](olio://help-anchor/opening-links)
+7. [💡 Tips](olio://help-anchor/tips)
+8. [💡 Resource categories](olio://help-anchor/resource-categories)
 
 ---
 
@@ -102,3 +103,11 @@ Favicons are automatically fetched from the destination site and displayed on th
 > 💡 **Tip:** Use the **Quick Links** category to surface your most important resources at the top of the view. They appear in a highlighted section separate from other categories.
 
 > 💡 **Tip:** Add a **Description** to resources that aren't self-explanatory from the title alone — this saves teammates from clicking through to figure out what a link is for.
+
+---
+
+## 💡 Resource categories
+
+Give each resource a recognizable title and full destination URL. Categories include Documentation, Design, Reference, Tool, Code, Quick Links, and Other. A short description helps teammates choose the right reference.
+
+Editing a resource changes its saved reference; it does not edit the external website. Confirm the external destination still allows your teammates access.

@@ -7,16 +7,17 @@ Sort Order: 14
 
 ## 🔎 Table of Contents
 
-1. [What is the Files Tab?](olio://help-anchor/what-is-the-files-tab)
-2. [Creating Folders](olio://help-anchor/creating-folders)
-3. [Creating a Document](olio://help-anchor/creating-a-document)
-4. [The Markdown Editor](olio://help-anchor/the-markdown-editor)
-5. [Internal Cross-Linking](olio://help-anchor/internal-cross-linking)
-6. [File Uploads](olio://help-anchor/file-uploads)
-7. [File Tree Navigation](olio://help-anchor/file-tree-navigation)
-8. [Moving Files and Folders](olio://help-anchor/moving-files-and-folders)
-9. [Deleting Files](olio://help-anchor/deleting-files)
-10. [Tips](olio://help-anchor/tips)
+1. [🧩 What is the Files Tab?](olio://help-anchor/what-is-the-files-tab)
+2. [📂 Creating Folders](olio://help-anchor/creating-folders)
+3. [📝 Creating a Document](olio://help-anchor/creating-a-document)
+4. [✏️ The Markdown Editor](olio://help-anchor/the-markdown-editor)
+5. [🔗 Internal Cross-Linking](olio://help-anchor/internal-cross-linking)
+6. [📎 File Uploads](olio://help-anchor/file-uploads)
+7. [🗂️ File Tree Navigation](olio://help-anchor/file-tree-navigation)
+8. [↕️ Moving Files and Folders](olio://help-anchor/moving-files-and-folders)
+9. [🗑️ Deleting Files](olio://help-anchor/deleting-files)
+10. [💡 Tips](olio://help-anchor/tips)
+11. [💡 Choose a destination for new files](olio://help-anchor/choose-a-destination-for-new-files)
 
 ---
 
@@ -167,3 +168,11 @@ Uploaded files can be viewed and downloaded from within the project. Images disp
 > 💡 **Tip:** Use a `README` doc at the root of your project's file tree to describe the project structure and link to key documents — this helps new collaborators get oriented quickly.
 
 > 💡 **Tip:** Use Quick Notes to capture ideas during a meeting, then organize them into proper documents afterward.
+
+---
+
+## 💡 Choose a destination for new files
+
+Select the intended folder before creating a document or uploading an attachment. Use the file tree and context menu to rename, move, and organize entries. Quick notes let you capture text without leaving the project.
+
+Before deleting a folder, check its contents. A link to a removed document or attachment may no longer open.

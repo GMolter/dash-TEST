@@ -7,12 +7,13 @@ Sort Order: 1
 
 ## 🔎 Table of Contents
 
-1. [What is Olio Workstation?](olio://help-anchor/what-is-olio-workstation)
-2. [What You'll Need](olio://help-anchor/what-you-ll-need)
-3. [Creating an Account](olio://help-anchor/creating-an-account)
-4. [Signing In](olio://help-anchor/signing-in)
-5. [Common Sign-In Issues](olio://help-anchor/common-sign-in-issues)
-6. [What Happens Next](olio://help-anchor/what-happens-next)
+1. [🧩 What is Olio Workstation?](olio://help-anchor/what-is-olio-workstation)
+2. [📋 What You'll Need](olio://help-anchor/what-you-ll-need)
+3. [✍️ Creating an Account](olio://help-anchor/creating-an-account)
+4. [🔑 Signing In](olio://help-anchor/signing-in)
+5. [⚠️ Common Sign-In Issues](olio://help-anchor/common-sign-in-issues)
+6. [➡️ What Happens Next](olio://help-anchor/what-happens-next)
+7. [💡 Your first workspace](olio://help-anchor/your-first-workspace)
 
 ---
 
@@ -28,7 +29,7 @@ Olio Workstation is a team productivity platform that brings together:
 
 - **Quick Links** — a personal bookmark manager
 - **URL Shortener** — shorten and track links
-- **Secret Sharing** — send one-time encrypted messages
+- **Secret Sharing** — send one-time messages
 - **QR Code Generator** — generate scannable codes instantly
 - **Pastebin** — share code and text snippets
 - **Projects** — full project management with boards, planners, files, and resources
@@ -57,11 +58,11 @@ Before you begin, make sure you have:
 4. Enter your **Email Address**
 5. Enter a **Password** (at least 6 characters)
 6. Confirm your password in the **Confirm Password** field
-7. Click **Sign Up**
+7. Click **Create Account**
 
 If there are any errors (mismatched passwords, email already in use), they will appear inline beneath the form.
 
-> ⚠️ **Warning:** Email addresses are case-sensitive. Use the same capitalization every time you sign in.
+> 💡 **Tip:** Check for typing mistakes and extra spaces in your email address. Passwords are case-sensitive.
 
 ---
 
@@ -82,7 +83,7 @@ You will be taken directly to the dashboard if you already belong to an organiza
 
 | Problem | Solution |
 |:--------|:---------|
-| "Invalid login credentials" | Double-check your email and password — both are case-sensitive |
+| "Invalid login credentials" | Double-check your email and password — passwords are case-sensitive |
 | Forgot password | Contact your system administrator (self-serve reset is not currently available) |
 | Account not found | You may need to create a new account with the **Sign Up** tab |
 | Password rejected on sign-up | Make sure your password is at least 6 characters long |
@@ -99,3 +100,11 @@ After your first successful sign-in, you will be taken to the **Organization Set
 - **Create** a new organization and become its Owner
 
 See the [Organizations — Joining and Creating](olio://help/organizations) article for full instructions on this step.
+
+---
+
+## 💡 Your first workspace
+
+After signing in, finish organization setup if prompted, then open Home. Use the navigation drawer for Utilities, Organization, Profile, Help Center, and plugin access. Personal Quick Links, Quick Pastes, and dashboard preferences belong to your account.
+
+If your account requires a password change, complete that screen before continuing. See [Home Dashboard](olio://help/home-dashboard) to arrange your workspace.

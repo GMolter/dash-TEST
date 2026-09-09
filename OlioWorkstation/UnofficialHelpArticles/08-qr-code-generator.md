@@ -7,11 +7,12 @@ Sort Order: 8
 
 ## 🔎 Table of Contents
 
-1. [What is the QR Code Generator?](olio://help-anchor/what-is-the-qr-code-generator)
-2. [Generating a QR Code](olio://help-anchor/generating-a-qr-code)
-3. [Downloading Your QR Code](olio://help-anchor/downloading-your-qr-code)
-4. [Tips for Best Results](olio://help-anchor/tips-for-best-results)
-5. [Common Use Cases](olio://help-anchor/common-use-cases)
+1. [🧩 What is the QR Code Generator?](olio://help-anchor/what-is-the-qr-code-generator)
+2. [🖊️ Generating a QR Code](olio://help-anchor/generating-a-qr-code)
+3. [📥 Downloading Your QR Code](olio://help-anchor/downloading-your-qr-code)
+4. [💡 Tips for Best Results](olio://help-anchor/tips-for-best-results)
+5. [🗂️ Common Use Cases](olio://help-anchor/common-use-cases)
+6. [💡 Generation and dashboard visibility](olio://help-anchor/generation-and-dashboard-visibility)
 
 ---
 
@@ -78,3 +79,11 @@ The downloaded image has a white background and is suitable for print and digita
 | Display contact info | Name, email, and phone number as plain text |
 | Wi-Fi credentials | `WIFI:T:WPA;S:NetworkName;P:Password;;` |
 | Event or meeting note | Plain text with time, location, and details |
+
+---
+
+## 💡 Generation and dashboard visibility
+
+Enter text or a full URL, choose **Generate QR Code**, then **Download QR Code** to save the PNG. Generation uses the external QR service at api.qrserver.com, so the entered content is sent to that service and an internet connection is required.
+
+Scan the downloaded image before distributing it. To hide only the Home shortcut, use dashboard edit mode and hide the QR card; the generator remains available in Utilities.

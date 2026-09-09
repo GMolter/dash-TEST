@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity, BookOpenText, Building2, Database, FolderKanban, Gauge,
   LayoutDashboard, Loader2, LogOut, Menu, Plug, RefreshCw, Shield, ShieldAlert,
-  Users, Wrench, X,
+  ShieldCheck, Users, Wrench, X,
 } from "lucide-react";
 import { loadAdminOverview, loadAdminResource, loadAdminUserAccount, loginAdmin, logoutAdmin, revealAdminField } from "./api";
 import { AdminOperationDialog } from "./AdminOperationDialog";
@@ -24,6 +24,7 @@ const NAVIGATION = [
   { key: "utilities", label: "Utilities", icon: Wrench },
   { key: "integrations", label: "Integrations", icon: Plug },
   { key: "platform", label: "Platform", icon: LayoutDashboard },
+  { key: "reviews", label: "Pending reviews", icon: ShieldCheck, ownerOnly: true },
   { key: "audit", label: "Audit", icon: Activity },
 ] as const;
 
@@ -47,6 +48,7 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
   "dashboard-todos": "Dashboard task items and completion state.",
   "help-articles": "Published help and guidance shown inside Olio.",
   "app-settings": "Application-wide settings. Change these carefully.",
+  "admin-access-requests": "Owner review queue for requests to grant application-administrator access.",
   "plugin-installations": "Installed plugins and their status.",
   "classdash-settings": "ClassDash preferences and school configuration.",
   "classdash-classes": "Classes and recurring schedules saved in ClassDash.",
@@ -78,7 +80,7 @@ export function AdminOperationsConsole() {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<string | undefined>();
   const [direction, setDirection] = useState<"asc" | "desc">("desc");
-  const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const [filters, setFilters] = useState<Record<string, unknown>>(initial.section === "reviews" ? { status: "pending" } : {});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [row, setRow] = useState<AdminRow | null>(null);
   const [creating, setCreating] = useState(false);
@@ -89,6 +91,7 @@ export function AdminOperationsConsole() {
   const resources = overview?.resources || [];
   const sectionResources = useMemo(() => resources.filter((item) => item.group === section), [resources, section]);
   const selectedResource = sectionResources.find((item) => item.key === resource);
+  const ownerAccountLocked = data?.resource === "users" && row?.app_owner === true && !overview?.isOwner;
 
   const bootstrap = useCallback(async () => {
     setAccessError(null);
@@ -96,6 +99,12 @@ export function AdminOperationsConsole() {
       const next = await loadAdminOverview();
       setOverview(next);
       setAccess("ready");
+      if (!next.isOwner && section === "reviews") {
+        setSection("overview");
+        setResource("users");
+        setFilters({});
+        return;
+      }
       if (!accountUserId && section !== "overview" && !next.resources.some((item) => item.key === resource)) {
         const first = next.resources.find((item) => item.group === section);
         setResource(first?.key || "users");
@@ -171,7 +180,7 @@ export function AdminOperationsConsole() {
     setSearchInput("");
     setSearch("");
     setSort(undefined);
-    setFilters({});
+    setFilters(nextSection === "reviews" ? { status: "pending" } : {});
     setSelected(new Set());
     setRow(null);
     setCreating(false);
@@ -314,12 +323,16 @@ export function AdminOperationsConsole() {
       setToast("Sensitive field revealed and audit event recorded.");
       return;
     }
+    const completedKind = pending?.operation.kind;
     setPending(null);
     setCreating(false);
     setRow(null);
     setRevealed({});
     setSelected(new Set());
-    setToast("Admin operation completed and audited.");
+    setToast(completedKind === "request-admin" ? "Admin access request sent to the owners for review."
+      : completedKind === "approve-admin" ? "Admin access approved and audited."
+      : completedKind === "reject-admin" ? "Admin access request rejected and audited."
+      : "Admin operation completed and audited.");
     void refreshResource();
     if (accountUserId) void refreshAccount();
     void loadAdminOverview().then(setOverview).catch(() => undefined);
@@ -341,10 +354,10 @@ export function AdminOperationsConsole() {
             <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 lg:hidden" aria-label="Close navigation"><X className="h-5 w-5" /></button>
           </div>
           <nav className="mt-5 flex-1 space-y-1 overflow-y-auto">
-            {NAVIGATION.map((item) => {
+            {NAVIGATION.filter((item) => !("ownerOnly" in item) || !item.ownerOnly || overview?.isOwner).map((item) => {
               const Icon = item.icon;
               const active = section === item.key;
-              return <button key={item.key} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${active ? "border border-blue-400/25 bg-blue-500/15 text-blue-100 shadow-lg shadow-blue-950/20" : "border border-transparent text-slate-400 hover:bg-white/5 hover:text-slate-100"}`}><Icon className="h-4 w-4" />{item.label}</button>;
+              return <button key={item.key} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${active ? "border border-blue-400/25 bg-blue-500/15 text-blue-100 shadow-lg shadow-blue-950/20" : "border border-transparent text-slate-400 hover:bg-white/5 hover:text-slate-100"}`}><Icon className="h-4 w-4" /><span className="flex-1">{item.label}</span>{item.key === "reviews" && !!overview?.metrics.pendingAdminReviews && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">{overview.metrics.pendingAdminReviews}</span>}</button>;
             })}
           </nav>
           <div className="space-y-2 border-t border-white/10 pt-4">
@@ -402,7 +415,8 @@ export function AdminOperationsConsole() {
         </main>
       </div>
 
-      {data && (row || creating) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={data.actions} row={row} creating={creating} revealed={revealed}
+      {data && (row || creating) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} revealed={revealed}
+        lockedMessage={ownerAccountLocked ? "This is an application-owner account. Only another application owner can change its profile, access, password, or lifecycle." : undefined}
         onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => { void revealField(field); }} onOpenReference={openReference}
         onOpenAccount={!accountUserId && data.resource === "users" ? openAccount : undefined}
         onOperation={(kind, values) => requestOperation(kind, values)} />}
@@ -416,6 +430,7 @@ function Overview({ overview, onNavigate }: { overview: AdminOverview | null; on
     ["users", "Users", Users, "people"], ["organizations", "Organizations", Building2, "organizations"],
     ["projects", "Projects", FolderKanban, "projects"], ["content", "Content records", Database, "content"],
     ["devices", "Launcher devices", Plug, "integrations"], ["pendingPairings", "Pending pairings", ShieldAlert, "integrations"],
+    ...(overview?.isOwner ? [["pendingAdminReviews", "Pending admin reviews", ShieldCheck, "reviews"]] as const : []),
     ["audits", "Audit events", Shield, "audit"],
   ] as const;
   return <div className="space-y-6">
@@ -433,7 +448,7 @@ function FullPageStatus({ icon: Icon, title, detail, spinning = false, action }:
 }
 
 function operationTitle(kind: string, resource: string, count: number) {
-  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", ban: "Ban", unban: "Unban", "reset-password": "Reset password for", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel" };
+  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", ban: "Ban", unban: "Unban", "reset-password": "Reset password for", "request-admin": "Request administrator access for", "revoke-admin": "Remove administrator access from", "approve-admin": "Approve", "reject-admin": "Reject", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel" };
   return `${names[kind] || "Change"} ${resource}`;
 }
 

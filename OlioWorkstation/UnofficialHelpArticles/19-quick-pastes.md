@@ -5,6 +5,18 @@ Summary: Create, organize, search, and reorder private reusable text for your si
 Sort Order: 10
 ########
 
+## 🔎 Table of Contents
+
+1. [Quick Pastes and Pastebin](olio://help-anchor/quick-pastes-and-pastebin)
+2. [Create or edit](olio://help-anchor/create-or-edit)
+3. [Organize and find](olio://help-anchor/organize-and-find)
+4. [Use Quick Pastes in Olio Launcher](olio://help-anchor/use-quick-pastes-in-olio-launcher)
+5. [Delete](olio://help-anchor/delete)
+6. [Recover from an error](olio://help-anchor/recover-from-an-error)
+7. [💡 Fast access from Home](olio://help-anchor/fast-access-from-home)
+
+---
+
 # Quick Pastes — Private Reusable Text
 
 Quick Pastes keeps reusable text in a private list available only to your signed-in
@@ -63,3 +75,11 @@ you selected the wrong item. A deleted Quick Paste cannot be recovered.
 If loading fails, check your connection and choose **Try again**. If saving fails, the
 form stays open so you can retry. Do not paste the content into a support message or
 diagnostic log.
+
+---
+
+## 💡 Fast access from Home
+
+Open Quick Pastes from its dashboard shortcut or **Utilities → Quick Pastes**. Hiding the shortcut does not remove your saved text. Quick Paste content is intentionally excluded from persistent browser dashboard caches.
+
+Approve an Olio Launcher connection from your own account to use its read-only Quick Pastes features. Manage connected launchers in Profile; editing the source text remains a Workstation action.

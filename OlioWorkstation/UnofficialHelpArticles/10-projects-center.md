@@ -7,14 +7,15 @@ Sort Order: 10
 
 ## 🔎 Table of Contents
 
-1. [What is the Projects Center?](olio://help-anchor/what-is-the-projects-center)
-2. [Creating a Project](olio://help-anchor/creating-a-project)
-3. [Templates Explained](olio://help-anchor/templates-explained)
-4. [Searching and Filtering](olio://help-anchor/searching-and-filtering)
-5. [Project Statuses](olio://help-anchor/project-statuses)
-6. [Project Settings](olio://help-anchor/project-settings)
-7. [Archiving vs Deleting](olio://help-anchor/archiving-vs-deleting)
-8. [Tips](olio://help-anchor/tips)
+1. [🧩 What is the Projects Center?](olio://help-anchor/what-is-the-projects-center)
+2. [➕ Creating a Project](olio://help-anchor/creating-a-project)
+3. [📋 Templates Explained](olio://help-anchor/templates-explained)
+4. [🔍 Searching and Filtering](olio://help-anchor/searching-and-filtering)
+5. [🏷️ Project Statuses](olio://help-anchor/project-statuses)
+6. [⚙️ Project Settings](olio://help-anchor/project-settings)
+7. [🗃️ Archiving vs Deleting](olio://help-anchor/archiving-vs-deleting)
+8. [💡 Tips](olio://help-anchor/tips)
+9. [💡 Find the right project](olio://help-anchor/find-the-right-project)
 
 ---
 
@@ -121,3 +122,11 @@ Settings changes take effect immediately.
 > 💡 **Tip:** Use the `Archived` status as a soft-delete. You can always filter by Archived to find and restore old projects by changing their status back to Active.
 
 > 💡 **Tip:** Tags don't have a fixed list — type anything you want. Just be consistent across projects so your filters stay useful.
+
+---
+
+## 💡 Find the right project
+
+Open **Utilities → Projects**, select a project, then choose Overview, Board, Planner, Files, or Resources. Project search helps you navigate its contents and actions.
+
+Use project settings to edit its name, description, or status. Review the confirmation carefully before deleting a project; archiving is a status change, while deletion removes the project.

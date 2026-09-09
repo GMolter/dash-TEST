@@ -7,10 +7,11 @@ Sort Order: 4
 
 ## 🔎 Table of Contents
 
-1. [What is the Utilities Hub?](olio://help-anchor/what-is-the-utilities-hub)
-2. [Available Tools](olio://help-anchor/available-tools)
-3. [Navigating to a Tool](olio://help-anchor/navigating-to-a-tool)
-4. [Quick Access from Home](olio://help-anchor/quick-access-from-home)
+1. [🧩 What is the Utilities Hub?](olio://help-anchor/what-is-the-utilities-hub)
+2. [🗂️ Available Tools](olio://help-anchor/available-tools)
+3. [🔍 Navigating to a Tool](olio://help-anchor/navigating-to-a-tool)
+4. [📌 Quick Access from Home](olio://help-anchor/quick-access-from-home)
+5. [💡 Descriptions and dashboard shortcuts](olio://help-anchor/descriptions-and-dashboard-shortcuts)
 
 ---
 
@@ -32,10 +33,10 @@ Olio Workstation includes the following utilities:
 |:-----|:-------------|:--------|
 | **Quick Links** | Manage personal bookmarks in organized folders | [Quick Links](olio://help/quick-links) |
 | **URL Shortener** | Shorten long URLs with optional custom codes and track click counts | [URL Shortener](olio://help/url-shortener) |
-| **Secret Sharing** | Send one-time encrypted messages that self-destruct after being viewed | [Secret Sharing](olio://help/secret-sharing) |
+| **Secret Sharing** | Send one-time messages that self-destruct after being viewed | [Secret Sharing](olio://help/secret-sharing) |
 | **QR Code Generator** | Generate QR codes from any text or URL and download as PNG | [QR Code Generator](olio://help/qr-code-generator) |
 | **Quick Pastes** | Manage private reusable text available only to your account | [Quick Pastes](olio://help/quick-pastes) |
-| **Pastebin** | Share code and text snippets with syntax highlighting and expiry options | [Pastebin](olio://help/pastebin) |
+| **Pastebin** | Share code and text snippets with a language label and expiry options | [Pastebin](olio://help/pastebin) |
 | **Triggers** | Create webhook triggers to connect Olio Workstation to external services | [Triggers and Webhooks](olio://help/triggers-and-webhooks) |
 
 ---
@@ -59,3 +60,11 @@ The selected tool will load in the main content area. You can return to the Hub 
 **Quick Links** is the only utility directly embedded on the Home Dashboard. All other tools require navigating to the Utilities Hub first.
 
 > 💡 **Tip:** If you use a particular tool constantly, consider adding it as a Quick Link so you can access it with one click from the home screen.
+
+---
+
+## 💡 Descriptions and dashboard shortcuts
+
+Use **Show Descriptions** or **Hide Descriptions** to change the tool tiles; this preference persists in this browser. Dashboard shortcuts open the same tools. Hiding a shortcut only removes its dashboard card, so you can still open the tool through Utilities.
+
+Quick Pastes is for private reusable text; Pastebin creates shareable pastes. Plugins such as ClassDash have their own setup and dashboard controls.

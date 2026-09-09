@@ -63,6 +63,7 @@ export type PreparedOperation = {
 };
 
 export type AdminOverview = {
+  isOwner: boolean;
   metrics: Record<string, number>;
   recentAudit: Array<Record<string, unknown>>;
   resources: Array<{ key: string; label: string; group: string; actions: string[] }>;
@@ -70,6 +71,7 @@ export type AdminOverview = {
 
 export type AdminUserAccountOverview = {
   user: AdminRow;
+  canManage: boolean;
   userFields: AdminField[];
   userActions: string[];
   totalRecords: number;

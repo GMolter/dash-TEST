@@ -18,7 +18,8 @@ import {
 
 type OperationKind =
   | "create" | "update" | "delete" | "reveal"
-  | "ban" | "unban" | "reset-password"
+  | "ban" | "unban" | "reset-password" | "request-admin" | "revoke-admin"
+  | "approve-admin" | "reject-admin"
   | "transfer-owner" | "regenerate-code"
   | "revoke" | "cancel";
 
@@ -181,9 +182,10 @@ function applyId(query: any, resource: AdminResource, id: string) {
 
 function resourceActions(resource: AdminResource) {
   if (resource.key === "app-settings") return ["update"];
-  if (resource.guided === "users") return ["create", "update", "ban", "unban", "reset-password", "delete"];
+  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "ban", "unban", "reset-password", "delete"];
   if (resource.guided === "launcher-device") return ["revoke"];
   if (resource.guided === "launcher-pairing") return ["cancel"];
+  if (resource.guided === "admin-review") return ["approve-admin", "reject-admin"];
   if (resource.readOnly) return sensitiveColumns(resource).length ? ["reveal"] : [];
   const actions = ["create", "update", "delete"];
   if (sensitiveColumns(resource).length) actions.push("reveal");
@@ -203,7 +205,7 @@ function assertOperation(resource: AdminResource, operation: AdminOperation) {
   if (ids.length > 1 && (resource.guided || resource.key === "organizations" || resource.key === "app-settings")) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
-  if (ids.length > 1 && ["reveal", "ban", "unban", "reset-password", "transfer-owner", "regenerate-code", "revoke", "cancel"].includes(operation.kind)) {
+  if (ids.length > 1 && ["reveal", "ban", "unban", "reset-password", "request-admin", "revoke-admin", "approve-admin", "reject-admin", "transfer-owner", "regenerate-code", "revoke", "cancel"].includes(operation.kind)) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
   operation.ids = ids;
@@ -274,7 +276,7 @@ async function fetchRows(service: any, resource: AdminResource, ids: string[], i
   if (resource.key === "users") {
     return Promise.all(ids.map(async (id) => {
       const [{ data: profile }, { data: authData, error: authError }] = await Promise.all([
-        service.from("profiles").select("id,email,display_name,org_id,role,app_admin,created_at,updated_at").eq("id", id).maybeSingle(),
+        service.from("profiles").select("id,email,display_name,org_id,role,app_admin,app_owner,created_at,updated_at").eq("id", id).maybeSingle(),
         service.auth.admin.getUserById(id),
       ]);
       if (authError || !authData?.user) throw new Error("TARGET_NOT_FOUND");
@@ -302,7 +304,7 @@ async function fetchRows(service: any, resource: AdminResource, ids: string[], i
 }
 
 async function listUsers(service: any, resource: AdminResource, page: number, pageSize: number, search: string, sort: string, ascending: boolean, filters: Record<string, unknown>) {
-  let query = service.from("profiles").select("id,email,display_name,org_id,role,app_admin,created_at,updated_at", { count: "exact" });
+  let query = service.from("profiles").select("id,email,display_name,org_id,role,app_admin,app_owner,created_at,updated_at", { count: "exact" });
   if (search) query = query.or(`email.ilike.%${search}%,display_name.ilike.%${search}%`);
   for (const [key, value] of Object.entries(filters)) query = value === null ? query.is(key, null) : query.eq(key, value);
   query = query.order(sort, { ascending }).range((page - 1) * pageSize, page * pageSize - 1);
@@ -330,7 +332,7 @@ async function countTable(service: any, table: string, filter?: [string, string]
   return error ? 0 : (count || 0);
 }
 
-async function overview(service: any) {
+async function overview(service: any, actorIsOwner: boolean) {
   const [users, organizations, projects, pastes, quickPastes, secrets, devices, pairings, audits] = await Promise.all([
     countTable(service, "profiles"), countTable(service, "organizations"), countTable(service, "projects"),
     countTable(service, "pastes"), countTable(service, "quick_pastes"), countTable(service, "secrets"),
@@ -340,7 +342,13 @@ async function overview(service: any) {
   const { data: recent } = await service.from("admin_audit_log")
     .select("id,actor_email,action,resource,target_ids,reason,status,created_at")
     .order("created_at", { ascending: false }).limit(8);
-  return { metrics: { users, organizations, projects, content: pastes + quickPastes + secrets, devices, pendingPairings: pairings, audits }, recentAudit: recent || [], resources: ADMIN_RESOURCE_LIST };
+  const pendingAdminReviews = actorIsOwner ? await countTable(service, "admin_access_requests", ["status", "pending"]) : 0;
+  return {
+    isOwner: actorIsOwner,
+    metrics: { users, organizations, projects, content: pastes + quickPastes + secrets, devices, pendingPairings: pairings, pendingAdminReviews, audits },
+    recentAudit: recent || [],
+    resources: ADMIN_RESOURCE_LIST.filter((resource) => actorIsOwner || resource.group !== "reviews"),
+  };
 }
 
 async function userAccountContext(service: any, userId: string): Promise<AccountContext> {
@@ -386,7 +394,7 @@ function applyAccountScope(query: any, scope: AdminAccountScope, context: Accoun
   return query.eq("actor_id", userId);
 }
 
-async function userAccountOverview(service: any, userId: string) {
+async function userAccountOverview(service: any, userId: string, actorIsOwner: boolean) {
   const context = await userAccountContext(service, userId);
   const users = ADMIN_RESOURCES.users;
   const [user] = await addReferences(service, users, await fetchRows(service, users, [userId], false));
@@ -405,6 +413,7 @@ async function userAccountOverview(service: any, userId: string) {
     }));
   return {
     user,
+    canManage: actorIsOwner || user.app_owner !== true,
     userFields: users.fields,
     userActions: resourceActions(users),
     resources,
@@ -427,22 +436,25 @@ async function impactPreview(service: any, resource: AdminResource, operation: A
   return counts;
 }
 
-async function guardUserOperation(service: any, actorId: string, operation: AdminOperation) {
+async function guardUserOperation(service: any, actorId: string, actorIsOwner: boolean, operation: AdminOperation) {
   const id = operation.ids?.[0];
   if (!id) return;
-  const lockingAction = ["delete", "ban"].includes(operation.kind)
-    || (operation.kind === "update" && operation.values?.app_admin === false);
+  const { data: target, error } = await service.from("profiles").select("app_admin,app_owner").eq("id", id).maybeSingle();
+  if (error || !target) throw error || new Error("TARGET_NOT_FOUND");
+  if (target.app_owner && !actorIsOwner) throw new Error("OWNER_ACCOUNT_PROTECTED");
+  if (operation.kind === "request-admin" && target.app_admin) throw new Error("ALREADY_ADMIN");
+  if (operation.kind === "revoke-admin" && !target.app_admin) throw new Error("NOT_AN_ADMIN");
+  if (operation.kind === "revoke-admin" && target.app_owner) throw new Error("OWNER_ADMIN_REQUIRED");
+
+  const lockingAction = ["delete", "ban", "revoke-admin"].includes(operation.kind);
   if (lockingAction && id === actorId) throw new Error("SELF_LOCKOUT_BLOCKED");
-  if (lockingAction) {
-    const { data: target } = await service.from("profiles").select("app_admin").eq("id", id).maybeSingle();
-    if (target?.app_admin) {
-      const { count } = await service.from("profiles").select("id", { count: "exact", head: true }).eq("app_admin", true);
-      if ((count || 0) <= 1) throw new Error("LAST_ADMIN_BLOCKED");
-    }
+  if (lockingAction && target.app_admin) {
+    const { count } = await service.from("profiles").select("id", { count: "exact", head: true }).eq("app_admin", true);
+    if ((count || 0) <= 1) throw new Error("LAST_ADMIN_BLOCKED");
   }
 }
 
-async function executeUser(service: any, operation: AdminOperation) {
+async function executeUser(service: any, operation: AdminOperation, actor: { userId: string; email: string | null }) {
   const values = operation.values || {};
   const id = operation.ids?.[0];
   if (operation.kind === "create") {
@@ -457,7 +469,7 @@ async function executeUser(service: any, operation: AdminOperation) {
     const userId = data.user.id;
     const profile = {
       id: userId, email, display_name: values.display_name || email.split("@")[0],
-      org_id: values.org_id || null, role: values.role || "member", app_admin: values.app_admin === true,
+      org_id: values.org_id || null, role: values.role || "member", app_admin: false, app_owner: false,
     };
     const { error: profileError } = await service.from("profiles").upsert(profile);
     if (profileError) {
@@ -467,6 +479,22 @@ async function executeUser(service: any, operation: AdminOperation) {
     return { id: userId, email, force_password_change: true };
   }
   if (!id) throw new Error("TARGET_REQUIRED");
+  if (operation.kind === "request-admin") {
+    const { data, error } = await service.from("admin_access_requests").insert({
+      target_user_id: id,
+      requested_by: actor.userId,
+      requested_by_email: actor.email,
+      reason: operation.reason,
+    }).select("id,target_user_id,status,created_at").single();
+    if (error?.code === "23505") throw new Error("PROMOTION_ALREADY_PENDING");
+    if (error) throw error;
+    return data;
+  }
+  if (operation.kind === "revoke-admin") {
+    const { data, error } = await service.from("profiles").update({ app_admin: false }).eq("id", id).select("id,email,display_name,app_admin,app_owner").single();
+    if (error) throw error;
+    return data;
+  }
   if (operation.kind === "ban") {
     const { error } = await service.auth.admin.updateUserById(id, { ban_duration: "876000h" });
     if (error) throw error;
@@ -505,15 +533,15 @@ async function executeUser(service: any, operation: AdminOperation) {
       const { error } = await service.auth.admin.updateUserById(id, authPatch);
       if (error) throw error;
     }
-    const profilePatch = Object.fromEntries(Object.entries(normalized).filter(([key]) => ["email", "display_name", "org_id", "role", "app_admin"].includes(key)));
-    const { data, error } = await service.from("profiles").update(profilePatch).eq("id", id).select("id,email,display_name,org_id,role,app_admin,created_at,updated_at").single();
+    const profilePatch = Object.fromEntries(Object.entries(normalized).filter(([key]) => ["email", "display_name", "org_id", "role"].includes(key)));
+    const { data, error } = await service.from("profiles").update(profilePatch).eq("id", id).select("id,email,display_name,org_id,role,app_admin,app_owner,created_at,updated_at").single();
     if (error) throw error;
     return data;
   }
   throw new Error("ACTION_NOT_ALLOWED");
 }
 
-async function executeNormal(service: any, resource: AdminResource, operation: AdminOperation) {
+async function executeNormal(service: any, resource: AdminResource, operation: AdminOperation, actor: { userId: string }) {
   const values = normalizedValues(resource, operation.values || {});
   if (operation.kind === "create") {
     if (resource.key === "organizations") {
@@ -538,6 +566,16 @@ async function executeNormal(service: any, resource: AdminResource, operation: A
   }
   const id = operation.ids?.[0];
   if (!id) throw new Error("TARGET_REQUIRED");
+  if (resource.guided === "admin-review" && ["approve-admin", "reject-admin"].includes(operation.kind)) {
+    const { data, error } = await service.rpc("admin_review_access_request", {
+      p_request_id: id,
+      p_reviewer_id: actor.userId,
+      p_decision: operation.kind === "approve-admin" ? "approved" : "rejected",
+      p_review_reason: operation.reason,
+    });
+    if (error) throw error;
+    return data;
+  }
   if (operation.kind === "reveal") {
     const columns = [resource.primaryKey.split(","), operation.revealFields || []].flat().join(",");
     const { data, error } = await applyId(service.from(resource.table).select(columns), resource, id).maybeSingle();
@@ -599,7 +637,8 @@ async function executeNormal(service: any, resource: AdminResource, operation: A
 function statusForError(error: any) {
   const code = String(error?.message || error?.code || "");
   if (/REASON_REQUIRED|REQUIRED_|INVALID_|PASSWORD_TOO_SHORT|TARGET_REQUIRED|BULK_/.test(code)) return 400;
-  if (/SELF_LOCKOUT|LAST_ADMIN|OWNER_MUST|ACTION_NOT_ALLOWED/.test(code)) return 409;
+  if (/OWNER_ACCOUNT_PROTECTED|OWNER_REVIEW_REQUIRED|APPLICATION_ACCESS_FLAGS_SERVER_MANAGED/.test(code)) return 403;
+  if (/SELF_LOCKOUT|LAST_ADMIN|OWNER_MUST|OWNER_ADMIN_REQUIRED|ACTION_NOT_ALLOWED|ALREADY_ADMIN|NOT_AN_ADMIN|PROMOTION_ALREADY_PENDING|REQUEST_NOT_PENDING|APP_OWNER_LIMIT/.test(code)) return 409;
   if (/TARGET_NOT_FOUND/.test(code)) return 404;
   return 500;
 }
@@ -615,14 +654,15 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === "GET") {
       const key = queryValue(req, "resource") || "overview";
-      if (key === "overview") return res.status(200).json(await overview(service));
+      if (key === "overview") return res.status(200).json(await overview(service, access.appOwner));
       if (key === "user-account") {
         const userId = queryValue(req, "userId");
         if (!SAFE_USER_ID.test(userId)) return res.status(400).json({ error: "A valid user account is required." });
-        return res.status(200).json(await userAccountOverview(service, userId));
+        return res.status(200).json(await userAccountOverview(service, userId, access.appOwner));
       }
       const resource = ADMIN_RESOURCES[key];
       if (!resource) return res.status(404).json({ error: "Unknown admin resource" });
+      if (resource.guided === "admin-review" && !access.appOwner) return res.status(403).json({ error: "Only an application owner can review admin access requests." });
       const page = Math.max(1, Math.floor(Number(queryValue(req, "page")) || 1));
       const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(queryValue(req, "pageSize")) || 25)));
       const search = cleanSearch(queryValue(req, "search"));
@@ -687,6 +727,7 @@ export default async function handler(req: any, res: any) {
     if (!operation || typeof operation !== "object") return res.status(400).json({ error: "Operation is required" });
     const resource = ADMIN_RESOURCES[String(operation.resource || "")];
     if (!resource) return res.status(404).json({ error: "Unknown admin resource" });
+    if (resource.guided === "admin-review" && !access.appOwner) return res.status(403).json({ error: "Only an application owner can review admin access requests." });
 
     if (phase === "reveal") {
       const ids = normalizeIds(operation.ids);
@@ -702,7 +743,7 @@ export default async function handler(req: any, res: any) {
     }
 
     assertOperation(resource, operation);
-    if (resource.key === "users") await guardUserOperation(service, access.userId, operation);
+    if (resource.key === "users") await guardUserOperation(service, access.userId, access.appOwner, operation);
     const beforeRows = operation.kind === "create" ? [] : await fetchRows(service, resource, operation.ids || [], true);
     const fingerprint = sha(beforeRows);
     const digest = sha(operation);
@@ -738,7 +779,7 @@ export default async function handler(req: any, res: any) {
     }
 
     try {
-      const result = resource.key === "users" ? await executeUser(service, operation) : await executeNormal(service, resource, operation);
+      const result = resource.key === "users" ? await executeUser(service, operation, access) : await executeNormal(service, resource, operation, access);
       const resultRecord = result && typeof result === "object" && !Array.isArray(result) ? result as Record<string, unknown> : null;
       const resultId = resultRecord?._admin_id || resultRecord?.id || resultRecord?.owner_id;
       await service.from("admin_audit_log").update({

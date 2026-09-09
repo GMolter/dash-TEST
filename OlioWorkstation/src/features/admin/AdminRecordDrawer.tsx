@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Ban, Eye, KeyRound, Pencil, RotateCcw, Save, ShieldOff, Trash2, UserCheck, UserRoundCog, X } from "lucide-react";
+import { ArrowUpRight, Ban, Eye, KeyRound, Pencil, RotateCcw, Save, ShieldCheck, ShieldOff, Trash2, UserCheck, UserRoundCog, X, XCircle } from "lucide-react";
 import type { AdminField, AdminReference, AdminRow } from "./types";
 import { AdminDisplayValue, adminFieldLabel } from "./adminFormat";
 import { loadAdminResource } from "./api";
@@ -15,10 +15,11 @@ type Props = {
   onReveal: (field: string) => void;
   onOpenReference: (reference: AdminReference) => void;
   onOpenAccount?: (row: AdminRow) => void;
+  lockedMessage?: string;
   onOperation: (kind: string, values?: Record<string, unknown>) => void;
 };
 
-export function AdminRecordDrawer({ label, fields, actions, row, creating, revealed, onClose, onReveal, onOpenReference, onOpenAccount, onOperation }: Props) {
+export function AdminRecordDrawer({ label, fields, actions, row, creating, revealed, onClose, onReveal, onOpenReference, onOpenAccount, lockedMessage, onOperation }: Props) {
   const [editing, setEditing] = useState(creating);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [temporaryPassword, setTemporaryPassword] = useState("");
@@ -98,9 +99,10 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, revea
         </header>
 
         <div className="flex-1 space-y-5 overflow-y-auto p-5">
-          {!creating && actions.includes("reset-password") && onOpenAccount && (
+          {!creating && onOpenAccount && (
             <button onClick={() => onOpenAccount(row!)} className="flex w-full items-center justify-between rounded-2xl border border-blue-400/25 bg-blue-500/10 px-4 py-3 text-left text-blue-100 hover:bg-blue-500/15"><span className="flex items-center gap-3"><UserRoundCog className="h-5 w-5" /><span><span className="block text-sm font-medium">Open account management</span><span className="mt-0.5 block text-xs text-slate-400">See this user’s profile, projects, content, utilities, integrations, devices, and activity.</span></span></span><ArrowUpRight className="h-4 w-4 shrink-0" /></button>
           )}
+          {lockedMessage && <div className="rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3 text-sm leading-6 text-amber-100"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /><span>{lockedMessage}</span></div></div>}
           <div className="grid gap-4 sm:grid-cols-2">
             {primaryFields.map(renderField)}
           </div>
@@ -143,6 +145,10 @@ function GuidedActions({ actions, row, onOperation }: { actions: string[]; row: 
     <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
       <div className="text-xs font-medium uppercase tracking-wider text-slate-500">Administrative actions</div>
       <div className="mt-3 flex flex-wrap gap-2">
+        {!row.app_admin && actions.includes("request-admin") && <ActionButton icon={ShieldCheck} label="Request admin access" onClick={() => onOperation("request-admin")} />}
+        {row.app_admin === true && row.app_owner !== true && actions.includes("revoke-admin") && <ActionButton icon={ShieldOff} label="Remove admin access" onClick={() => onOperation("revoke-admin")} destructive />}
+        {row.status === "pending" && actions.includes("approve-admin") && <ActionButton icon={ShieldCheck} label="Approve admin access" onClick={() => onOperation("approve-admin")} />}
+        {row.status === "pending" && actions.includes("reject-admin") && <ActionButton icon={XCircle} label="Reject request" onClick={() => onOperation("reject-admin")} destructive />}
         {actions.includes(isBanned ? "unban" : "ban") && <ActionButton icon={isBanned ? UserCheck : Ban} label={isBanned ? "Unban account" : "Ban account"} onClick={() => onOperation(isBanned ? "unban" : "ban")} destructive={!isBanned} />}
         {actions.includes("regenerate-code") && <ActionButton icon={RotateCcw} label="Regenerate code" onClick={() => onOperation("regenerate-code")} />}
         {actions.includes("transfer-owner") && <TransferOwner onSubmit={(ownerId) => onOperation("transfer-owner", { owner_id: ownerId })} />}

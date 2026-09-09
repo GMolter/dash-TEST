@@ -7,13 +7,14 @@ Sort Order: 2
 
 ## 🔎 Table of Contents
 
-1. [What is an Organization?](olio://help-anchor/what-is-an-organization)
-2. [Joining an Existing Organization](olio://help-anchor/joining-an-existing-organization)
-3. [Creating a New Organization](olio://help-anchor/creating-a-new-organization)
-4. [Roles Explained](olio://help-anchor/roles-explained)
-5. [Shared Quick Links](olio://help-anchor/shared-quick-links)
-6. [Switching Organizations](olio://help-anchor/switching-organizations)
-7. [FAQ](olio://help-anchor/faq)
+1. [🧩 What is an Organization?](olio://help-anchor/what-is-an-organization)
+2. [🤝 Joining an Existing Organization](olio://help-anchor/joining-an-existing-organization)
+3. [🆕 Creating a New Organization](olio://help-anchor/creating-a-new-organization)
+4. [🔗 Shared Quick Links](olio://help-anchor/shared-quick-links)
+5. [👥 Roles Explained](olio://help-anchor/roles-explained)
+6. [🔄 Switching Organizations](olio://help-anchor/switching-organizations)
+7. [❓ FAQ](olio://help-anchor/faq)
+8. [💡 Personal and team work](olio://help-anchor/personal-and-team-work)
 
 ---
 
@@ -46,7 +47,7 @@ If your team already has an Olio Workstation organization, you can join it with 
 3. Click **Join Organization**
 4. You will immediately be added as a **Member** and taken to the dashboard
 
-> ⚠️ **Warning:** The invite code must be exactly 4 digits (numbers only). If you receive an error, confirm the code with your organization owner — codes can be regenerated at any time.
+> ⚠️ **Warning:** The invite code must be exactly 4 digits (numbers only). If you receive an error, confirm the code with your organization owner — the code may have changed.
 
 ---
 
@@ -61,7 +62,7 @@ If you're starting fresh or setting up a workspace for your team:
 
 Your organization will be assigned a unique 4-digit invite code automatically. Share this code with teammates so they can join.
 
-> 💡 **Tip:** You can rename your organization and regenerate the invite code later from the **Organization** page.
+> 💡 **Tip:** Open **Organization** to view your team and the management controls available to your role.
 
 ---
 
@@ -80,6 +81,7 @@ Every member of an organization has one of three roles:
 | Role | Description | Key Permissions |
 |:-----|:------------|:----------------|
 | **Owner** | The creator of the organization | Full access; can manage members, rename the org, and delete it |
+| **Admin** | Organization administrator | Can access permitted organization management actions |
 | **Member** | Standard user | Can access all shared features; cannot manage members |
 
 ---
@@ -108,3 +110,11 @@ You can only belong to **one organization at a time**. To switch:
 
 > **Q: What happens to my data if I leave an organization?**
 > Personal data (your personal Quick Links, pastes marked personal-only) remains associated with your account. Shared org content stays with the organization.
+
+---
+
+## 💡 Personal and team work
+
+Create personal bookmarks in **Utilities → Quick Links** and team bookmarks in **Organization → Shared Links**. Joining a team does not turn your private Quick Pastes into shared content.
+
+Owners and admins can access management controls according to their permissions. Ask an owner for the current invite code when joining fails.

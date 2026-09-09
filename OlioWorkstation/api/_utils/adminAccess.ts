@@ -3,7 +3,7 @@ import { isAuthed } from "./session.js";
 import { getSupabaseServiceConfig } from "./supabaseConfig.js";
 
 type AccessResult =
-  | { ok: true; userId: string; email: string | null }
+  | { ok: true; userId: string; email: string | null; appOwner: boolean }
   | { ok: false; status: number; error: string };
 
 function readBearerToken(req: any) {
@@ -34,11 +34,27 @@ export async function resolveAppAdminFromRequest(req: any): Promise<AccessResult
     return { ok: false, status: 401, error: "Invalid auth session" };
   }
 
-  const { data: profile, error: profileError } = await supabase
+  let profileResult = await supabase
     .from("profiles")
-    .select("app_admin,email")
+    .select("app_admin,app_owner,email")
     .eq("id", userData.user.id)
     .maybeSingle();
+
+  // A code-first deployment should not lock out existing admins while the new
+  // migration is still being applied. Owner-only features remain unavailable.
+  if (profileResult.error?.code === "42703") {
+    const legacyResult = await supabase
+      .from("profiles")
+      .select("app_admin,email")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+    profileResult = {
+      data: legacyResult.data ? { ...legacyResult.data, app_owner: false } : null,
+      error: legacyResult.error,
+    } as typeof profileResult;
+  }
+
+  const { data: profile, error: profileError } = profileResult;
 
   if (profileError) {
     if (profileError.code === "42703") {
@@ -50,7 +66,7 @@ export async function resolveAppAdminFromRequest(req: any): Promise<AccessResult
     return { ok: false, status: 403, error: "Unauthorized Account" };
   }
 
-  return { ok: true, userId: userData.user.id, email: profile.email || null };
+  return { ok: true, userId: userData.user.id, email: profile.email || null, appOwner: profile.app_owner === true };
 }
 
 export async function requireAdminAccess(

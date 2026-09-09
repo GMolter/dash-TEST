@@ -7,14 +7,15 @@ Sort Order: 5
 
 ## 🔎 Table of Contents
 
-1. [What are Quick Links?](olio://help-anchor/what-are-quick-links)
-2. [Adding a Link](olio://help-anchor/adding-a-link)
-3. [Shared Quick Links](olio://help-anchor/shared-quick-links)
-4. [Creating a Folder](olio://help-anchor/creating-a-folder)
-5. [Editing and Deleting](olio://help-anchor/editing-and-deleting)
-6. [Drag-and-Drop Reordering](olio://help-anchor/drag-and-drop-reordering)
-7. [Expanding Folders](olio://help-anchor/expanding-folders)
-8. [Quick-Start Checklist](olio://help-anchor/quick-start-checklist)
+1. [🧩 What are Quick Links?](olio://help-anchor/what-are-quick-links)
+2. [➕ Adding a Link](olio://help-anchor/adding-a-link)
+3. [👥 Shared Quick Links](olio://help-anchor/shared-quick-links)
+4. [📁 Creating a Folder](olio://help-anchor/creating-a-folder)
+5. [✏️ Editing and Deleting](olio://help-anchor/editing-and-deleting)
+6. [↕️ Drag-and-Drop Reordering](olio://help-anchor/drag-and-drop-reordering)
+7. [📂 Expanding Folders](olio://help-anchor/expanding-folders)
+8. [✅ Quick-Start Checklist](olio://help-anchor/quick-start-checklist)
+9. [💡 Dashboard layout and link management](olio://help-anchor/dashboard-layout-and-link-management)
 
 ---
 
@@ -119,3 +120,11 @@ Use this checklist to get Quick Links set up:
 - [ ] Add emoji icons to make tiles visually distinct
 - [ ] Drag tiles into the order you want them
 - [ ] Add team-wide bookmarks from **Organization → Shared Links**
+
+---
+
+## 💡 Dashboard layout and link management
+
+Manage link titles, destinations, icons, folders, and order in **Utilities → Quick Links**. Use **Organization → Shared Links** for team bookmarks. The dashboard has its own card positions and sizes: arranging a card there does not rewrite the bookmark URL.
+
+Saved links and folders are restored from browser cache while current data loads. If a change made on another device has not appeared yet, allow the background refresh to finish. Hiding a dashboard card does not delete the saved link.

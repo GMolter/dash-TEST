@@ -7,12 +7,13 @@ Sort Order: 11
 
 ## 🔎 Table of Contents
 
-1. [What is the Overview Tab?](olio://help-anchor/what-is-the-overview-tab)
-2. [Stats Cards](olio://help-anchor/stats-cards)
-3. [Progress Bars](olio://help-anchor/progress-bars)
-4. [Suggested Actions](olio://help-anchor/suggested-actions)
-5. [Quick Navigation](olio://help-anchor/quick-navigation)
-6. [AI Plan Generation](olio://help-anchor/ai-plan-generation)
+1. [🧩 What is the Overview Tab?](olio://help-anchor/what-is-the-overview-tab)
+2. [📈 Stats Cards](olio://help-anchor/stats-cards)
+3. [📉 Progress Bars](olio://help-anchor/progress-bars)
+4. [💡 Suggested Actions](olio://help-anchor/suggested-actions)
+5. [🧭 Quick Navigation](olio://help-anchor/quick-navigation)
+6. [🤖 AI Plan Generation](olio://help-anchor/ai-plan-generation)
+7. [💡 Continue into project tools](olio://help-anchor/continue-into-project-tools)
 
 ---
 
@@ -102,3 +103,11 @@ This makes the Overview a fast navigation hub for large projects.
 The Overview Tab surfaces the **Generate AI Plan** option if your project doesn't yet have planner steps. Clicking it opens the AI plan generation interface in the Planner tab.
 
 See the [Project Planner](olio://help/project-planner) article for full details on AI plan generation, including usage limits.
+
+---
+
+## 💡 Continue into project tools
+
+Use Overview for project context, then open **Board** for task lanes, **Planner** for dates, **Files** for documents and attachments, or **Resources** for reference links.
+
+Project status and task progress are separate. Update the project status in settings when its overall phase changes.

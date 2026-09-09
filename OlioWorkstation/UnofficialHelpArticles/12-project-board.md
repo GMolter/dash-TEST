@@ -7,15 +7,16 @@ Sort Order: 12
 
 ## 🔎 Table of Contents
 
-1. [What is the Project Board?](olio://help-anchor/what-is-the-project-board)
-2. [Adding a Column](olio://help-anchor/adding-a-column)
-3. [Adding a Card](olio://help-anchor/adding-a-card)
-4. [Editing a Card](olio://help-anchor/editing-a-card)
-5. [Priority Levels](olio://help-anchor/priority-levels)
-6. [Drag-and-Drop](olio://help-anchor/drag-and-drop)
-7. [Completing Cards](olio://help-anchor/completing-cards)
-8. [Archiving Cards and Columns](olio://help-anchor/archiving-cards-and-columns)
-9. [Quick-Start Checklist](olio://help-anchor/quick-start-checklist)
+1. [🧩 What is the Project Board?](olio://help-anchor/what-is-the-project-board)
+2. [➕ Adding a Column](olio://help-anchor/adding-a-column)
+3. [🃏 Adding a Card](olio://help-anchor/adding-a-card)
+4. [✏️ Editing a Card](olio://help-anchor/editing-a-card)
+5. [🎯 Priority Levels](olio://help-anchor/priority-levels)
+6. [↕️ Drag-and-Drop](olio://help-anchor/drag-and-drop)
+7. [✅ Completing Cards](olio://help-anchor/completing-cards)
+8. [🗃️ Archiving Cards and Columns](olio://help-anchor/archiving-cards-and-columns)
+9. [✅ Quick-Start Checklist](olio://help-anchor/quick-start-checklist)
+10. [💡 Task details and lanes](olio://help-anchor/task-details-and-lanes)
 
 ---
 
@@ -143,3 +144,11 @@ Get your board set up in minutes:
 - [ ] Assign cards to team members with the Assignee field
 - [ ] Set due dates on time-sensitive cards
 - [ ] Drag a card to `In Progress` when work starts
+
+---
+
+## 💡 Task details and lanes
+
+Open a task to edit its description, priority, due date, or assignee name. Available priorities are None, Low, Medium, and High. Use lanes to represent the stages that suit your project.
+
+After a move or edit, check for a save error before leaving the page. Planner and Board work with the same project tasks, so confirm dates in Planner when scheduling work.

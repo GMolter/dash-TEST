@@ -12,7 +12,7 @@ type HelpArticle = {
 const TOPIC_TILES = [
   { icon: Users, label: 'Organizations', sub: 'Joining, leaving, and managing teams' },
   { icon: Link2, label: 'URL Shortener', sub: 'Shorten and manage links' },
-  { icon: EyeOff, label: 'Secret Sharing', sub: 'One-time encrypted secrets' },
+  { icon: EyeOff, label: 'Secret Sharing', sub: 'One-time secret links' },
   { icon: Shield, label: 'Security & Access', sub: 'Invite codes, roles, and permissions' },
 ];
 
@@ -38,7 +38,7 @@ const QA_ITEMS = [
     a: "Go to Utilities → URL Shortener, paste your long URL, optionally set a custom short code, and click Shorten. The link is scoped to your organization.",
   },
   {
-    q: 'How do I regenerate my organization invite code?',
+    q: 'Where do I get an organization invite code?',
     a: "Go to Organization → Manage (requires Owner or Admin role) and click Regenerate under the Security section. The old code will stop working immediately.",
   },
 ];

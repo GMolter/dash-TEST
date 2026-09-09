@@ -7,14 +7,15 @@ Sort Order: 18
 
 ## 🔎 Table of Contents
 
-1. [What are Triggers?](olio://help-anchor/what-are-triggers)
-2. [Creating a Trigger](olio://help-anchor/creating-a-trigger)
-3. [HTTP Methods](olio://help-anchor/http-methods)
-4. [Testing a Trigger](olio://help-anchor/testing-a-trigger)
-5. [Editing a Trigger](olio://help-anchor/editing-a-trigger)
-6. [Deleting a Trigger](olio://help-anchor/deleting-a-trigger)
-7. [Last Triggered Timestamp](olio://help-anchor/last-triggered-timestamp)
-8. [Security Notes](olio://help-anchor/security-notes)
+1. [🧩 What are Triggers?](olio://help-anchor/what-are-triggers)
+2. [➕ Creating a Trigger](olio://help-anchor/creating-a-trigger)
+3. [🔀 HTTP Methods](olio://help-anchor/http-methods)
+4. [▶️ Testing a Trigger](olio://help-anchor/testing-a-trigger)
+5. [✏️ Editing a Trigger](olio://help-anchor/editing-a-trigger)
+6. [🗑️ Deleting a Trigger](olio://help-anchor/deleting-a-trigger)
+7. [🕐 Last Triggered Timestamp](olio://help-anchor/last-triggered-timestamp)
+8. [🔐 Security Notes](olio://help-anchor/security-notes)
+9. [💡 Delivery and troubleshooting](olio://help-anchor/delivery-and-troubleshooting)
 
 ---
 
@@ -62,9 +63,7 @@ When using POST, the trigger sends a JSON body with basic metadata:
 
 ```json
 {
-  "triggered_at": "2025-01-15T10:30:00Z",
-  "trigger_name": "Deploy to Staging",
-  "org_id": "your-org-id"
+  "triggered_at": "2026-09-09T10:30:00Z"
 }
 ```
 
@@ -83,7 +82,7 @@ To fire a trigger immediately:
 
 > 💡 **Tip:** Use the Test button during setup to verify your webhook URL is correct before sharing the trigger with your team.
 
-The `last_triggered_at` timestamp updates every time you fire a trigger, whether manually or otherwise.
+The `last_triggered_at` timestamp updates after a successful trigger response.
 
 ---
 
@@ -129,3 +128,11 @@ Best practices:
 - Rotate webhook tokens regularly
 - Do not share trigger lists or screenshots in public channels
 - Prefer **POST** over **GET** for endpoints that perform actions — GET requests may be logged in server access logs without authentication
+
+---
+
+## 💡 Delivery and troubleshooting
+
+Firing a trigger sends a real request from your browser. For POST, the current payload contains **triggered_at**; GET does not include a body. The endpoint must accept the selected method and browser cross-origin requests.
+
+The last-triggered timestamp is updated after a successful response. A failed request does not confirm delivery, and retrying may repeat an action if the destination processed the earlier request. Inspect the destination before repeating a consequential trigger.

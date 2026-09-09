@@ -1,27 +1,28 @@
 ########
 Title: Pastebin — Code and Text Snippets
 Slug: pastebin
-Summary: Save and share code snippets and text with syntax highlighting, expiration options, and visibility controls.
+Summary: Save and share code snippets and text with a language label, expiration options, and visibility controls.
 Sort Order: 9
 ########
 
 ## 🔎 Table of Contents
 
-1. [What is Pastebin?](olio://help-anchor/what-is-pastebin)
-2. [Creating a Paste](olio://help-anchor/creating-a-paste)
-3. [Visibility and Scope](olio://help-anchor/visibility-and-scope)
-4. [Language Highlighting](olio://help-anchor/language-highlighting)
-5. [Expiry Options](olio://help-anchor/expiry-options)
-6. [View Counter](olio://help-anchor/view-counter)
-7. [Sharing a Paste](olio://help-anchor/sharing-a-paste)
-8. [Deleting a Paste](olio://help-anchor/deleting-a-paste)
-9. [Browsing Pastes](olio://help-anchor/browsing-pastes)
+1. [🧩 What is Pastebin?](olio://help-anchor/what-is-pastebin)
+2. [➕ Creating a Paste](olio://help-anchor/creating-a-paste)
+3. [🌍 Visibility and Scope](olio://help-anchor/visibility-and-scope)
+4. [🎨 Language Label](olio://help-anchor/language-label)
+5. [⏳ Expiry Options](olio://help-anchor/expiry-options)
+6. [👁️ View Counter](olio://help-anchor/view-counter)
+7. [🔗 Sharing a Paste](olio://help-anchor/sharing-a-paste)
+8. [🗑️ Deleting a Paste](olio://help-anchor/deleting-a-paste)
+9. [📋 Browsing Pastes](olio://help-anchor/browsing-pastes)
+10. [💡 Choose the audience before creating](olio://help-anchor/choose-the-audience-before-creating)
 
 ---
 
 # 📄 Pastebin — Code and Text Snippets
 
-**Pastebin** lets you save and share code snippets, configuration files, notes, or any block of text. Unlike a plain text file, pastes support **syntax highlighting**, **expiry timers**, and **visibility scopes** — giving you control over who sees your content and for how long.
+**Pastebin** lets you save and share code snippets, configuration files, notes, or any block of text. Unlike a plain text file, pastes support **a language label**, **expiry timers**, and **visibility scopes** — giving you control over who sees your content and for how long.
 
 > 💡 **Quick Pastes are different:** Use [Quick Pastes](olio://help/quick-pastes) for private, reusable personal text that does not need a URL, audience, expiry, or view count. Pastebin remains the sharing tool.
 
@@ -44,7 +45,7 @@ Olio Workstation's Pastebin is a quick way to:
 2. Click **+ New Paste**
 3. Enter a **Title** for the paste
 4. Paste or type your **content** in the editor
-5. Choose a **Language** for syntax highlighting (or select `Plain Text`)
+5. Choose a **Language** for a language label (or select `Plain Text`)
 6. Set an **Expiry** duration
 7. Select the **Scope** (visibility)
 8. Click **Save**
@@ -67,9 +68,9 @@ Every paste has a scope that controls who can see it:
 
 ---
 
-## 🎨 Language Highlighting
+## 🎨 Language Label
 
-Choosing a language applies **syntax highlighting** to the paste when viewed. Supported languages include:
+Choosing a language applies **a language label** to the paste when viewed. Supported languages include:
 
 - JavaScript / TypeScript
 - Python
@@ -140,3 +141,11 @@ The Pastebin tool shows your **most recent 5 pastes** by default. To browse furt
 - Visit the public **Paste List** page (`/pastes`) to see all public pastes from all users
 
 See [Public Pages](olio://help/public-pages) for details on the public paste list.
+
+---
+
+## 💡 Choose the audience before creating
+
+Review the Personal, Organization, and Public audience controls before saving. Public access makes a paste available through its public link; adding a private audience does not cancel public access. Select at least one audience and choose the expiry deliberately.
+
+For reusable text that should stay private and does not need a URL, use [Quick Pastes](olio://help/quick-pastes).

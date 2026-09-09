@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '../lib/supabase';
 
@@ -36,7 +36,7 @@ function cacheKey(userId: string) {
 function readLayoutCache(userId: string): DashboardLayoutItem[] {
   try {
     const value = JSON.parse(window.localStorage.getItem(cacheKey(userId)) || '[]');
-    return Array.isArray(value) ? value : [];
+    return Array.isArray(value) ? value.filter((row) => row && typeof row.item_id === 'string' && typeof row.hidden === 'boolean' && ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(row[key]))) : [];
   } catch {
     return [];
   }
@@ -54,8 +54,8 @@ function readQuicklinkCache(userId: string): { links: DashboardQuicklink[]; fold
   try {
     const value = JSON.parse(window.localStorage.getItem(`olio-quicklinks-v1:${userId}`) || '{}');
     return {
-      links: Array.isArray(value?.links) ? value.links : [],
-      folders: Array.isArray(value?.folders) ? value.folders : [],
+      links: Array.isArray(value?.links) ? value.links.filter((row: { scope?: string }) => row && (!row.scope || row.scope === 'personal' || row.scope === 'both')) : [],
+      folders: Array.isArray(value?.folders) ? value.folders.filter((row: { scope?: string }) => row && (!row.scope || row.scope === 'personal' || row.scope === 'both')) : [],
     };
   } catch {
     return { links: [], folders: [] };
@@ -69,8 +69,9 @@ export function useFreeformDashboard() {
   const [folders, setFolders] = useState<DashboardQuicklinkFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState('');
+  const layoutRevision = useRef(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!user) {
       setLayouts([]);
       setQuicklinks([]);
@@ -81,10 +82,12 @@ export function useFreeformDashboard() {
     const userId = user.id;
     const cachedLayouts = readLayoutCache(userId);
     const cachedQuicklinks = readQuicklinkCache(userId);
-    if (cachedLayouts.length) setLayouts(cachedLayouts);
-    if (cachedQuicklinks.links.length) setQuicklinks(cachedQuicklinks.links);
-    if (cachedQuicklinks.folders.length) setFolders(cachedQuicklinks.folders);
+    setLayouts(cachedLayouts);
+    setQuicklinks(cachedQuicklinks.links);
+    setFolders(cachedQuicklinks.folders);
+    try { setLoading(!localStorage.getItem(cacheKey(userId)) || !localStorage.getItem(`olio-quicklinks-v1:${userId}`)); } catch { setLoading(true); }
     let cancelled = false;
+    const revision = layoutRevision.current;
 
     void Promise.all([
       supabase.from('user_dashboard_layout_items').select('item_id,x,y,width,height,hidden').eq('user_id', userId),
@@ -92,7 +95,7 @@ export function useFreeformDashboard() {
       supabase.from('quicklink_folders').select('id,name,icon,order_index,scope,user_id').eq('user_id', userId).order('order_index', { ascending: true }),
     ]).then(([layoutResult, quicklinkResult, folderResult]) => {
       if (cancelled) return;
-      if (!layoutResult.error && layoutResult.data) {
+      if (!layoutResult.error && layoutResult.data && revision === layoutRevision.current) {
         const nextLayouts = layoutResult.data as DashboardLayoutItem[];
         setLayouts(nextLayouts);
         writeLayoutCache(userId, nextLayouts);
@@ -108,14 +111,26 @@ export function useFreeformDashboard() {
         setFolders((folderResult.data as Array<DashboardQuicklinkFolder & { scope?: string }>)
           .filter((folder) => !folder.scope || folder.scope === 'personal' || folder.scope === 'both'));
       }
+      if (!quicklinkResult.error && !folderResult.error) {
+        try { localStorage.setItem(`olio-quicklinks-v1:${userId}`, JSON.stringify({
+          links: (quicklinkResult.data || []),
+          folders: (folderResult.data || []),
+        })); } catch { /* Storage is optional. */ }
+      }
       setLoading(false);
-    });
+    }).catch(() => { if (!cancelled) { setWarning('Dashboard refresh failed. Showing saved data; check your connection and reload to retry.'); setLoading(false); } });
 
-    return () => { cancelled = true; };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === cacheKey(userId)) { ++layoutRevision.current; setLayouts(readLayoutCache(userId)); }
+      if (event.key === `olio-quicklinks-v1:${userId}`) { const next = readQuicklinkCache(userId); setQuicklinks(next.links); setFolders(next.folders); }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => { cancelled = true; window.removeEventListener('storage', onStorage); };
   }, [user]);
 
   const saveLayouts = useCallback(async (nextLayouts: DashboardLayoutItem[]) => {
     if (!user) return false;
+    ++layoutRevision.current;
     setLayouts(nextLayouts);
     writeLayoutCache(user.id, nextLayouts);
     const { error } = await supabase.from('user_dashboard_layout_items').upsert(

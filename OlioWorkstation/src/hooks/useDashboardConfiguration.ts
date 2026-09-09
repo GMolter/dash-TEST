@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '../lib/supabase';
 import {
@@ -12,14 +12,14 @@ import {
 
 export const DASHBOARD_CONFIGURATION_CHANGED_EVENT = 'olio:dashboard-configuration-changed';
 
-type PluginInstallation = {
+export type PluginInstallation = {
   user_id: string;
   plugin_id: string;
   dashboard_enabled: boolean;
   dashboard_order: number;
 };
 
-type StoredDashboardModule = {
+export type StoredDashboardModule = {
   user_id: string;
   module_id: string;
   enabled: boolean;
@@ -37,19 +37,59 @@ export type DashboardModule = {
   available: boolean;
 };
 
+export function resolveDashboardModules(installations: PluginInstallation[], storedModules: StoredDashboardModule[]): DashboardModule[] {
+  const installationByPlugin = new Map(installations.map((installation) => [installation.plugin_id, installation]));
+  const stored = new Map(storedModules.map((module) => [module.module_id, module]));
+  return DASHBOARD_MODULES.map((definition, fallbackOrder) => {
+    const saved = stored.get(definition.id);
+    const installation = 'pluginId' in definition ? installationByPlugin.get(definition.pluginId) : undefined;
+    const available = !('pluginId' in definition) || !!installation;
+    const installationAllowsDashboard = !installation || installation.dashboard_enabled;
+    return {
+      id: definition.id,
+      name: definition.name,
+      description: definition.description,
+      enabled: available && installationAllowsDashboard && (saved?.enabled ?? true),
+      order: saved?.order_index ?? installation?.dashboard_order ?? fallbackOrder,
+      span: saved?.column_span ?? DEFAULT_DASHBOARD_SPANS[definition.id],
+      available,
+    };
+  }).sort((a, b) => a.order - b.order);
+}
+
+type ConfigurationCache = { installations: PluginInstallation[]; modules: StoredDashboardModule[] };
+const configurationKey = (userId: string) => `olio-dashboard-configuration-v1:${userId}`;
+export function readConfigurationCache(userId: string): ConfigurationCache | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(configurationKey(userId)) || 'null');
+    if (!value || !Array.isArray(value.installations) || !Array.isArray(value.modules)) return null;
+    if (!value.installations.every((row: PluginInstallation) => row && row.user_id === userId && typeof row.dashboard_enabled === 'boolean') ||
+        !value.modules.every((row: StoredDashboardModule) => row && row.user_id === userId && typeof row.enabled === 'boolean')) return null;
+    return value;
+  } catch { return null; }
+}
+function writeConfigurationCache(userId: string, value: ConfigurationCache) {
+  try { localStorage.setItem(configurationKey(userId), JSON.stringify(value)); } catch { /* Storage is optional. */ }
+}
+
 function emitChange() {
   window.dispatchEvent(new Event(DASHBOARD_CONFIGURATION_CHANGED_EVENT));
 }
 
 export function useDashboardConfiguration() {
   const { user } = useAuth();
-  const [installations, setInstallations] = useState<PluginInstallation[]>([]);
-  const [storedModules, setStoredModules] = useState<StoredDashboardModule[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initial = useMemo(() => user ? readConfigurationCache(user.id) : null, [user?.id]);
+  const requestId = useRef(0);
+  const activeUser = useRef(user?.id);
+  activeUser.current = user?.id;
+  const [installations, setInstallations] = useState<PluginInstallation[]>(initial?.installations ?? []);
+  const [storedModules, setStoredModules] = useState<StoredDashboardModule[]>(initial?.modules ?? []);
+  const [loading, setLoading] = useState(!initial);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    const request = ++requestId.current;
     if (!user) {
       setInstallations([]);
       setStoredModules([]);
@@ -57,15 +97,21 @@ export function useDashboardConfiguration() {
       return;
     }
 
+    const cached = readConfigurationCache(user.id);
+    setInstallations(cached?.installations ?? []);
+    setStoredModules(cached?.modules ?? []);
+    setLoading(!cached);
     const [installationsResult, modulesResult] = await Promise.all([
       supabase.from('user_plugin_installations').select('*').eq('user_id', user.id),
       supabase.from('user_dashboard_modules').select('*').eq('user_id', user.id),
     ]);
 
+    if (request !== requestId.current || activeUser.current !== user.id) return;
     const firstError = installationsResult.error || modulesResult.error;
     if (firstError) {
       setError(`Dashboard configuration is unavailable. Apply the latest Supabase migration. ${firstError.message}`);
     } else {
+      writeConfigurationCache(user.id, { installations: installationsResult.data || [], modules: modulesResult.data || [] });
       setError(null);
       setInstallations((installationsResult.data || []) as PluginInstallation[]);
       setStoredModules((modulesResult.data || []) as StoredDashboardModule[]);
@@ -73,11 +119,13 @@ export function useDashboardConfiguration() {
     setLoading(false);
   }, [user]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     void refresh();
     const onChange = () => void refresh();
     window.addEventListener(DASHBOARD_CONFIGURATION_CHANGED_EVENT, onChange);
-    return () => window.removeEventListener(DASHBOARD_CONFIGURATION_CHANGED_EVENT, onChange);
+    const onStorage = (event: StorageEvent) => { if (user && event.key === configurationKey(user.id)) { const cached = readConfigurationCache(user.id); if (cached) { setInstallations(cached.installations); setStoredModules(cached.modules); setLoading(false); } } };
+    window.addEventListener('storage', onStorage);
+    return () => { ++requestId.current; window.removeEventListener('storage', onStorage); window.removeEventListener(DASHBOARD_CONFIGURATION_CHANGED_EVENT, onChange); };
   }, [refresh]);
 
   const installedPluginIds = useMemo(
@@ -85,22 +133,7 @@ export function useDashboardConfiguration() {
     [installations],
   );
 
-  const modules = useMemo<DashboardModule[]>(() => {
-    const stored = new Map(storedModules.map((module) => [module.module_id, module]));
-    return DASHBOARD_MODULES.map((definition, fallbackOrder) => {
-      const saved = stored.get(definition.id);
-      const available = !('pluginId' in definition) || installedPluginIds.has(definition.pluginId);
-      return {
-        id: definition.id,
-        name: definition.name,
-        description: definition.description,
-        enabled: available && (saved?.enabled ?? true),
-        order: saved?.order_index ?? fallbackOrder,
-        span: saved?.column_span ?? DEFAULT_DASHBOARD_SPANS[definition.id],
-        available,
-      };
-    }).sort((a, b) => a.order - b.order);
-  }, [installedPluginIds, storedModules]);
+  const modules = useMemo<DashboardModule[]>(() => resolveDashboardModules(installations, storedModules), [installations, storedModules]);
 
   const installPlugin = useCallback(async (pluginId: PluginId) => {
     if (!user) return false;
@@ -118,9 +151,10 @@ export function useDashboardConfiguration() {
       setError(installError.message);
       return false;
     }
+    await refresh();
     emitChange();
     return true;
-  }, [user]);
+  }, [user, refresh]);
 
   const uninstallPlugin = useCallback(async (pluginId: PluginId) => {
     if (!user) return false;
@@ -136,9 +170,10 @@ export function useDashboardConfiguration() {
       setError(uninstallError.message);
       return false;
     }
+    await refresh();
     emitChange();
     return true;
-  }, [user]);
+  }, [user, refresh]);
 
   const updateModule = useCallback(async (moduleId: DashboardModuleId, enabled: boolean) => {
     if (!user) return false;
@@ -157,9 +192,10 @@ export function useDashboardConfiguration() {
       setError(updateError.message);
       return false;
     }
+    await refresh();
     emitChange();
     return true;
-  }, [modules, user]);
+  }, [modules, user, refresh]);
 
   const moveModule = useCallback(async (moduleId: DashboardModuleId, direction: 'up' | 'down') => {
     if (!user) return false;
@@ -185,9 +221,10 @@ export function useDashboardConfiguration() {
       setError(moveError.message);
       return false;
     }
+    await refresh();
     emitChange();
     return true;
-  }, [modules, user]);
+  }, [modules, user, refresh]);
 
   const reorderModules = useCallback(async (moduleIds: DashboardModuleId[]) => {
     if (!user) return false;
@@ -210,9 +247,10 @@ export function useDashboardConfiguration() {
       setError(reorderError.message);
       return false;
     }
+    await refresh();
     emitChange();
     return true;
-  }, [modules, user]);
+  }, [modules, user, refresh]);
 
   const updateModuleSpan = useCallback(async (moduleId: DashboardModuleId, span: DashboardModuleSpan) => {
     if (!user) return false;
@@ -232,9 +270,10 @@ export function useDashboardConfiguration() {
       setError(resizeError.message);
       return false;
     }
+    await refresh();
     emitChange();
     return true;
-  }, [modules, user]);
+  }, [modules, user, refresh]);
 
   const resetLayout = useCallback(async () => {
     if (!user) return false;
@@ -256,9 +295,10 @@ export function useDashboardConfiguration() {
       setError(resetError.message);
       return false;
     }
+    await refresh();
     emitChange();
     return true;
-  }, [modules, user]);
+  }, [modules, user, refresh]);
 
   return {
     loading,

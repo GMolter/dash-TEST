@@ -32,7 +32,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
   const columns = useMemo(() => chooseColumns(data?.fields || [], rows), [data?.fields, rows]);
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row._admin_id));
   const editableFields = data?.fields.filter((field) => field.editable && !field.sensitive && ["text", "number", "boolean", "select"].includes(field.type)) || [];
-  const bulkAllowed = !!data && !["users", "organizations", "launcher-devices", "launcher-pairings", "app-settings", "audit-log", "project-activity"].includes(data.resource);
+  const bulkAllowed = !!data && !["users", "organizations", "launcher-devices", "launcher-pairings", "admin-access-requests", "app-settings", "audit-log", "project-activity"].includes(data.resource);
   const selectable = bulkAllowed && !!data?.actions.some((action) => action === "update" || action === "delete");
   const pageCount = Math.max(1, Math.ceil((data?.total || 0) / (data?.pageSize || 25)));
 

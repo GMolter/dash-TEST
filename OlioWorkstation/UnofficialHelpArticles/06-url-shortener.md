@@ -7,13 +7,14 @@ Sort Order: 6
 
 ## 🔎 Table of Contents
 
-1. [What is the URL Shortener?](olio://help-anchor/what-is-the-url-shortener)
-2. [Creating a Short URL](olio://help-anchor/creating-a-short-url)
-3. [Copying Your Short URL](olio://help-anchor/copying-your-short-url)
-4. [Click Tracking](olio://help-anchor/click-tracking)
-5. [Deleting a Short URL](olio://help-anchor/deleting-a-short-url)
-6. [Custom Code Rules](olio://help-anchor/custom-code-rules)
-7. [How Redirects Work](olio://help-anchor/how-redirects-work)
+1. [🧩 What is the URL Shortener?](olio://help-anchor/what-is-the-url-shortener)
+2. [✂️ Creating a Short URL](olio://help-anchor/creating-a-short-url)
+3. [📋 Copying Your Short URL](olio://help-anchor/copying-your-short-url)
+4. [📊 Click Tracking](olio://help-anchor/click-tracking)
+5. [🗑️ Deleting a Short URL](olio://help-anchor/deleting-a-short-url)
+6. [⚠️ Custom Code Rules](olio://help-anchor/custom-code-rules)
+7. [🌐 How Redirects Work](olio://help-anchor/how-redirects-work)
+8. [💡 Check a saved short link](olio://help-anchor/check-a-saved-short-link)
 
 ---
 
@@ -102,3 +103,11 @@ Short URLs are **publicly accessible** — no login is required to follow them. 
 > 💡 **Tip:** Because short URLs are public, avoid creating short codes that point to sensitive internal resources without additional authentication on the destination.
 
 See [Public Pages](olio://help/public-pages) for more detail on how the redirect page works.
+
+---
+
+## 💡 Check a saved short link
+
+After creating a link, use its copy action and verify the destination in a separate tab. A custom code must be available; use another code if creation fails.
+
+Deleting a saved short URL makes future visits to that code fail. A QR image that contains the deleted short URL will still scan, but its destination will no longer resolve.

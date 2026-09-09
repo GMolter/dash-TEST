@@ -21,10 +21,9 @@ type AccountForm = {
   displayName: string;
   organizationId: string | null;
   role: string;
-  appAdmin: boolean;
 };
 
-const EMPTY_FORM: AccountForm = { email: "", displayName: "", organizationId: null, role: "member", appAdmin: false };
+const EMPTY_FORM: AccountForm = { email: "", displayName: "", organizationId: null, role: "member" };
 
 const GROUP_LABELS: Record<string, string> = {
   organizations: "Organizations",
@@ -59,7 +58,6 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
       displayName: String(user.display_name || ""),
       organizationId: user.org_id ? String(user.org_id) : null,
       role: String(user.role || "member"),
-      appAdmin: user.app_admin === true,
     });
     setTemporaryPassword("");
     setOrganizationInputVersion((value) => value + 1);

@@ -7,12 +7,13 @@ Sort Order: 20
 
 ## 🔎 Table of Contents
 
-1. [What are Public Pages?](olio://help-anchor/what-are-public-pages)
-2. [URL Redirect](olio://help-anchor/url-redirect)
-3. [Secret View Page](olio://help-anchor/secret-view-page)
-4. [Paste View Page](olio://help-anchor/paste-view-page)
-5. [Public Paste List](olio://help-anchor/public-paste-list)
-6. [Privacy Reminder](olio://help-anchor/privacy-reminder)
+1. [🧩 What are Public Pages?](olio://help-anchor/what-are-public-pages)
+2. [🔀 URL Redirect](olio://help-anchor/url-redirect)
+3. [🔒 Secret View Page](olio://help-anchor/secret-view-page)
+4. [📄 Paste View Page](olio://help-anchor/paste-view-page)
+5. [📋 Public Paste List](olio://help-anchor/public-paste-list)
+6. [🔐 Privacy Reminder](olio://help-anchor/privacy-reminder)
+7. [💡 Access and expired links](olio://help-anchor/access-and-expired-links)
 
 ---
 
@@ -67,22 +68,21 @@ The redirect is seamless — there is no interstitial page. Visitors are forward
 
 When a recipient opens a secret link (e.g., `yourapp.com/s/abc123`):
 
-1. A **warning screen** appears explaining that the secret will be permanently destroyed after viewing
-2. The recipient must click **Reveal Secret** to proceed
-3. The secret content is displayed **one time only**
-4. The secret is immediately marked as viewed and the content is deleted
-5. Any future visits to the same link show a "Secret Already Viewed" error
+1. The page checks whether the secret exists, has expired, or was already viewed
+2. An available secret is displayed immediately
+3. The page marks the secret as viewed
+4. Later visits show an unavailable-secret message
 
 **Error states:**
 
 | State | Message Shown |
 |:------|:-------------|
-| Not yet viewed | Warning screen → reveal |
+| Not yet viewed | Content displays on opening |
 | Already viewed | "This secret has already been viewed" |
 | Expired | "This secret has expired" |
 | Code doesn't exist | "Secret not found" |
 
-> 💡 **Tip:** Instruct recipients to only click **Reveal Secret** when they are in a private location — the reveal is one-time and cannot be repeated.
+> 💡 **Tip:** Instruct recipients to only open the link when they are in a private location — the reveal is one-time and cannot be repeated.
 
 ---
 
@@ -92,7 +92,7 @@ When a recipient opens a secret link (e.g., `yourapp.com/s/abc123`):
 
 When someone opens a paste link (e.g., `yourapp.com/p/xyz789`):
 
-1. The paste content is displayed with **syntax highlighting** applied based on the paste's language setting
+1. The paste content is displayed with **a language label** applied based on the paste's language setting
 2. The **view counter** increments by one on each page load
 3. A **copy button** lets the visitor copy the paste content to their clipboard
 4. The paste's **title** and **language** are displayed at the top
@@ -136,3 +136,11 @@ Best practices:
 - Use **org scope** for internal team pastes that shouldn't be broadly accessible
 - Use **personal scope** for private drafts and notes
 - Use **public scope** only for genuinely public-safe content like code examples or reference snippets
+
+---
+
+## 💡 Access and expired links
+
+Share the URL produced by the tool so the recipient receives the correct route and code. Short links, secret links, and paste links have different access and expiry behavior; a successful QR scan does not establish that the destination is still active.
+
+If a paste is unavailable, check its audience and expiry with its creator. A consumed secret requires a newly created secret link. Private Quick Pastes do not have a public view URL.

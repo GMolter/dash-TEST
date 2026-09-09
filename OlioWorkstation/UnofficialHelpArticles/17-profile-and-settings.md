@@ -7,15 +7,16 @@ Sort Order: 17
 
 ## 🔎 Table of Contents
 
-1. [Accessing Profile Settings](olio://help-anchor/accessing-profile-settings)
-2. [Account Information](olio://help-anchor/account-information)
-3. [Olio Launcher Devices](olio://help-anchor/olio-launcher-devices)
-4. [Theme Customization](olio://help-anchor/theme-customization)
-5. [Themes Explained](olio://help-anchor/themes-explained)
-6. [Color Presets](olio://help-anchor/color-presets)
-7. [Leaving an Organization](olio://help-anchor/leaving-an-organization)
-8. [Deleting an Organization](olio://help-anchor/deleting-an-organization)
-9. [Signing Out](olio://help-anchor/signing-out)
+1. [👤 Accessing Profile Settings](olio://help-anchor/accessing-profile-settings)
+2. [🪪 Account Information](olio://help-anchor/account-information)
+3. [💻 Olio Launcher Devices](olio://help-anchor/olio-launcher-devices)
+4. [🎨 Theme Customization](olio://help-anchor/theme-customization)
+5. [🎭 Themes Explained](olio://help-anchor/themes-explained)
+6. [🌈 Color Presets](olio://help-anchor/color-presets)
+7. [🚪 Leaving an Organization](olio://help-anchor/leaving-an-organization)
+8. [🗑️ Deleting an Organization](olio://help-anchor/deleting-an-organization)
+9. [🔓 Signing Out](olio://help-anchor/signing-out)
+10. [💡 Dashboard and plugin preferences](olio://help-anchor/dashboard-and-plugin-preferences)
 
 ---
 
@@ -76,7 +77,7 @@ access token, private messages, financial information, or other sensitive conten
 
 Olio Workstation's animated background is fully customizable. To change your theme:
 
-1. Click **Customize Theme**
+1. Click **Customize**
 2. The theme modal opens with a live preview
 3. Select a **Theme** (background animation style)
 4. Select a **Color Preset** (color palette)
@@ -151,3 +152,11 @@ To sign out of Olio Workstation:
 2. You are immediately logged out and redirected to the sign-in screen
 
 Your session is terminated and your browser credentials are cleared.
+
+---
+
+## 💡 Dashboard and plugin preferences
+
+Use dashboard edit mode for individual card positions, sizes, and visibility, and plugin controls for installation and dashboard availability. These preferences are separate from the background theme.
+
+Choose **Customize** to open **Customize App Background**. Theme and color preferences persist in the browser. See [Home Dashboard](olio://help/home-dashboard) and [Plugins and ClassDash](olio://help/plugins-and-classdash) for the layout controls.

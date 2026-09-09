@@ -7,14 +7,15 @@ Sort Order: 13
 
 ## 🔎 Table of Contents
 
-1. [What is the Project Planner?](olio://help-anchor/what-is-the-project-planner)
-2. [Adding a Step](olio://help-anchor/adding-a-step)
-3. [Completing Steps](olio://help-anchor/completing-steps)
-4. [Reordering Steps](olio://help-anchor/reordering-steps)
-5. [Due Dates](olio://help-anchor/due-dates)
-6. [AI Plan Generation](olio://help-anchor/ai-plan-generation)
-7. [Archiving Steps](olio://help-anchor/archiving-steps)
-8. [Planner vs Board](olio://help-anchor/planner-vs-board)
+1. [🧩 What is the Project Planner?](olio://help-anchor/what-is-the-project-planner)
+2. [➕ Adding a Step](olio://help-anchor/adding-a-step)
+3. [✅ Completing Steps](olio://help-anchor/completing-steps)
+4. [↕️ Reordering Steps](olio://help-anchor/reordering-steps)
+5. [📅 Due Dates](olio://help-anchor/due-dates)
+6. [🤖 AI Plan Generation](olio://help-anchor/ai-plan-generation)
+7. [🗑️ Archiving Steps](olio://help-anchor/archiving-steps)
+8. [📊 Planner vs Board](olio://help-anchor/planner-vs-board)
+9. [💡 Review generated plans](olio://help-anchor/review-generated-plans)
 
 ---
 
@@ -118,3 +119,11 @@ Archived steps are **excluded from the progress calculation** — they don't cou
 | Best for | Milestones & phases | Day-to-day tasks |
 
 Use both together for the most complete picture of your project.
+
+---
+
+## 💡 Review generated plans
+
+When using the AI planning controls, describe your goal and review the proposed tasks and dates before applying them. Check any usage limit shown for the project; access can vary by project configuration.
+
+Use ordinary task editing to correct titles, descriptions, and dates after planning. Do not treat a generated schedule as a verified deadline.
