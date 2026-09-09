@@ -266,11 +266,12 @@ export const ADMIN_ACCOUNT_SCOPES: Record<string, AdminAccountScope> = {
 
 function resourceActionsForCatalog(resource: AdminResource) {
   if (resource.key === "app-settings") return ["update"];
-  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "ban", "unban", "reset-password", "request-delete"];
+  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "ban", "unban", "reset-password", "request-delete", "remove-organization"];
   if (resource.guided === "launcher-device") return ["revoke"];
   if (resource.guided === "launcher-pairing") return ["cancel"];
   if (resource.guided === "admin-review") return ["approve-admin", "reject-admin"];
   if (resource.readOnly) return resource.fields.some((field) => field.sensitive) ? ["reveal"] : [];
   return ["create", "update", "delete", ...(resource.fields.some((field) => field.sensitive) ? ["reveal"] : [])];
 }
+
 

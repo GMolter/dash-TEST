@@ -19,7 +19,7 @@ import {
 type OperationKind =
   | "create" | "update" | "delete" | "reveal"
   | "ban" | "unban" | "reset-password" | "request-admin" | "revoke-admin"
-  | "approve-admin" | "reject-admin" | "request-delete"
+  | "approve-admin" | "reject-admin" | "request-delete" | "remove-organization"
   | "transfer-owner" | "regenerate-code"
   | "revoke" | "cancel";
 
@@ -182,7 +182,7 @@ function applyId(query: any, resource: AdminResource, id: string) {
 
 function resourceActions(resource: AdminResource) {
   if (resource.key === "app-settings") return ["update"];
-  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "ban", "unban", "reset-password", "request-delete"];
+  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "ban", "unban", "reset-password", "request-delete", "remove-organization"];
   if (resource.guided === "launcher-device") return ["revoke"];
   if (resource.guided === "launcher-pairing") return ["cancel"];
   if (resource.guided === "admin-review") return ["approve-admin", "reject-admin"];
@@ -205,7 +205,7 @@ function assertOperation(resource: AdminResource, operation: AdminOperation) {
   if (ids.length > 1 && (resource.guided || resource.key === "organizations" || resource.key === "app-settings")) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
-  if (ids.length > 1 && ["reveal", "ban", "unban", "reset-password", "request-admin", "request-delete", "revoke-admin", "approve-admin", "reject-admin", "transfer-owner", "regenerate-code", "revoke", "cancel"].includes(operation.kind)) {
+  if (ids.length > 1 && ["reveal", "ban", "unban", "reset-password", "request-admin", "request-delete", "remove-organization", "revoke-admin", "approve-admin", "reject-admin", "transfer-owner", "regenerate-code", "revoke", "cancel"].includes(operation.kind)) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
   operation.ids = ids;
@@ -446,8 +446,16 @@ async function impactPreview(service: any, resource: AdminResource, operation: A
 async function guardUserOperation(service: any, actorId: string, actorIsOwner: boolean, operation: AdminOperation) {
   const id = operation.ids?.[0];
   if (!id) return;
-  const { data: target, error } = await service.from("profiles").select("app_admin,app_owner").eq("id", id).maybeSingle();
+  const { data: target, error } = await service.from("profiles").select("app_admin,app_owner,org_id,role").eq("id", id).maybeSingle();
   if (error || !target) throw error || new Error("TARGET_NOT_FOUND");
+  const changesMembership = operation.kind === "remove-organization" || (operation.kind === "update" && operation.values && Object.prototype.hasOwnProperty.call(operation.values, "org_id") && operation.values.org_id !== target.org_id);
+  if (operation.kind === "update" && target.org_id && operation.values && Object.prototype.hasOwnProperty.call(operation.values, "org_id") && !operation.values.org_id) throw new Error("INVALID_USE_MEMBERSHIP_REMOVAL");
+  if (operation.kind === "remove-organization" && !target.org_id) throw new Error("INVALID_NO_ORGANIZATION");
+  if (changesMembership && target.org_id) {
+    const { data: organization, error: orgError } = await service.from("organizations").select("owner_id").eq("id", target.org_id).maybeSingle();
+    if (orgError) throw orgError;
+    if (organization?.owner_id === id || target.role === "owner") throw new Error("OWNER_MUST_TRANSFER_ORGANIZATION_FIRST");
+  }
   if (target.app_owner && operation.kind === "request-delete") throw new Error("OWNER_ACCOUNT_PROTECTED");
   if (target.app_owner && !actorIsOwner) throw new Error("OWNER_ACCOUNT_PROTECTED");
   if (operation.kind === "request-admin" && target.app_admin) throw new Error("ALREADY_ADMIN");
@@ -496,6 +504,11 @@ async function executeUser(service: any, operation: AdminOperation, actor: { use
       reason: operation.reason,
     }).select("id,target_user_id,status,created_at").single();
     if (error?.code === "23505") throw new Error("REQUEST_ALREADY_PENDING");
+    if (error) throw error;
+    return data;
+  }
+  if (operation.kind === "remove-organization") {
+    const { data, error } = await service.from("profiles").update({ org_id: null, role: "member" }).eq("id", id).select("id,org_id,role").single();
     if (error) throw error;
     return data;
   }
@@ -763,7 +776,9 @@ export default async function handler(req: any, res: any) {
     if (phase === "prepare") {
       const operationId = randomUUID();
       const destructive = ["delete", "revoke"].includes(operation.kind) || (operation.kind === "approve-admin" && (beforeRows[0] as Record<string, unknown>)?.request_kind === "account_deletion");
-      const confirmation = destructive ? `DELETE ${operation.ids?.length || 1} ${resource.key}` : "CONFIRM";
+      const accountBefore = beforeRows[0] as Record<string, unknown> | undefined;
+      const membershipChange = resource.key === "users" && (operation.kind === "remove-organization" || (operation.kind === "update" && !!accountBefore?.org_id && operation.values && "org_id" in operation.values && operation.values.org_id !== accountBefore.org_id));
+      const confirmation = membershipChange ? `REMOVE ${String(accountBefore?.email || operation.ids?.[0])}` : destructive ? `DELETE ${operation.ids?.length || 1} ${resource.key}` : "CONFIRM";
       const impact = await impactPreview(service, resource, operation);
       const payload: TokenPayload = { v: 1, actor: access.userId, operationId, digest, fingerprint, confirmation, exp: Math.floor(Date.now() / 1000) + TOKEN_SECONDS };
       return res.status(200).json({
@@ -818,4 +833,5 @@ export default async function handler(req: any, res: any) {
     return res.status(status).json({ error: status === 500 ? "Admin operation failed." : String(error?.message || error?.code || "Invalid request") });
   }
 }
+
 

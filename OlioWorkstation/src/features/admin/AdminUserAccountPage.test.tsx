@@ -15,6 +15,8 @@ describe("AdminUserAccountPage", () => {
           display_name: "Avery Stone",
           email: "avery@example.com",
           role: "member",
+          org_id: "org-1",
+          _admin_refs: { org_id: { id: "org-1", resource: "organizations", label: "Example organization" } },
           app_admin: false,
           force_password_change: true,
           created_at: "2026-09-08T14:30:00.000Z",
@@ -27,7 +29,7 @@ describe("AdminUserAccountPage", () => {
           { name: "created_at", label: "Created", type: "datetime" },
         ],
         canManage: true,
-        userActions: ["update", "ban", "reset-password", "request-admin"],
+        userActions: ["update", "ban", "reset-password", "request-admin", "remove-organization"],
         totalRecords: 5,
         resources: [
           { key: "projects", label: "Projects", group: "projects", total: 2, unavailable: false },
@@ -46,8 +48,11 @@ describe("AdminUserAccountPage", () => {
 
     expect(screen.getByRole("heading", { name: "Avery Stone" })).toBeInTheDocument();
     expect(screen.getByText("Password change required")).toBeInTheDocument();
-    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByText("4 records")).toBeInTheDocument();
     expect(screen.queryByText("Quick Pastes")).not.toBeInTheDocument();
+    await user.click(screen.getByText("Membership actions"));
+    await user.click(screen.getByRole("button", { name: "Review membership removal" }));
+    expect(onAccountOperation).toHaveBeenCalledWith("remove-organization");
     await user.click(screen.getByRole("button", { name: /Quick links/ }));
     expect(onSelectResource).toHaveBeenCalledWith("quicklinks");
     await user.click(screen.getByRole("button", { name: /Edit account and access/ }));
@@ -61,5 +66,8 @@ describe("AdminUserAccountPage", () => {
     await user.click(screen.getByRole("button", { name: "Review changes" }));
     expect(onAccountOperation).toHaveBeenCalledWith("update", { display_name: "Gavin Smith" });
     expect(onAccountOperation.mock.calls[onAccountOperation.mock.calls.length - 1][1]).not.toHaveProperty("app_admin");
+    expect(screen.queryByRole("button", { name: "Remove organization" })).not.toBeInTheDocument();
+    await user.clear(screen.getByPlaceholderText("Search organization by name…"));
+    expect(screen.getByRole("button", { name: "Review changes" })).toBeDisabled();
   });
 });

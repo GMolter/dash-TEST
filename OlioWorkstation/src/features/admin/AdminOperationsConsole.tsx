@@ -237,6 +237,7 @@ export function AdminOperationsConsole() {
   }
 
   function openReference(reference: AdminReference) {
+    if (reference.resource === "users") { openAccount({ _admin_id: reference.id }); return; }
     const target = resources.find((item) => item.key === reference.resource);
     if (!target) return;
     setAccountUserId("");
@@ -363,7 +364,7 @@ export function AdminOperationsConsole() {
             <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
               {resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
-                onOpen={(nextRow) => { setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => undefined}
+                onOpen={(nextRow) => { if (data?.resource === "users") { openAccount(nextRow); return; } setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => undefined}
                 onPage={setPage} onSort={(field) => { setPage(1); setSort(field); setDirection((current) => sort === field && current === "asc" ? "desc" : "asc"); }}
                 onBulkDelete={() => requestOperation("delete", undefined, [...selected])} onBulkUpdate={(field, value) => requestOperation("update", { [field]: value }, [...selected])} />}
             </AdminUserAccountPage>
@@ -386,7 +387,7 @@ export function AdminOperationsConsole() {
               </section>
               <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
-                onOpen={(nextRow) => { setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
+                onOpen={(nextRow) => { if (data?.resource === "users") { openAccount(nextRow); return; } setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
                 onPage={setPage} onSort={(field) => { setPage(1); setSort(field); setDirection((current) => sort === field && current === "asc" ? "desc" : "asc"); }}
                 onBulkDelete={() => requestOperation("delete", undefined, [...selected])} onBulkUpdate={(field, value) => requestOperation("update", { [field]: value }, [...selected])} />
             </>
@@ -394,7 +395,7 @@ export function AdminOperationsConsole() {
         </main>
       </div>
 
-      {data && (row || creating) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} revealed={revealed}
+      {data && (creating || (row && data.resource !== "users")) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} revealed={revealed}
         lockedMessage={ownerAccountLocked ? "This is an application-owner account. Only another application owner can change its profile, access, password, or lifecycle." : undefined}
         onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => { void revealField(field); }} onOpenReference={openReference}
         onOpenAccount={!accountUserId && data.resource === "users" ? openAccount : undefined}
@@ -432,13 +433,13 @@ function FullPageStatus({ icon: Icon, title, detail, spinning = false, action }:
 }
 
 function operationTitle(kind: string, resource: string, count: number) {
-  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", ban: "Ban", unban: "Unban", "reset-password": "Reset password for", "request-delete": "Request account deletion for", "request-admin": "Request administrator access for", "revoke-admin": "Remove administrator access from", "approve-admin": "Approve", "reject-admin": "Reject", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel" };
+  const names: Record<string, string> = { create: "Create", update: count > 1 ? `Update ${count}` : "Update", delete: count > 1 ? `Delete ${count}` : "Delete", reveal: "Reveal protected information in", ban: "Ban", unban: "Unban", "reset-password": "Reset password for", "remove-organization": "Remove organization membership for", "request-delete": "Request account deletion for", "request-admin": "Request administrator access for", "revoke-admin": "Remove administrator access from", "approve-admin": "Approve", "reject-admin": "Reject", "transfer-owner": "Transfer ownership of", "regenerate-code": "Regenerate join code for", revoke: "Revoke", cancel: "Cancel" };
   return `${names[kind] || "Change"} ${resource}`;
 }
 
 function readLocation() {
   const query = new URLSearchParams(window.location.search);
-  const account = query.get("account") || "";
+  const account = query.get("account") || (query.get("resource") === "users" ? query.get("record") : "") || "";
   const requestedResource = query.get("resource") || "";
   return { section: account ? "people" : query.get("section") || "overview", resource: account ? (requestedResource === "users" ? "" : requestedResource) : requestedResource || "users", record: account ? "" : query.get("record") || "", account };
 }
@@ -447,6 +448,7 @@ function navigate(path: string) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
+
 
 
 
