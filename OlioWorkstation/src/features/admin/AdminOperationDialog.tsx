@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck, X } from "lucide-rea
 import { executeAdminOperation, prepareAdminOperation } from "./api";
 import type { AdminOperation, PreparedOperation } from "./types";
 import { humanizeAdminText } from "./adminFormat";
+import { BAN_DURATIONS } from "./banDurations";
 
 type Props = {
   operation: Omit<AdminOperation, "reason"> | null;
@@ -13,6 +14,7 @@ type Props = {
 
 export function AdminOperationDialog({ operation, title, onCancel, onComplete }: Props) {
   const [reason, setReason] = useState("");
+  const [banDuration, setBanDuration] = useState("24h");
   const [prepared, setPrepared] = useState<PreparedOperation | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
@@ -20,13 +22,16 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
 
   useEffect(() => {
     setReason("");
+    setBanDuration("24h");
     setPrepared(null);
     setConfirmation("");
     setError(null);
   }, [operation]);
 
   if (!operation) return null;
-  const completeOperation: AdminOperation = { ...operation, reason };
+  const completeOperation: AdminOperation = { ...operation, reason,
+    ...(operation.kind === "ban" ? { values: { ...operation.values, ban_duration: banDuration } } : {}),
+  };
 
   async function review() {
     if (reason.trim().length < 3) {
@@ -78,6 +83,10 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
         <div className="space-y-4 p-5">
           {!prepared ? (
             <>
+              {operation.kind === "ban" && <label className="block text-sm text-slate-200">Ban duration
+                <select value={banDuration} onChange={(event) => setBanDuration(event.target.value)} className="mt-2 block w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white">{BAN_DURATIONS.map((duration) => <option key={duration.value} value={duration.value}>{duration.label}</option>)}</select>
+                <span className="mt-2 block text-xs text-slate-400">The account will be blocked for this duration. The reason below will be shown to the user.</span>
+              </label>}
               <label className="block">
                 <span className="text-sm font-medium text-slate-200">Reason for this action</span>
                 <textarea autoFocus value={reason} onChange={(event) => setReason(event.target.value)} rows={3} maxLength={500}
@@ -95,6 +104,7 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
                 <PreviewStat label="Resource" value={prepared.preview.resource} />
                 <PreviewStat label="Records" value={String(prepared.preview.count)} />
               </div>
+              {operation.kind === "ban" && <p className="text-sm text-amber-100">Ban for {BAN_DURATIONS.find((duration) => duration.value === banDuration)?.label}. Reason shown to the user: {reason}</p>}
               {prepared.preview.changes.length > 0 && (
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                   <div className="text-xs uppercase tracking-wider text-slate-500">Fields changing</div>

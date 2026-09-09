@@ -4,6 +4,7 @@ import {
   Building2,
   Home,
   Menu,
+  Shield,
   UserCircle,
   Wrench,
   X,
@@ -12,6 +13,7 @@ import {
 type AppNavigationProps = {
   currentPath: string;
   organizationName?: string | null;
+  isAppAdmin?: boolean;
   onNavigate: (path: string) => void;
 };
 
@@ -28,7 +30,7 @@ function isActivePath(currentPath: string, itemPath: string) {
   return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
 }
 
-export function AppNavigation({ currentPath, organizationName, onNavigate }: AppNavigationProps) {
+export function AppNavigation({ currentPath, organizationName, isAppAdmin = false, onNavigate }: AppNavigationProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -120,7 +122,7 @@ export function AppNavigation({ currentPath, organizationName, onNavigate }: App
             </div>
 
             <nav className="mt-7 space-y-2" aria-label="Primary navigation">
-              {navigationItems.map((item) => {
+              {[...navigationItems, ...(isAppAdmin ? [{ path: '/admin', label: 'Admin panel', icon: Shield }] : [])].map((item) => {
                 const Icon = item.icon;
                 const active = isActivePath(currentPath, item.path);
                 return (

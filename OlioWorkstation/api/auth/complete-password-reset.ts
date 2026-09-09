@@ -1,6 +1,7 @@
 export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
+import { accountIsAllowed } from "../_utils/accountAccess.js";
 import { getSupabaseServiceConfig } from "../_utils/supabaseConfig.js";
 
 function bearer(req: any) {
@@ -29,6 +30,7 @@ export default async function handler(req: any, res: any) {
     const service = createClient(cfg.url, cfg.serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: identity, error: identityError } = await service.auth.getUser(token);
     if (identityError || !identity.user) return res.status(401).json({ error: "Invalid auth session" });
+    if (!await accountIsAllowed(service, identity.user.id)) return res.status(403).json({ error: "Account access suspended" });
     if (identity.user.app_metadata?.force_password_change !== true) {
       return res.status(409).json({ error: "This account does not require a password change." });
     }

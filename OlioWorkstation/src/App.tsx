@@ -454,6 +454,7 @@ function App() {
 
   const floatingNavigation = user ? (
     <AppNavigation
+      isAppAdmin={profile?.app_admin === true}
       currentPath={currentNavigationPath}
       organizationName={organization?.name}
       onNavigate={navigateTo}

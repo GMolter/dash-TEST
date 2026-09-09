@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({
@@ -6,6 +6,8 @@ const auth = vi.hoisted(() => ({
   getUser: vi.fn(),
   signOut: vi.fn(),
   unsubscribe: vi.fn(),
+  banRead: vi.fn(),
+  banEvent: null as null | ((payload: { new: unknown }) => void),
 }));
 
 vi.mock("../lib/supabase", () => ({
@@ -16,7 +18,12 @@ vi.mock("../lib/supabase", () => ({
       signOut: auth.signOut,
       onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: auth.unsubscribe } } })),
     },
-    from: vi.fn(),
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: auth.banRead }) }) }),
+    channel: () => ({ on: (_type: unknown, _filter: unknown, callback: (payload: { new: unknown }) => void) => {
+      auth.banEvent = callback;
+      return { subscribe: () => ({}) };
+    } }),
+    removeChannel: vi.fn(),
   },
 }));
 
@@ -34,9 +41,38 @@ function Probe() {
 
 describe("AuthProvider session safety", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    auth.banRead.mockResolvedValue({ data: null, error: null });
     auth.getSession.mockResolvedValue({ data: { session: { access_token: "session-token", user: sessionUser } }, error: null });
     auth.getUser.mockResolvedValue({ data: { user: sessionUser }, error: null });
     auth.signOut.mockResolvedValue({ error: null });
+  });
+
+  it("immediately replaces private views with the ban reason and signs out on a realtime ban", async () => {
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await screen.findByText("Signed in");
+    act(() => auth.banEvent?.({ new: { user_id: "user-1", banned_until: "2099-01-01T00:00:00Z", reason: "Repeated harassment" } }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Repeated harassment");
+    expect(screen.queryByText("Signed in")).not.toBeInTheDocument();
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
+
+  it("checks a persisted session for an existing ban before exposing private views", async () => {
+    auth.banRead.mockResolvedValue({ data: { user_id: 'user-1', banned_until: '2099-01-01T00:00:00Z', reason: 'Account policy violation' }, error: null });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Account policy violation');
+    expect(screen.queryByText('Signed in')).not.toBeInTheDocument();
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it("does not sign out for expired bans or another user's event", async () => {
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await screen.findByText("Signed in");
+    act(() => auth.banEvent?.({ new: { user_id: "user-1", banned_until: "2000-01-01T00:00:00Z", reason: "Expired" } }));
+    act(() => auth.banEvent?.({ new: { user_id: "someone-else", banned_until: "2099-01-01T00:00:00Z", reason: "Other account" } }));
+    expect(screen.getByText("Signed in")).toBeInTheDocument();
+    expect(auth.signOut).not.toHaveBeenCalled();
   });
 
   it("uses current server metadata so an admin password reset blocks an existing session", async () => {

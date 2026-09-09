@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { activeAccountBan, type AccountBan } from '../features/auth/accountBan';
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +20,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [ban, setBan] = useState<AccountBan | null>(null);
+  const lastUserId = useRef<string | null>(null);
+  if (user?.id) lastUserId.current = user.id;
+
+  function rememberBan(notice: AccountBan) {
+    // Other tabs may receive SIGNED_OUT before their own realtime ban event.
+    try { localStorage.setItem(`olio-ban-notice:${notice.user_id}`, JSON.stringify(notice)); } catch { /* Storage is optional. */ }
+    setBan(notice);
+  }
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const userId = user.id;
+    let active = true;
+    let blocked = false;
+    const applyBan = (value: unknown) => {
+      if (!active || blocked) return;
+      const notice = activeAccountBan(value, userId);
+      if (!notice) return;
+      blocked = true;
+      rememberBan(notice);
+      // Unmount private views immediately, before waiting for local token cleanup.
+      setUser(null);
+      setSession(null);
+      void supabase.auth.signOut({ scope: 'local' });
+    };
+    const check = async () => {
+      const { data } = await supabase.from('account_ban_state').select('user_id,banned_until,reason').eq('user_id', userId).maybeSingle();
+      applyBan(data);
+    };
+    const channel = supabase.channel(`account-ban:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'account_ban_state', filter: `user_id=eq.${userId}` }, (payload) => applyBan(payload.new))
+      .subscribe((status) => { if (status === 'SUBSCRIBED') void check(); });
+    void check();
+    const onVisible = () => { if (document.visibilityState === 'visible') void check(); };
+    const timer = window.setInterval(onVisible, 5000);
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -27,6 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
       if (event === 'INITIAL_SESSION') return;
+      if (event === 'SIGNED_OUT' && lastUserId.current) {
+        try {
+          const notice = activeAccountBan(JSON.parse(localStorage.getItem(`olio-ban-notice:${lastUserId.current}`) || 'null'), lastUserId.current);
+          if (notice) setBan(notice);
+        } catch { /* Storage is optional. */ }
+      }
       setSession(newSession);
       setUser(newSession?.user ?? null);
     });
@@ -38,6 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (sessionError) throw sessionError;
         let verifiedUser = currentSession?.user ?? null;
         if (currentSession?.access_token) {
+          const { data: banState } = await supabase.from('account_ban_state')
+            .select('user_id,banned_until,reason').eq('user_id', currentSession.user.id).maybeSingle();
+          const notice = activeAccountBan(banState, currentSession.user.id);
+          if (notice) {
+            if (mounted) { rememberBan(notice); setSession(null); setUser(null); }
+            await supabase.auth.signOut({ scope: 'local' });
+            return;
+          }
           const { data: verified, error: userError } = await supabase.auth.getUser(currentSession.access_token);
           if (!userError && verified.user) verifiedUser = verified.user;
         }
@@ -107,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       setError(null);
+      setBan(null);
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -156,7 +218,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, session, loading, error, signUp, signIn, signOut }}>
-      {children}
+      {ban ? <div className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-white" role="alert">
+        <section className="w-full max-w-lg rounded-2xl border border-red-400/20 bg-slate-900 p-7">
+          <h1 className="text-2xl font-semibold">Your account has been suspended</h1>
+          <p className="mt-3 text-slate-300">You have been signed out. You can sign in again after {new Date(ban.banned_until).toLocaleString()}.</p>
+          <p className="mt-5 text-sm text-slate-400">Reason</p><p className="mt-1 whitespace-pre-wrap break-words text-slate-100">{ban.reason}</p>
+          <button onClick={() => { setBan(null); window.location.assign('/'); }} className="mt-6 rounded-xl bg-white/10 px-4 py-2 text-sm">Back to Safety</button>
+        </section>
+      </div> : children}
     </AuthContext.Provider>
   );
 }

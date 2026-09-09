@@ -1,6 +1,7 @@
 export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
+import { accountIsAllowed } from "../_utils/accountAccess.js";
 
 function readBearerToken(req: any) {
   const raw = req.headers?.authorization || req.headers?.Authorization || "";
@@ -16,6 +17,7 @@ async function isAppAdmin(req: any, supabase: any) {
 
     const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
     if (userError || !userData.user) return false;
+    if (!await accountIsAllowed(supabase, userData.user.id)) return false;
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")

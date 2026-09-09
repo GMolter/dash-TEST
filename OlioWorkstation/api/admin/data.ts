@@ -224,6 +224,9 @@ function assertOperation(resource: AdminResource, operation: AdminOperation) {
   if (operation.kind === "reset-password") allowed.add("temporary_password");
   if (operation.kind === "transfer-owner") allowed.add("owner_id");
   const values = operation.values && typeof operation.values === "object" ? operation.values : {};
+  if (operation.kind === "ban" && !["1h", "24h", "168h", "720h", "2160h"].includes(String(values.ban_duration))) {
+    throw new Error("INVALID_BAN_DURATION");
+  }
   if (resource.key === "users" && Object.prototype.hasOwnProperty.call(values, "app_admin")) {
     throw new Error("ADMIN_ACCESS_REQUIRES_REVIEW");
   }
@@ -502,11 +505,19 @@ async function executeUser(service: any, operation: AdminOperation, actor: { use
     return data;
   }
   if (operation.kind === "ban") {
-    const { error } = await service.auth.admin.updateUserById(id, { ban_duration: "876000h" });
+    // Verify that live enforcement is installed before changing auth state.
+    const { error: stateError } = await service.from("account_ban_state").select("user_id").eq("user_id", id).maybeSingle();
+    if (stateError) throw stateError;
+    const { data: current, error: lookupError } = await service.auth.admin.getUserById(id);
+    if (lookupError || !current.user) throw lookupError || new Error("TARGET_NOT_FOUND");
+    const { error } = await service.auth.admin.updateUserById(id, {
+      ban_duration: String(values.ban_duration),
+      app_metadata: { ...current.user.app_metadata, ban_reason: operation.reason.trim() },
+    });
     if (error) throw error;
     const { data: verified, error: verifyError } = await service.auth.admin.getUserById(id);
     if (verifyError || !verified.user?.banned_until) throw verifyError || new Error("BAN_NOT_APPLIED");
-    return { id, banned: true, banned_until: verified.user.banned_until };
+    return { id, banned: true, banned_until: verified.user.banned_until, reason: operation.reason };
   }
   if (operation.kind === "unban") {
     const { error } = await service.auth.admin.updateUserById(id, { ban_duration: "none" });

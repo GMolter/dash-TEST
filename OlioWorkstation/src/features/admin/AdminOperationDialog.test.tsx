@@ -20,6 +20,15 @@ describe("AdminOperationDialog", () => {
     vi.mocked(executeAdminOperation).mockResolvedValue({ result: { deleted: true } });
   });
 
+  it("submits the chosen ban duration with the reason", async () => {
+    const user = userEvent.setup();
+    render(<AdminOperationDialog operation={{ resource: "users", kind: "ban", ids: ["user-1"] }} title="Ban account" onCancel={vi.fn()} onComplete={vi.fn()} />);
+    await user.selectOptions(screen.getByRole("combobox"), "168h");
+    await user.type(screen.getByLabelText("Reason for this action"), "Repeated harassment");
+    await user.click(screen.getByRole("button", { name: "Review operation" }));
+    expect(prepareAdminOperation).toHaveBeenCalledWith(expect.objectContaining({ kind: "ban", values: { ban_duration: "168h" }, reason: "Repeated harassment" }));
+  });
+
   it("requires a reason, preview, and exact confirmation before execution", async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();

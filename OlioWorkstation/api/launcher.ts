@@ -1,3 +1,4 @@
+import { accountIsAllowed } from "./_utils/accountAccess.js";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServiceConfig } from './_utils/supabaseConfig.js';
@@ -134,7 +135,7 @@ async function authenticatedUser(req: VercelRequest, client: ServiceClient): Pro
   const token = bearer(req);
   if (!token) return null;
   const { data, error } = await client.auth.getUser(token);
-  return error || !data.user ? null : data.user.id;
+  return error || !data.user || !await accountIsAllowed(client, data.user.id) ? null : data.user.id;
 }
 
 async function handleCreate(req: VercelRequest, res: VercelResponse, client: ServiceClient, actorKey: string) {
@@ -354,3 +355,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return send(res, 503, { state: 'offline' });
   }
 }
+
+

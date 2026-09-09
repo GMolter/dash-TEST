@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { accountIsAllowed } from "./accountAccess.js";
 
 import { getSupabaseServiceConfig } from "./supabaseConfig.js";
 
@@ -33,6 +34,7 @@ export async function resolveAppAdminFromRequest(req: any): Promise<AccessResult
   if (userError || !userData.user) {
     return { ok: false, status: 401, error: "Invalid auth session" };
   }
+  if (!await accountIsAllowed(supabase, userData.user.id)) return { ok: false, status: 403, error: "Unauthorized Account" };
 
   let profileResult = await supabase
     .from("profiles")

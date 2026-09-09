@@ -1,3 +1,4 @@
+import { accountIsAllowed } from "../_utils/accountAccess.js";
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServiceConfig } from '../_utils/supabaseConfig.js';
 
@@ -129,6 +130,7 @@ async function handleSyllabusImport(req: any, res: any, body: any, apiKey: strin
   const supabase = createClient(serviceConfig.url, serviceConfig.serviceKey);
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData.user) return res.status(401).json({ error: 'Your session expired. Sign in again.' });
+  if (!await accountIsAllowed(supabase, userData.user.id)) return res.status(403).json({ error: 'Account access suspended.' });
 
   const fileName = asLimitedString(body?.fileName, 180);
   const fileData = asString(body?.fileData);
@@ -423,3 +425,5 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
+
+

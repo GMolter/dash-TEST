@@ -50,6 +50,15 @@ Apply `20260909190000_review_account_deletions.sql` to enable account deletion r
 in the same queue. Deletion requires a reason and owner approval with a typed confirmation.
 Owner accounts cannot be deleted through this flow. Review history survives deletion;
 database constraint failures leave the account and its pending request unchanged.
+Apply `20260909200000_live_account_bans.sql` before deploying live bans. It mirrors
+Auth bans into a private realtime notice, revokes sessions and launcher connections,
+and adds restrictive ban checks to existing RLS-protected app tables and storage.
+New RLS-protected tables must also include the `account_ban_guard` policy.
+Service-role account endpoints independently check live ban state. Open clients
+show the reason and expiry and sign out on the realtime event, with a five-second
+visible-tab fallback and a recheck on focus/reconnection. Offline clients receive
+the notice on reconnection; realtime delivery is not a zero-latency guarantee.
+Unbanning allows a new sign-in; revoked launcher devices must be paired again.
 Dashboard installation changes refresh in active user sessions within 30 seconds,
 and when the user returns to the tab.
 
