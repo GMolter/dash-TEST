@@ -8,8 +8,8 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   error: string | null;
-  signUp: (email: string, password: string, displayName?: string) => Promise<{ success: boolean; error?: string }>;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signUp: (email: string, password: string, displayName?: string) => Promise<{ success: boolean; error?: string; confirmationRequired?: boolean }>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -148,13 +148,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (signUpError) throw signUpError;
 
       if (data.user) {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          display_name: displayName || email.split('@')[0],
-          role: 'member',
-        });
-
-        return { success: true };
+        // Profiles are created atomically by the auth.users database trigger,
+        // including when email confirmation means there is no session yet.
+        return { success: true, confirmationRequired: !data.session };
       }
 
       return { success: false, error: 'Sign up failed' };
@@ -196,7 +192,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Sign in failed';
       setError(errorMessage);
-      return { success: false, error: errorMessage };
+      const code = typeof err === 'object' && err !== null && 'code' in err ? String(err.code) : undefined;
+      return { success: false, error: errorMessage, code };
     }
   };
 
