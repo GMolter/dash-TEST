@@ -553,7 +553,7 @@ function App() {
   }
 
   if (user && !authLoading && profile && !profile.org_id) {
-    return <OrgSetup />;
+    return <OrgSetup backgroundTheme={appBackgroundTheme} backgroundPreset={appBackgroundPreset} />;
   }
 
   return (

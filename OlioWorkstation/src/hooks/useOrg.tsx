@@ -185,83 +185,46 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     refreshOrg();
   }, [authLoading, user, refreshOrg]);
 
-  const joinOrg = async (code: string) => {
-    if (!user) return { success: false, error: 'Not authenticated' };
-
+  const completeSetup = async (
+    operation: 'join_organization_by_code' | 'create_organization_with_owner',
+    args: { p_code: string } | { p_name: string },
+  ) => {
+    if (!user) return { success: false, error: 'Please sign in again.' };
     try {
       setError(null);
-
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('code', code)
-        .maybeSingle();
-
-      if (orgError) throw orgError;
-      if (!orgData) return { success: false, error: 'Organization not found' };
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ org_id: orgData.id, role: 'member' })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
-
-      await refreshOrg();
+      const { data, error: setupError } = await supabase.rpc(operation, args);
+      if (setupError) throw setupError;
+      if (!data?.profile || !data?.organization || data.profile.id !== user.id || data.profile.org_id !== data.organization.id) {
+        throw new Error('Organization setup did not complete. Please try again.');
+      }
+      // Use committed membership immediately, even if the roster refresh fails.
+      setProfile(data.profile);
+      setOrganization(data.organization);
+      setMembers([data.profile]);
+      writeOrgCache(user.id, data.profile, data.organization, [data.profile]);
+      await refreshOrg({ silent: true });
       return { success: true };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to join organization';
+      // PostgREST errors are plain objects, not instances of Error.
+      const detail = typeof err === 'object' && err !== null && 'message' in err && typeof err.message === 'string'
+        ? err.message : 'Could not complete organization setup. Please try again.';
+      const code = typeof err === 'object' && err !== null && 'code' in err ? err.code : undefined;
+      const errorMessage = code === 'PGRST202'
+        ? 'Organization setup is temporarily unavailable. Please contact support.'
+        : detail;
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
   };
 
+  const joinOrg = async (code: string) => {
+    if (!/^\d{4}$/.test(code.trim())) return { success: false, error: 'Organization code must be 4 digits.' };
+    return completeSetup('join_organization_by_code', { p_code: code.trim() });
+  };
+
   const createOrg = async (name: string) => {
-    if (!user) return { success: false, error: 'Not authenticated' };
-
-    try {
-      setError(null);
-
-      let code = '';
-      let isUnique = false;
-
-      while (!isUnique) {
-        code = Math.floor(1000 + Math.random() * 9000).toString();
-        const { data: existing } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('code', code)
-          .maybeSingle();
-
-        if (!existing) isUnique = true;
-      }
-
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name,
-          code,
-          owner_id: user.id,
-        })
-        .select()
-        .single();
-
-      if (orgError) throw orgError;
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ org_id: orgData.id, role: 'owner' })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
-
-      await refreshOrg();
-      return { success: true };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create organization';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    }
+    if (!name.trim() || name.trim().length > 100) return { success: false, error: 'Organization name must be between 1 and 100 characters.' };
+    return completeSetup('create_organization_with_owner', { p_name: name.trim() });
   };
 
   const updateOrg = async (updates: Partial<Organization>) => {

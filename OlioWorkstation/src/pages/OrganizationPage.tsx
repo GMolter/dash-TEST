@@ -119,14 +119,19 @@ export function OrganizationPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      <header className="mb-7">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-violet-300">Your organization</p>
+        <h1 className="mt-3 break-words text-3xl font-semibold tracking-[-0.03em] text-white">{organization.name}</h1>
+        <p className="mt-2 text-sm text-slate-400">Your people, shared resources, and team settings.</p>
+      </header>
       <div className="glass-panel overflow-hidden rounded-[1.5rem]">
-        <div className="border-b border-slate-700">
+        <div className="border-b border-white/10">
           <div className="flex">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              className={`flex-1 px-3 py-4 text-sm sm:px-6 font-medium transition-colors ${
                 activeTab === 'overview'
-                  ? 'bg-slate-700/50 text-white border-b-2 border-blue-500'
+                  ? 'bg-violet-400/10 text-violet-100 border-b-2 border-violet-400'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
               }`}
             >
@@ -135,9 +140,9 @@ export function OrganizationPage() {
             </button>
             <button
               onClick={() => setActiveTab('shared-links')}
-              className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              className={`flex-1 px-3 py-4 text-sm sm:px-6 font-medium transition-colors ${
                 activeTab === 'shared-links'
-                  ? 'bg-slate-700/50 text-white border-b-2 border-blue-500'
+                  ? 'bg-violet-400/10 text-violet-100 border-b-2 border-violet-400'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
               }`}
             >
@@ -147,9 +152,9 @@ export function OrganizationPage() {
             {canManageOrg() && (
               <button
                 onClick={() => setActiveTab('manage')}
-                className={`flex-1 px-6 py-4 font-medium transition-colors ${
+                className={`flex-1 px-3 py-4 text-sm sm:px-6 font-medium transition-colors ${
                   activeTab === 'manage'
-                    ? 'bg-slate-700/50 text-white border-b-2 border-blue-500'
+                    ? 'bg-violet-400/10 text-violet-100 border-b-2 border-violet-400'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
                 }`}
               >
@@ -166,7 +171,7 @@ export function OrganizationPage() {
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">Organization Details</h3>
                 <div className="grid gap-4">
-                  <div className="bg-slate-900/50 rounded-lg p-4">
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm text-slate-400 mb-1">Organization Code</div>
@@ -176,7 +181,7 @@ export function OrganizationPage() {
                       </div>
                       <button
                         onClick={copyCode}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2"
                       >
                         <Copy className="w-4 h-4" />
                         {copied ? 'Copied!' : 'Copy'}
@@ -184,7 +189,7 @@ export function OrganizationPage() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-900/50 rounded-lg p-4">
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
                     <div className="text-sm text-slate-400 mb-1">Organization Name</div>
                     <div className="text-xl font-semibold text-white">{organization.name}</div>
                   </div>
@@ -200,7 +205,7 @@ export function OrganizationPage() {
                   {members.map((member) => (
                     <div
                       key={member.id}
-                      className="bg-slate-900/50 rounded-lg p-4 flex items-center justify-between"
+                      className="rounded-2xl border border-white/10 bg-slate-950/35 p-4 flex items-center justify-between"
                     >
                       <div className="flex items-center gap-3">
                         {getRoleIcon(member.role)}
@@ -232,7 +237,7 @@ export function OrganizationPage() {
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 bg-slate-950/50 border border-white/10 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40"
                     />
                   </div>
 
@@ -245,7 +250,7 @@ export function OrganizationPage() {
                   <button
                     onClick={handleSaveSettings}
                     disabled={saving}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
+                    className="px-6 py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
                   >
                     {saving ? 'Saving...' : 'Save Changes'}
                   </button>
@@ -254,7 +259,7 @@ export function OrganizationPage() {
 
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">Security</h3>
-                <div className="bg-slate-900/50 rounded-lg p-4">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="text-sm font-medium text-white mb-1">Regenerate Organization Code</div>
@@ -279,7 +284,7 @@ export function OrganizationPage() {
                   {members.map((member) => (
                     <div
                       key={member.id}
-                      className="bg-slate-900/50 rounded-lg p-4 flex items-center justify-between"
+                      className="rounded-2xl border border-white/10 bg-slate-950/35 p-4 flex items-center justify-between"
                     >
                       <div className="flex items-center gap-3">
                         {getRoleIcon(member.role)}
@@ -294,7 +299,7 @@ export function OrganizationPage() {
                           <>
                             <button
                               onClick={() => handlePromote(member.id, member.role)}
-                              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-medium transition-colors"
+                              className="px-3 py-1 bg-violet-600 hover:bg-violet-500 rounded text-white text-sm font-medium transition-colors"
                             >
                               {member.role === 'admin' ? 'Demote' : 'Promote'}
                             </button>
@@ -318,7 +323,7 @@ export function OrganizationPage() {
 
       {showRegenerateDialog && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <div className="bg-slate-800 rounded-xl border border-slate-700 max-w-md w-full p-6">
+          <div className="glass-panel bg-slate-950/90 rounded-3xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-white mb-4">Regenerate Organization Code</h3>
 
             {newCode ? (
@@ -370,7 +375,7 @@ export function OrganizationPage() {
 
       {showRemoveDialog && memberToRemove && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <div className="bg-slate-800 rounded-xl border border-slate-700 max-w-md w-full p-6">
+          <div className="glass-panel bg-slate-950/90 rounded-3xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-white mb-4">Remove Member</h3>
 
             <div className="space-y-4 mb-6">
