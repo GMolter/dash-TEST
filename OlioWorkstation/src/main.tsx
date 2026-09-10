@@ -4,6 +4,7 @@ import App from './App.tsx';
 import './index.css';
 import { AuthProvider } from './hooks/useAuth';
 import { OrgProvider } from './hooks/useOrg';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();
@@ -15,13 +16,15 @@ window.addEventListener('vite:preloadError', (event) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <AppErrorBoundary>
     <AuthProvider>
       <OrgProvider>
-        <Suspense fallback={<div className="min-h-screen bg-slate-950" role="status" aria-label="Loading view" />}>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300" role="status">Loading Olio…</div>}>
           <App />
         </Suspense>
       </OrgProvider>
     </AuthProvider>
+    </AppErrorBoundary>
   </StrictMode>
 );
 
