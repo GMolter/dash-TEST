@@ -32,7 +32,9 @@ export default async function handler(req: any, res: any) {
     if (identityError || !identity.user) return res.status(401).json({ error: "Invalid auth session" });
     if (!await accountIsAllowed(service, identity.user.id)) return res.status(403).json({ error: "Account access suspended" });
     if (identity.user.app_metadata?.force_password_change !== true) {
-      return res.status(409).json({ error: "This account does not require a password change." });
+      // A previous request may have committed before its response was lost.
+      // Acknowledge completion without changing the password a second time.
+      return res.status(200).json({ ok: true, alreadyCompleted: true });
     }
 
     const password = String(parseBody(req.body).password || "");
