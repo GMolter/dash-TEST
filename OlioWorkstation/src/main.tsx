@@ -26,16 +26,7 @@ createRoot(document.getElementById('root')!).render(
 );
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  const registerServiceWorker = () => {
-    void navigator.serviceWorker.register('/sw.js', { scope: '/' });
-  };
-
-  if ('requestIdleCallback' in window) {
-    window.requestIdleCallback(registerServiceWorker, { timeout: 2_000 });
-  } else {
-    globalThis.setTimeout(registerServiceWorker, 0);
-  }
-
+  // Registration lives in index.html so it also runs if an app module fails.
   globalThis.setTimeout(() => {
     window.sessionStorage.removeItem('olio-chunk-reload');
   }, 10_000);

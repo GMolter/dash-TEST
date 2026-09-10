@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olio-workstation-runtime-v1';
+const CACHE_NAME = 'olio-workstation-runtime-v2';
 const APP_SHELL = '/';
 const MAX_CACHE_ENTRIES = 80;
 
@@ -37,24 +37,18 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
-    const cachePromise = caches.open(CACHE_NAME);
-    const cachedPromise = cachePromise.then((cache) => cache.match(APP_SHELL));
-    const updatePromise = Promise.all([cachePromise, cachedPromise])
-      .then(async ([cache, cached]) => {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
         try {
-          const response = await fetch(request);
+          const response = await fetch(request, { cache: 'no-cache' });
           if (response.ok && response.headers.get('content-type')?.includes('text/html')) {
             await cache.put(APP_SHELL, response.clone());
           }
           return response;
         } catch {
-          return cached;
+          return (await cache.match(APP_SHELL)) || Response.error();
         }
-      });
-
-    event.waitUntil(updatePromise.then(() => undefined));
-    event.respondWith(
-      cachedPromise.then((cached) => cached || updatePromise),
+      }),
     );
     return;
   }
@@ -64,10 +58,18 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
       const cached = await cache.match(request);
-      if (cached) return cached;
+      const validAsset = (response) => {
+        if (!response.ok) return false;
+        const type = response.headers.get('content-type') || '';
+        if (request.destination === 'script') return /(?:java|ecma)script/i.test(type);
+        if (request.destination === 'style') return type.includes('text/css');
+        return !type.includes('text/html');
+      };
+      if (cached && validAsset(cached)) return cached;
+      if (cached) await cache.delete(request);
 
       const response = await fetch(request);
-      if (response.ok) {
+      if (validAsset(response)) {
         await cache.put(request, response.clone());
         void trimCache(cache);
       }
