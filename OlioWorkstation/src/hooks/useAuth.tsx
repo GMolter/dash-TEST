@@ -69,11 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let sessionRevision = 0;
     setLoading(true);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
       if (event === 'INITIAL_SESSION') return;
+      sessionRevision += 1;
       if (event === 'SIGNED_OUT' && lastUserId.current) {
         try {
           const notice = activeAccountBan(JSON.parse(localStorage.getItem(`olio-ban-notice:${lastUserId.current}`) || 'null'), lastUserId.current);
@@ -85,14 +87,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const refreshVerifiedSession = async (showLoading = false) => {
+      const revision = sessionRevision;
       if (showLoading && mounted) setLoading(true);
       try {
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        if (revision !== sessionRevision) return;
         if (sessionError) throw sessionError;
         let verifiedUser = currentSession?.user ?? null;
         if (currentSession?.access_token) {
           const { data: banState } = await supabase.from('account_ban_state')
             .select('user_id,banned_until,reason').eq('user_id', currentSession.user.id).maybeSingle();
+          if (revision !== sessionRevision) return;
           const notice = activeAccountBan(banState, currentSession.user.id);
           if (notice) {
             if (mounted) { rememberBan(notice); setSession(null); setUser(null); }
@@ -102,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { data: verified, error: userError } = await supabase.auth.getUser(currentSession.access_token);
           if (!userError && verified.user) verifiedUser = verified.user;
         }
-        if (mounted) {
+        if (mounted && revision === sessionRevision) {
           setSession(currentSession);
           setUser(verifiedUser);
         }
@@ -172,22 +177,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (signInError) throw signInError;
 
-      if (data.user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', data.user.id)
-          .maybeSingle();
-
-        if (profileError) throw profileError;
-        if (!profile) {
-          await supabase.auth.signOut();
-          const msg = 'Profile not found for this account. Please contact support.';
-          setError(msg);
-          return { success: false, error: msg };
-        }
-      }
-
+      // Profile provisioning and organization setup do not invalidate a login.
+      // OrgProvider repairs/loads the profile without signing the user back out.
       return { success: !!data.session };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Sign in failed';

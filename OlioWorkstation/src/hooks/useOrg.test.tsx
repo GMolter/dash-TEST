@@ -23,6 +23,7 @@ beforeEach(() => {
   db.user = { id: 'new-user' };
   db.profile = { id: 'new-user', org_id: null, role: 'member', display_name: 'New user' };
   db.rpc.mockImplementation(async (operation: string) => {
+    if (operation === 'ensure_current_profile') return { data: db.profile, error: null };
     db.profile = { ...db.profile, org_id: 'team', role: operation === 'create_organization_with_owner' ? 'owner' : 'member' };
     return { data: { profile: db.profile, organization: db.organization }, error: null };
   });
@@ -55,13 +56,34 @@ describe('Organization setup transactions', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect((await result.current.joinOrg('93')).success).toBe(false);
     expect((await result.current.createOrg(' ')).success).toBe(false);
-    expect(db.rpc).not.toHaveBeenCalled();
+    expect(db.rpc).toHaveBeenCalledExactlyOnceWith('ensure_current_profile');
   });
   it('does not report success for an empty RPC result', async () => {
-    db.rpc.mockResolvedValue({ data: null, error: null });
+    db.rpc.mockImplementation(async (operation: string) => ({ data: operation === 'ensure_current_profile' ? db.profile : null, error: null }));
     const { result } = renderHook(useOrg, { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => { expect((await result.current.createOrg('Team')).success).toBe(false); });
     expect(result.current.profile?.org_id).toBeNull();
+  });
+
+  it('keeps an account with no organization signed in for setup', async () => {
+    const { result } = renderHook(useOrg, { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.profile?.id).toBe('new-user');
+    expect(result.current.profile?.org_id).toBeNull();
+    expect(db.signOut).not.toHaveBeenCalled();
+  });
+
+  it('shows a retryable error instead of signing out when profile loading fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    db.rpc.mockResolvedValue({ data: null, error: { message: 'Profile service unavailable' } });
+    const { result } = renderHook(useOrg, { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBe('Profile service unavailable');
+    expect(db.signOut).not.toHaveBeenCalled();
+    db.rpc.mockResolvedValue({ data: db.profile, error: null });
+    await act(async () => { await result.current.refreshOrg(); });
+    expect(result.current.profile?.id).toBe('new-user');
+    expect(result.current.error).toBeNull();
   });
 });

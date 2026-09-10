@@ -458,6 +458,14 @@ async function guardUserOperation(service: any, actorId: string, actorIsOwner: b
   }
   if (target.app_owner && operation.kind === "request-delete") throw new Error("OWNER_ACCOUNT_PROTECTED");
   if (target.app_owner && !actorIsOwner) throw new Error("OWNER_ACCOUNT_PROTECTED");
+  if (operation.kind === "request-delete" || operation.kind === "delete") {
+    // A failed legacy setup may leave an owned organization even when the
+    // profile's org_id is null. The organization row is authoritative.
+    const { count, error: ownershipError } = await service.from("organizations")
+      .select("id", { count: "exact", head: true }).eq("owner_id", id);
+    if (ownershipError) throw ownershipError;
+    if ((count || 0) > 0) throw new Error("ACCOUNT_OWNS_ORGANIZATION");
+  }
   if (operation.kind === "request-admin" && target.app_admin) throw new Error("ALREADY_ADMIN");
   if (operation.kind === "revoke-admin" && !target.app_admin) throw new Error("NOT_AN_ADMIN");
   if (operation.kind === "revoke-admin" && target.app_owner) throw new Error("OWNER_ADMIN_REQUIRED");
@@ -663,7 +671,7 @@ function statusForError(error: any) {
   const code = String(error?.message || error?.code || "");
   if (/REASON_REQUIRED|REQUIRED_|INVALID_|PASSWORD_TOO_SHORT|TARGET_REQUIRED|BULK_/.test(code)) return 400;
   if (/OWNER_ACCOUNT_PROTECTED|OWNER_REVIEW_REQUIRED|APPLICATION_ACCESS_FLAGS_SERVER_MANAGED/.test(code)) return 403;
-  if (/SELF_LOCKOUT|LAST_ADMIN|OWNER_MUST|OWNER_ADMIN_REQUIRED|ACTION_NOT_ALLOWED|ALREADY_ADMIN|NOT_AN_ADMIN|REQUEST_ALREADY_PENDING|PROMOTION_ALREADY_PENDING|REQUEST_NOT_PENDING|APP_OWNER_LIMIT/.test(code)) return 409;
+  if (/SELF_LOCKOUT|LAST_ADMIN|OWNER_MUST|ACCOUNT_OWNS_ORGANIZATION|OWNER_ADMIN_REQUIRED|ACTION_NOT_ALLOWED|ALREADY_ADMIN|NOT_AN_ADMIN|REQUEST_ALREADY_PENDING|PROMOTION_ALREADY_PENDING|REQUEST_NOT_PENDING|APP_OWNER_LIMIT/.test(code)) return 409;
   if (/TARGET_NOT_FOUND/.test(code)) return 404;
   return 500;
 }
@@ -827,6 +835,9 @@ export default async function handler(req: any, res: any) {
     if (["42703", "42P01", "PGRST204", "PGRST205", "PGRST202"].includes(error?.code)) {
       console.error("admin database schema unavailable", { code: error.code });
       return res.status(503).json({ error: "Admin database setup is incomplete. Apply the latest Supabase migrations, including 20260908120000_admin_operations_console.sql and 20260908170000_add_app_owners_and_admin_reviews.sql, then refresh." });
+    }
+    if (error?.message === "ACCOUNT_OWNS_ORGANIZATION" || (error?.code === "23503" && String(error?.message).includes('organizations_owner_id_fkey'))) {
+      return res.status(409).json({ error: 'This account owns an organization. Transfer its ownership, or delete that organization, before deleting this account.' });
     }
     const status = statusForError(error);
     console.error("admin data request failed", { code: String(error?.code || error?.message || "UNKNOWN").slice(0, 100) });

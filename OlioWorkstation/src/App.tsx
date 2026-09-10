@@ -94,8 +94,8 @@ function writeBannerCache(banner: BannerState) {
 }
 
 function App() {
-  const { user, loading: authLoading } = useAuth();
-  const { profile, organization } = useOrg();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { profile, organization, loading: orgLoading, error: orgError, refreshOrg } = useOrg();
 
   const [view, setView] = useState<View>({ type: 'home' });
   const [dashboardEditing, setDashboardEditing] = useState(() => new URLSearchParams(window.location.search).get('edit') === 'dashboard');
@@ -474,6 +474,24 @@ function App() {
     return <LauncherAuthorization requestId={view.requestId} displayCode={view.displayCode} />;
   }
 
+  const needsWorkspaceProfile = !isPublicRoute && !['help', 'help-article', 'admin', 'admin-editor'].includes(view.type);
+  if (needsWorkspaceProfile && user && !authLoading) {
+    if (!profile || profile.id !== user.id) {
+      return <div className="relative flex min-h-screen items-center justify-center p-6 text-white">
+        <AnimatedBackground theme={appBackgroundTheme} preset={appBackgroundPreset} />
+        <section className="glass-panel relative z-10 w-full max-w-md rounded-3xl p-8 text-center">
+          <h1 className="text-2xl font-semibold">{orgLoading ? 'Getting your account ready…' : 'Let’s finish setting up your account.'}</h1>
+          {orgLoading ? <p role="status" className="mt-3 text-sm text-slate-300">Loading your profile.</p> : <>
+            <p role="alert" className="mt-3 text-sm leading-6 text-slate-300">{orgError || 'Your profile could not be loaded. You are still signed in; please try again.'}</p>
+            <button type="button" onClick={() => { void refreshOrg(); }} className="mt-6 rounded-xl bg-violet-600 px-5 py-3 font-medium hover:bg-violet-500">Try again</button>
+            <button type="button" onClick={() => { void signOut(); }} className="mt-4 block w-full text-sm text-slate-400 hover:text-white">Sign out</button>
+          </>}
+        </section>
+      </div>;
+    }
+    if (!profile.org_id) return <OrgSetup backgroundTheme={appBackgroundTheme} backgroundPreset={appBackgroundPreset} />;
+  }
+
   if (view.type === 'projects-center') {
     return (
       <>
@@ -548,12 +566,12 @@ function App() {
     );
   }
 
-  if (!user && allowOnboarding) {
-    return <Onboarding />;
+  if (authLoading || (!user && !allowOnboarding)) {
+    return <div role="status" className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">Checking sign-in…</div>;
   }
 
-  if (user && !authLoading && profile && !profile.org_id) {
-    return <OrgSetup backgroundTheme={appBackgroundTheme} backgroundPreset={appBackgroundPreset} />;
+  if (!user && allowOnboarding) {
+    return <Onboarding />;
   }
 
   return (

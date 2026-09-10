@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 
@@ -82,7 +82,11 @@ function writeOrgCache(userId: string, profile: Profile | null, organization: Or
 }
 
 export function OrgProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
+  const currentUserId = useRef(userId);
+  currentUserId.current = userId;
+  const refreshSequence = useRef(0);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
@@ -95,7 +99,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       if (!silent) setLoading(true);
       return;
     }
-    if (!user) {
+    if (!userId) {
       setProfile(null);
       setOrganization(null);
       setMembers([]);
@@ -103,15 +107,14 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const sequence = ++refreshSequence.current;
+    const isCurrent = () => currentUserId.current === userId && refreshSequence.current === sequence;
     try {
       if (!silent) setLoading(true);
       setError(null);
 
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+      const { data: profileData, error: profileError } = await supabase.rpc('ensure_current_profile');
+      if (!isCurrent()) return;
 
       if (profileError) throw profileError;
 
@@ -119,9 +122,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setOrganization(null);
         setMembers([]);
-        setError('Profile missing. Please sign in again or contact support.');
+        setError('Your account profile could not be loaded. Please try again.');
         setLoading(false);
-        await signOut();
         return;
       }
 
@@ -134,6 +136,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', resolvedProfile.org_id)
           .single();
+        if (!isCurrent()) return;
 
         if (orgError) throw orgError;
 
@@ -143,28 +146,31 @@ export function OrgProvider({ children }: { children: ReactNode }) {
           .from('profiles')
           .select('*')
           .eq('org_id', resolvedProfile.org_id);
+        if (!isCurrent()) return;
 
         if (membersError) throw membersError;
 
         setMembers(membersData || []);
-        writeOrgCache(user.id, resolvedProfile, orgData, membersData || []);
+        writeOrgCache(userId, resolvedProfile, orgData, membersData || []);
       } else {
         setOrganization(null);
         setMembers([]);
-        writeOrgCache(user.id, resolvedProfile, null, []);
+        writeOrgCache(userId, resolvedProfile, null, []);
       }
 
       setLoading(false);
     } catch (err) {
+      if (!isCurrent()) return;
       console.error('Org refresh error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load organization');
+      setError(typeof err === 'object' && err !== null && 'message' in err && typeof err.message === 'string'
+        ? err.message : 'Could not load your account. Please try again.');
       setLoading(false);
     }
-  }, [user, authLoading, signOut]);
+  }, [userId, authLoading]);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!userId) {
       setProfile(null);
       setOrganization(null);
       setMembers([]);
@@ -172,7 +178,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const cached = readOrgCache(user.id);
+    const cached = readOrgCache(userId);
     if (cached) {
       setProfile(cached.profile);
       setOrganization(cached.organization);
@@ -182,8 +188,11 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    setProfile(null);
+    setOrganization(null);
+    setMembers([]);
     refreshOrg();
-  }, [authLoading, user, refreshOrg]);
+  }, [authLoading, userId, refreshOrg]);
 
   const completeSetup = async (
     operation: 'join_organization_by_code' | 'create_organization_with_owner',
@@ -197,6 +206,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       if (!data?.profile || !data?.organization || data.profile.id !== user.id || data.profile.org_id !== data.organization.id) {
         throw new Error('Organization setup did not complete. Please try again.');
       }
+      if (currentUserId.current !== user.id) return { success: false, error: 'Please sign in again.' };
+      refreshSequence.current += 1;
       // Use committed membership immediately, even if the roster refresh fails.
       setProfile(data.profile);
       setOrganization(data.organization);

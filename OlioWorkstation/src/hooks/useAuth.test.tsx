@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Session } from '@supabase/supabase-js';
 
 const auth = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -8,6 +9,7 @@ const auth = vi.hoisted(() => ({
   unsubscribe: vi.fn(),
   banRead: vi.fn(),
   banEvent: null as null | ((payload: { new: unknown }) => void),
+  authEvent: null as null | ((event: string, session: Session | null) => void),
 }));
 
 vi.mock("../lib/supabase", () => ({
@@ -16,7 +18,10 @@ vi.mock("../lib/supabase", () => ({
       getSession: auth.getSession,
       getUser: auth.getUser,
       signOut: auth.signOut,
-      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: auth.unsubscribe } } })),
+      onAuthStateChange: vi.fn((callback: (event: string, session: Session | null) => void) => {
+        auth.authEvent = callback;
+        return { data: { subscription: { unsubscribe: auth.unsubscribe } } };
+      }),
     },
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: auth.banRead }) }) }),
     channel: () => ({ on: (_type: unknown, _filter: unknown, callback: (payload: { new: unknown }) => void) => {
@@ -40,6 +45,15 @@ function Probe() {
 }
 
 describe("AuthProvider session safety", () => {
+  it('does not overwrite a new login with a stale initial session read', async () => {
+    let finish: ((value: unknown) => void) | undefined;
+    auth.getSession.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    act(() => auth.authEvent?.('SIGNED_IN', { access_token: 'new-token', user: sessionUser } as unknown as Session));
+    await act(async () => { finish?.({ data: { session: null }, error: null }); });
+    expect(await screen.findByText('Signed in')).toBeInTheDocument();
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
