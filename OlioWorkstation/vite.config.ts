@@ -17,6 +17,8 @@ export default defineConfig({
     },
   } : undefined,
   build: {
+    // Move off URLs that older deployments could cache as immutable HTML.
+    assetsDir: 'app-assets',
     target: 'es2022',
     cssCodeSplit: true,
     rollupOptions: {
