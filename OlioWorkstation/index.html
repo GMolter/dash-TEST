@@ -19,6 +19,10 @@
         <strong style="font-size:24px">Olio Workstation</strong>
         <span id="olio-startup-message">Loading your workspace…</span>
         <button id="olio-startup-retry" hidden style="border:1px solid #a78bfa;border-radius:12px;background:#7c3aed;color:white;padding:12px 20px;font:inherit;cursor:pointer">Reload Olio</button>
+        <details id="olio-startup-details" hidden style="max-width:640px;text-align:left;overflow-wrap:anywhere">
+          <summary>Loading error details</summary>
+          <p id="olio-startup-error"></p>
+        </details>
       </div>
     </div>
     <script>
@@ -26,22 +30,45 @@
       // cannot register its own service-worker update or render an error screen.
       (() => {
         const retry = document.getElementById('olio-startup-retry');
-        const showRecovery = () => {
+        let firstError = '';
+        const showRecovery = (event) => {
           if (!document.getElementById('olio-startup')) return;
+          if (!firstError && event) {
+            const target = event.target;
+            if (target && target.tagName === 'SCRIPT') {
+              firstError = 'Could not download application script: ' + new URL(target.src, location.href).pathname;
+            } else {
+              const reason = event.error || event.reason;
+              firstError = event.message || (reason && reason.message) || '';
+            }
+          }
           document.getElementById('olio-startup-message').textContent = 'Olio couldn’t finish loading. Reload to get the latest version.';
+          document.getElementById('olio-startup-error').textContent = firstError || 'The application did not start within 12 seconds. Check the browser Console for a failed script or startup error.';
+          document.getElementById('olio-startup-details').hidden = false;
           retry.hidden = false;
         };
         retry.addEventListener('click', async () => {
           retry.disabled = true;
           retry.textContent = 'Reloading…';
-          try {
+          const resetCache = async () => {
             if ('caches' in window) {
               const keys = await caches.keys();
               await Promise.all(keys.filter(key => key.startsWith('olio-workstation-')).map(key => caches.delete(key)));
             }
-          } finally {
-            window.location.reload();
-          }
+          };
+          const resetWorker = async () => {
+            if (!('serviceWorker' in navigator)) return;
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.filter(registration => {
+              const worker = registration.active || registration.waiting || registration.installing;
+              return worker && worker.scriptURL === new URL('/sw.js', location.href).href;
+            }).map(registration => registration.unregister()));
+          };
+          await Promise.race([
+            Promise.allSettled([resetCache(), resetWorker()]),
+            new Promise(resolve => setTimeout(resolve, 3000)),
+          ]);
+          window.location.reload();
         });
         window.addEventListener('error', showRecovery, true);
         window.addEventListener('unhandledrejection', showRecovery);

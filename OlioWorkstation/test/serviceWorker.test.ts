@@ -18,6 +18,19 @@ function worker(cached?: Response) {
 }
 
 describe('Deployment cache recovery', () => {
+  it.each(['script', 'document'])('serves %s from the network when cache storage is unavailable', async (destination) => {
+    const w = worker();
+    w.caches.open.mockRejectedValue(new Error('Storage unavailable'));
+    w.fetch.mockResolvedValue(new Response('fresh response'));
+    expect(await (await w.request(destination, destination === 'document' ? 'navigate' : 'cors')).text()).toBe('fresh response');
+  });
+  it.each(['script', 'document'])('keeps a successful %s response when caching fails', async (destination) => {
+    const w = worker(new Response('stale shell'));
+    w.cache.match.mockResolvedValue(undefined);
+    w.cache.put.mockRejectedValue(new Error('Quota exceeded'));
+    w.fetch.mockResolvedValue(new Response('fresh response', { headers: { 'content-type': destination === 'script' ? 'application/javascript' : 'text/html' } }));
+    expect(await (await w.request(destination, destination === 'document' ? 'navigate' : 'cors')).text()).toBe('fresh response');
+  });
   it('loads fresh HTML instead of a stale cached shell', async () => {
     const w = worker(new Response('old shell', { headers: { 'content-type': 'text/html' } }));
     w.fetch.mockResolvedValue(new Response('new shell', { headers: { 'content-type': 'text/html' } }));
