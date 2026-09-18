@@ -312,7 +312,7 @@ export function DashboardCanvas({ editing, onEditingChange, onNavigate, onOpenTo
   };
 
   const renderItem = (item: CanvasItem) => {
-    if (item.kind === 'classdash') return configurationLoading ? <ClassDashPlaceholder /> : <ClassDashWidget onOpen={() => onNavigate('/classdash')} />;
+    if (item.kind === 'classdash') return configurationLoading ? <ClassDashPlaceholder /> : <ClassDashWidget tall={!compact && (workingLayouts[item.id]?.height || 3) >= 5} onOpen={() => onNavigate('/classdash')} />;
     if (item.kind === 'quicklink' && item.quicklink) return <QuicklinkCard link={item.quicklink} />;
     if (item.kind === 'folder' && item.folder) return <FolderCard folder={item.folder} linkCount={quicklinks.filter((link) => link.folder_id === item.folder!.id).length} onOpen={() => setOpenFolderId(item.folder!.id)} />;
     if (item.kind === 'shortcut' && item.shortcut) return <ShortcutCard shortcut={item.shortcut} onNavigate={onNavigate} onOpenTool={onOpenTool} />;

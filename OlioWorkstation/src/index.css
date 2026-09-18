@@ -137,3 +137,20 @@
     background: linear-gradient(180deg, rgba(96, 165, 250, 0.8), rgba(59, 130, 246, 0.75));
   }
 }
+
+/* Layout follows the resizable card instead of the browser viewport. */
+.classdash-widget { container: classdash / inline-size; }
+.classdash-summary { padding-bottom: 12px; }
+.classdash-course { overflow-wrap: anywhere; }
+@container classdash (max-width: 440px) {
+  .classdash-summary { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .classdash-countdown { text-align: left; }
+  .classdash-details { grid-template-columns: 1fr; }
+}
+@container classdash (min-width: 600px) {
+  .classdash-course { font-size: 2rem; }
+  .classdash-digits { font-size: 3rem; }
+}
+.classdash-widget[data-tall="true"] .classdash-summary { flex-direction: column; align-items: flex-start; justify-content: center; gap: 20px; }
+.classdash-widget[data-tall="true"] .classdash-countdown { text-align: left; }
+.classdash-widget[data-tall="true"] .classdash-digits { font-size: clamp(2rem, 9cqi, 4.5rem); }
