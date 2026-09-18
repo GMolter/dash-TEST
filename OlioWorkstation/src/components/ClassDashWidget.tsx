@@ -81,7 +81,7 @@ export function ClassDashWidget({ onOpen, full = false, tall = false }: { onOpen
 
   if (!full) {
     return (
-      <section data-tall={tall} className="classdash-widget glass-panel relative h-full overflow-auto rounded-[1.6rem] p-5">
+      <section data-tall={tall} className="classdash-widget glass-panel relative h-full overflow-hidden rounded-[1.6rem] p-4">
         <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-violet-500/10 blur-3xl" />
         <div className="relative flex h-full min-h-0 flex-col">
           <div className="flex items-center justify-between gap-3">
@@ -89,7 +89,7 @@ export function ClassDashWidget({ onOpen, full = false, tall = false }: { onOpen
             <button type="button" onClick={onOpen} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/[0.08] hover:text-white">Open <ArrowRight className="h-3.5 w-3.5" /></button>
           </div>
 
-          <div className="classdash-summary mt-3 flex shrink-0 flex-1 items-center justify-between gap-5">
+          <div className="classdash-summary mt-2 flex min-h-0 flex-1 items-center justify-between gap-5">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">
                 <h2 className="classdash-course text-2xl font-semibold tracking-tight text-white">{next.meeting.code}</h2>
@@ -103,11 +103,10 @@ export function ClassDashWidget({ onOpen, full = false, tall = false }: { onOpen
             </div>
           </div>
 
-          <div className="classdash-details grid grid-cols-2 gap-2.5 border-t border-white/10 pt-3">
-            <div className="flex min-w-0 items-center gap-2.5 rounded-xl bg-white/[0.035] px-3 py-2"><Clock3 className="h-4 w-4 shrink-0 text-violet-300" /><div className="min-w-0"><div className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Class starts</div><div className="truncate text-sm font-medium text-slate-100">{next.start.toLocaleDateString([], { weekday: 'short' })} · {formatTime(next.start)}</div></div></div>
+          <div className="classdash-details grid shrink-0 grid-cols-2 gap-2.5 border-t border-white/10 pt-2">
+            <div className="flex min-w-0 items-center gap-2.5 rounded-xl bg-white/[0.035] px-3 py-2"><Clock3 className="h-4 w-4 shrink-0 text-violet-300" /><div className="min-w-0"><div className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Class starts</div><div className="truncate text-sm font-medium text-slate-100">{next.start.toLocaleDateString([], { weekday: 'short' })} · {formatTime(next.start)}</div>{status !== 'in-class' && <div className="mt-0.5 truncate text-[10px] text-slate-400">Leave by {formatTime(next.leaveAt)}</div>}</div></div>
             <div className="flex min-w-0 items-center gap-2.5 rounded-xl bg-white/[0.035] px-3 py-2"><MapPin className="h-4 w-4 shrink-0 text-violet-300" /><div className="min-w-0"><div className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Going to</div><div className="truncate text-sm font-medium text-slate-100">{next.meeting.location_name}</div></div></div>
           </div>
-          {status !== 'in-class' && <p className="mt-2 text-xs text-slate-400">Leave by {formatTime(next.leaveAt)}</p>}
         </div>
       </section>
     );

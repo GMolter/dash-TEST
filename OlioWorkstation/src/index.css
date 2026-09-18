@@ -140,12 +140,15 @@
 
 /* Layout follows the resizable card instead of the browser viewport. */
 .classdash-widget { container: classdash / inline-size; }
-.classdash-summary { padding-bottom: 12px; }
-.classdash-course { overflow-wrap: anywhere; }
+.classdash-summary { padding-bottom: 8px; }
+.classdash-course { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 @container classdash (max-width: 440px) {
-  .classdash-summary { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .classdash-countdown { text-align: left; }
-  .classdash-details { grid-template-columns: 1fr; }
+  .classdash-summary { gap: 8px; }
+  .classdash-course { font-size: 1.125rem; }
+  .classdash-digits { font-size: 1.5rem; }
+  .classdash-summary > div:first-child > p { display: none; }
+  .classdash-details { gap: 6px; }
+  .classdash-details > div { padding: 6px; gap: 6px; }
 }
 @container classdash (min-width: 600px) {
   .classdash-course { font-size: 2rem; }
