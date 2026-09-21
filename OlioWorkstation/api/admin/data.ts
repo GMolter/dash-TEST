@@ -280,7 +280,7 @@ function sanitizeAudit(resource: AdminResource, value: unknown): any {
 
 async function fetchRows(service: any, resource: AdminResource, ids: string[], includeSensitive: boolean) {
   if (resource.key === "users") {
-    return Promise.all(ids.map(async (id) => {
+    const rows = await Promise.all(ids.map(async (id) => {
       const [{ data: profile, error: profileError }, { data: authData, error: authError }] = await Promise.all([
         service.from("profiles").select("id,email,display_name,org_id,role,app_admin,app_owner,created_at,updated_at").eq("id", id).maybeSingle(),
         service.auth.admin.getUserById(id),
@@ -297,6 +297,7 @@ async function fetchRows(service: any, resource: AdminResource, ids: string[], i
         force_password_change: user.app_metadata?.force_password_change === true,
       });
     }));
+    return attachAppActivity(service, rows);
   }
   const columns = selectedColumns(resource, includeSensitive).join(",");
   const rows: Record<string, any>[] = [];
@@ -329,7 +330,17 @@ async function listUsers(service: any, resource: AdminResource, page: number, pa
       force_password_change: user?.app_metadata?.force_password_change === true,
     });
   }));
-  return { rows, total: count || 0 };
+  return { rows: await attachAppActivity(service, rows), total: count || 0 };
+}
+
+async function attachAppActivity(service: any, rows: Record<string, any>[]) {
+  if (!rows.length) return rows;
+  const { data, error } = await service.from("user_app_activity").select("user_id,last_active_at").in("user_id", rows.map((row) => row.id));
+  // Permit rolling deployment before the activity migration reaches the DB.
+  // Never substitute a sign-in timestamp for missing app activity.
+  if (error && !["42P01", "PGRST205"].includes(error.code)) throw error;
+  const activity = new Map((data || []).map((item: any) => [item.user_id, item.last_active_at]));
+  return rows.map((row) => ({ ...row, last_active_at: activity.get(row.id) || null }));
 }
 
 async function countTable(service: any, table: string, filter?: [string, string]) {

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { activeAccountBan, type AccountBan } from '../features/auth/accountBan';
+import { useAppActivity } from './useAppActivity';
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ban, setBan] = useState<AccountBan | null>(null);
+  useAppActivity(user?.id);
   const lastUserId = useRef<string | null>(null);
   if (user?.id) lastUserId.current = user.id;
 

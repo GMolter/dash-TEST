@@ -96,6 +96,7 @@ export const ADMIN_RESOURCES: Record<string, AdminResource> = {
       f("role", "Organization role", "select", { editable: true, create: true, options: ["member", "admin", "owner"] }),
       f("app_admin", "App admin", "boolean"), f("app_owner", "App owner", "boolean"),
       f("email_confirmed_at", "Email confirmed", "datetime"), f("last_sign_in_at", "Last sign in", "datetime"),
+      f("last_active_at", "Last Active", "datetime"),
       f("banned_until", "Banned until", "datetime"), f("force_password_change", "Must change password", "boolean"),
       ...timestamps,
     ],
