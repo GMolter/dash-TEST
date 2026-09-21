@@ -132,6 +132,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
         </div>
       )}
 
+      {data?.resource === "users" && rows.some((row) => row._admin_activity_status === "unavailable") && <div role="alert" className="border-b border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Activity tracking is not installed in the database. Apply the app activity migration, then reopen the app and refresh this list.</div>}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-left text-sm">
           <thead className="bg-slate-900/55 text-xs tracking-wide text-slate-500">
@@ -156,7 +157,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
                 {columns.map((field) => {
                   const reference = row._admin_refs?.[field.name];
                   return <td key={field.name} onClick={() => onOpen(row)} className="max-w-[260px] truncate px-3 py-3">
-                    {reference ? <button onClick={(event) => { event.stopPropagation(); onOpenReference(reference); }} className="inline-flex max-w-full items-center gap-1.5 truncate font-medium text-blue-200 hover:text-blue-100 hover:underline"><span className="truncate">{reference.label}</span><ArrowUpRight className="h-3.5 w-3.5 shrink-0" /></button> : tableValue(row[field.name], field)}
+                    {reference ? <button onClick={(event) => { event.stopPropagation(); onOpenReference(reference); }} className="inline-flex max-w-full items-center gap-1.5 truncate font-medium text-blue-200 hover:text-blue-100 hover:underline"><span className="truncate">{reference.label}</span><ArrowUpRight className="h-3.5 w-3.5 shrink-0" /></button> : tableValue(row[field.name], field, row._admin_activity_status)}
                   </td>;
                 })}
               </tr>
@@ -193,16 +194,17 @@ function chooseColumns(fields: AdminField[], rows: AdminRow[], resource?: string
     .map((field) => field.name === "last_active_at" ? { ...field, label: "Last Active" } : field);
 }
 
-function tableValue(value: unknown, field: AdminField) {
-  if (field.name === "last_active_at") return <LastActiveBadge value={value} />;
+function tableValue(value: unknown, field: AdminField, activityStatus?: unknown) {
+  if (field.name === "last_active_at") return <LastActiveBadge value={value} status={activityStatus} />;
   if (value === null || value === undefined || value === "") return <span className="text-slate-600">—</span>;
   if (typeof value === "boolean") return <span className={`rounded-full px-2 py-1 text-xs ${value ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-400/10 text-slate-400"}`}>{value ? "Yes" : "No"}</span>;
   return formatAdminValue(value, field.type, field.name);
 }
 
-function LastActiveBadge({ value }: { value: unknown }) {
+function LastActiveBadge({ value, status }: { value: unknown; status?: unknown }) {
+  if (status === "unavailable") return <span className="rounded-full bg-amber-400/10 px-2 py-1 text-xs text-amber-200">Tracking unavailable</span>;
   const date = value ? new Date(String(value)) : null;
-  if (!date || Number.isNaN(date.getTime())) return <span className="rounded-full bg-slate-400/10 px-2 py-1 text-xs text-slate-400">No activity recorded</span>;
+  if (!date || Number.isNaN(date.getTime())) return <span title="App visits before tracking was enabled are unknown. This updates after the user's next visit." className="rounded-full bg-slate-400/10 px-2 py-1 text-xs text-slate-400">Not yet tracked</span>;
   // Compare local calendar days; UTC day numbers avoid daylight-saving offsets.
   const dayNumber = (day: Date) => Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()) / 86_400_000;
   const days = Math.max(0, dayNumber(new Date()) - dayNumber(date));

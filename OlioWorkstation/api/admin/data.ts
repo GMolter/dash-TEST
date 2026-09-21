@@ -4,6 +4,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdminAccess } from "../_utils/adminAccess.js";
 import { getSupabaseServiceConfig } from "../_utils/supabaseConfig.js";
+import { attachAppActivity } from "../_utils/appActivity.js";
 import {
   ADMIN_RESOURCE_LIST,
   ADMIN_RESOURCES,
@@ -331,16 +332,6 @@ async function listUsers(service: any, resource: AdminResource, page: number, pa
     });
   }));
   return { rows: await attachAppActivity(service, rows), total: count || 0 };
-}
-
-async function attachAppActivity(service: any, rows: Record<string, any>[]) {
-  if (!rows.length) return rows;
-  const { data, error } = await service.from("user_app_activity").select("user_id,last_active_at").in("user_id", rows.map((row) => row.id));
-  // Permit rolling deployment before the activity migration reaches the DB.
-  // Never substitute a sign-in timestamp for missing app activity.
-  if (error && !["42P01", "PGRST205"].includes(error.code)) throw error;
-  const activity = new Map((data || []).map((item: any) => [item.user_id, item.last_active_at]));
-  return rows.map((row) => ({ ...row, last_active_at: activity.get(row.id) || null }));
 }
 
 async function countTable(service: any, table: string, filter?: [string, string]) {

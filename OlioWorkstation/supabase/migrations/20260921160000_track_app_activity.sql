@@ -1,6 +1,6 @@
 -- App usage is independent of auth sign-in and token refresh timestamps.
 -- Leave historical activity unknown: sign-in dates are not app-visit dates.
-create table public.user_app_activity (
+create table if not exists public.user_app_activity (
   user_id uuid primary key references auth.users(id) on delete cascade,
   last_active_at timestamptz not null default now()
 );
@@ -31,3 +31,5 @@ $$;
 
 revoke all on function public.record_app_activity() from public, anon;
 grant execute on function public.record_app_activity() to authenticated;
+
+notify pgrst, 'reload schema';

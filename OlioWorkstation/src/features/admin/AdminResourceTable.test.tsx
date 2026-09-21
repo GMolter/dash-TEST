@@ -29,7 +29,7 @@ describe("AdminResourceTable entity references", () => {
       for (const label of ["Today", "1 Day Ago", "2 Days Ago"]) expect(screen.getByText(label)).toHaveClass("bg-emerald-400/15");
       for (const label of ["3 Days Ago", "5 Days Ago", "6 Days Ago"]) expect(screen.getByText(label)).toHaveClass("bg-orange-400/15");
       expect(screen.getByText("7 Days Ago")).toHaveClass("bg-red-400/15");
-      expect(screen.getByText("No activity recorded")).toHaveClass("bg-slate-400/10");
+      expect(screen.getByText("Not yet tracked")).toHaveClass("bg-slate-400/10");
       await user.click(screen.getByRole("button", { name: "Filter" }));
       await user.selectOptions(screen.getByLabelText("Filter field"), "app_admin");
       await user.selectOptions(screen.getByLabelText("Filter value"), "true");
