@@ -1,45 +1,44 @@
 ########
 Title: Plugins and ClassDash
 Slug: plugins-and-classdash
-Summary: Install ClassDash, set up classes and map locations, and control its dashboard card.
+Summary: Install ClassDash, add or import classes, and see when to leave.
 Sort Order: 21
 ########
 
-## 🔎 Table of Contents
+## Install ClassDash
 
-1. [🧩 Install and show a plugin](olio://help-anchor/install-and-show-a-plugin)
-2. [📍 Set your starting location](olio://help-anchor/set-your-starting-location)
-3. [📅 Add classes](olio://help-anchor/add-classes)
-4. [⏱️ Read the countdown](olio://help-anchor/read-the-countdown)
-5. [⚡ Dashboard loading](olio://help-anchor/dashboard-loading)
+Open **Utilities → Plugins & Dashboard** and choose **Install** on ClassDash. Use **Open & configure** to return to its settings later. Your schedule and map locations are private to your account.
 
----
+## Set your home location
 
-# 🎓 Plugins and ClassDash
+Enter your **Dorm or home name**, place the home pin on the map, and choose **Save home**. Use **Edit Home Location** to update it later.
 
-## 🧩 Install and show a plugin
+## Add a class
 
-Open the plugin manager and install **ClassDash**. Installation makes its page available; dashboard visibility controls whether its card appears on Home. Hide the card without uninstalling if you only want to open the full page.
+1. Under **Weekly schedule**, choose **Add class**.
+2. Enter the course code, start and end times, and building or location. Add the course name and section if helpful.
+3. Select every meeting day and optional semester start and end dates.
+4. Place the classroom pin on the map.
+5. Choose **Add to schedule**.
 
-## 📍 Set your starting location
+Use the pencil to edit a class and **Save changes** to finish. Use the trash button and confirm to remove a class.
 
-Open ClassDash, enter your dorm or home name, place its map pin, and save your settings. Check the pin rather than relying only on a typed building name.
+## Import a calendar or syllabus
 
-## 📅 Add classes
+1. Under **Import your schedule**, choose an ICS calendar or syllabus file, up to 3 MB.
+2. Choose **Import calendar** for ICS, or **Extract classes** for a syllabus.
+3. Choose **Review & place pin** for a result.
+4. Check the days, times, dates, and location, place the classroom pin, then add it to your schedule.
+5. Review the other results you want to add.
 
-1. Choose **Add a class**.
-2. Enter the course code, optional course name and section, start and end times, and building or location.
-3. Select the meeting days and optional semester start and end dates.
-4. Place the classroom pin and save.
+Supported syllabus formats include PDF, DOC, DOCX, TXT, MD, RTF, and ODT. Syllabus documents are sent to OpenAI for analysis. ICS calendars are read on your device.
 
-Use the edit action to correct a class and the delete action to remove it after confirmation. A syllabus import creates a draft for review: verify its details and place the classroom pin before saving.
+## Read the countdown
 
-## ⏱️ Read the countdown
+ClassDash shows your next class and when to leave. Walking estimates include a five-minute buffer. The first trip starts from home; gaps of 45 minutes or less use the previous classroom. Check your pins and times if an estimate looks wrong.
 
-The card shows your next class, location, leave-by time, and countdown. Its status changes between waiting, leave now, and in class. Walking estimates include a buffer; check that your locations and class times are correct.
+## Show, hide, or uninstall
 
-## ⚡ Dashboard loading
+On Home, choose **Customize dashboard → Elements** to show or hide ClassDash. Drag and resize its card on a wide screen.
 
-Home restores the saved card placement and visibility from this browser while account data refreshes. A ClassDash placeholder fills the card when its data is still loading. Cached schedule data refreshes in the background; after changing a schedule on another device, allow that refresh to finish.
-
-See [Home Dashboard](olio://help/home-dashboard) to move, resize, hide, or restore the card.
+To uninstall, open **Plugins & Dashboard**, choose **Uninstall**, and confirm. Your saved schedule is kept for reinstalling.

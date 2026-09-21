@@ -1,132 +1,30 @@
 ########
-Title: Projects Center — Managing Your Projects
+Title: Projects Center
 Slug: projects-center
-Summary: Create, search, filter, and manage all of your projects from the Projects Center.
-Sort Order: 10
+Summary: Create personal or team projects and find your current work.
+Sort Order: 11
 ########
 
-## 🔎 Table of Contents
+Open **Utilities → Projects** to reach the Projects Center.
 
-1. [🧩 What is the Projects Center?](olio://help-anchor/what-is-the-projects-center)
-2. [➕ Creating a Project](olio://help-anchor/creating-a-project)
-3. [📋 Templates Explained](olio://help-anchor/templates-explained)
-4. [🔍 Searching and Filtering](olio://help-anchor/searching-and-filtering)
-5. [🏷️ Project Statuses](olio://help-anchor/project-statuses)
-6. [⚙️ Project Settings](olio://help-anchor/project-settings)
-7. [🗃️ Archiving vs Deleting](olio://help-anchor/archiving-vs-deleting)
-8. [💡 Tips](olio://help-anchor/tips)
-9. [💡 Find the right project](olio://help-anchor/find-the-right-project)
+## Create a project
 
----
+1. Choose **New Project**.
+2. Choose whether it belongs to **Org** or **Personal**.
+3. Choose a template and enter a project name. Add a description if helpful.
+4. Choose **Create Project**.
+5. Open its card to start working.
 
-# 📂 Projects Center — Managing Your Projects
+Personal projects are for your account. Org projects are shared with your organization. A template choice does not replace the audience selection; check both before creating.
 
-The **Projects Center** is your home for all project management in Olio Workstation. From here you can create new projects, browse existing ones, filter by status, and open any project to dive into its board, planner, files, and resources.
+## Find a project
 
----
+Switch between **Org** and **Personal**, then search by name, description, or tag. Use **All**, **Active**, **Completed**, or **Archived** to filter the list. Active includes projects in planning or review. Sort by recent updates, name, or status.
 
-## 🧩 What is the Projects Center?
+Use the search control at the top or **Ctrl/Cmd+K** when you are not typing to find project-opening and filtering actions.
 
-Projects are the primary unit of work in Olio Workstation. Each project is a self-contained workspace that includes:
+## Work inside a project
 
-- A **Board** for kanban-style task management
-- A **Planner** for linear step-by-step planning
-- A **Files** tab for documents and file uploads
-- A **Resources** tab for external link libraries
-- An **Overview** tab with stats and progress
+Each project has Overview, Boards, Planner, Files, and Resources. See [Project Overview](olio://help/project-overview) for navigation and settings.
 
-Projects belong to your organization, so all org members can access and collaborate on them.
-
----
-
-## ➕ Creating a Project
-
-1. Open the menu and select **Utilities**
-2. Select the **Projects** tile
-3. Click **New Project**
-4. Enter a **Project Name**
-5. Optionally add a **Description** and **Tags**
-6. Choose a **Template** (see below)
-7. Click **Create**
-
-Your new project opens immediately.
-
-> 💡 **Tip:** Tags are a great way to cross-reference projects. Use consistent tags like `q1`, `client-name`, or `internal` to make filtering easier.
-
----
-
-## 📋 Templates Explained
-
-| Template | What It Pre-Configures |
-|:---------|:-----------------------|
-| **Blank** | Empty board and planner — build from scratch |
-| **Personal** | Board columns: Backlog, In Progress, Done |
-| **School** | Board columns: To Do, In Progress, Grading, Complete |
-
-You can rename, add, or remove columns after creating a project regardless of which template you chose.
-
----
-
-## 🔍 Searching and Filtering
-
-The Projects Center toolbar lets you narrow down your project list:
-
-- **Search bar** — type any part of a project name to filter instantly
-- **Status filter** — use the dropdown to show only projects with a specific status
-- **Sort options** — sort by Recent (last modified), Name (A-Z), or Status
-
-Filters apply immediately with no page reload needed.
-
----
-
-## 🏷️ Project Statuses
-
-| Status | Color | Meaning |
-|:-------|:-----:|:--------|
-| **Planning** | 🔵 Blue | Scoping and preparation phase |
-| **Active** | 🟢 Green | Currently in progress |
-| **Review** | 🟡 Yellow | Under review or awaiting feedback |
-| **Completed** | ✅ Teal | Finished work |
-| **Archived** | ⬜ Gray | Inactive; hidden from main view by default |
-
-Change a project's status from within the project's settings panel.
-
----
-
-## ⚙️ Project Settings
-
-Inside any project, you can:
-
-- **Rename** the project from the header
-- **Change the status** using the status badge dropdown
-- **Add or remove tags** from the project details panel
-- **Update the description** for context
-
-Settings changes take effect immediately.
-
----
-
-## 🗃️ Archiving vs Deleting
-
-| Action | What It Does | Reversible? |
-|:-------|:------------|:-----------:|
-| **Archive** | Sets status to `Archived`; hides from default view | ✅ Yes |
-| **Delete** | Permanently removes the project and all its data | ❌ No |
-
-> ⚠️ **Warning:** Deleting a project destroys all associated board cards, planner steps, files, and resources. This cannot be undone. Use **Archive** when in doubt.
-
----
-
-## 💡 Tips
-
-> 💡 **Tip:** Use the `Archived` status as a soft-delete. You can always filter by Archived to find and restore old projects by changing their status back to Active.
-
-> 💡 **Tip:** Tags don't have a fixed list — type anything you want. Just be consistent across projects so your filters stay useful.
-
----
-
-## 💡 Find the right project
-
-Open **Utilities → Projects**, select a project, then choose Overview, Board, Planner, Files, or Resources. Project search helps you navigate its contents and actions.
-
-Use project settings to edit its name, description, or status. Review the confirmation carefully before deleting a project; archiving is a status change, while deletion removes the project.
+If a project seems missing, check its audience tab and clear your filters first.

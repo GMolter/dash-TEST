@@ -1,89 +1,26 @@
 ########
 Title: QR Code Generator
 Slug: qr-code-generator
-Summary: Generate QR codes from any text or URL instantly and download them as PNG images.
+Summary: Generate a QR code from text or a URL and download it as an image.
 Sort Order: 8
 ########
 
-## 🔎 Table of Contents
+## Generate a code
 
-1. [🧩 What is the QR Code Generator?](olio://help-anchor/what-is-the-qr-code-generator)
-2. [🖊️ Generating a QR Code](olio://help-anchor/generating-a-qr-code)
-3. [📥 Downloading Your QR Code](olio://help-anchor/downloading-your-qr-code)
-4. [💡 Tips for Best Results](olio://help-anchor/tips-for-best-results)
-5. [🗂️ Common Use Cases](olio://help-anchor/common-use-cases)
-6. [💡 Generation and dashboard visibility](olio://help-anchor/generation-and-dashboard-visibility)
+1. Open **Utilities → QR Generator**.
+2. Enter the text or full URL you want the code to contain.
+3. Choose **Generate QR Code**.
+4. Scan the preview with your phone to check the result.
+5. Choose **Download QR Code** to save **qrcode.png**.
 
----
+Changing the text requires choosing **Generate QR Code** again before downloading.
 
-# 📷 QR Code Generator
+The text or URL is sent to an external QR-code service to create the image. Use content you are comfortable sending to that service.
 
-The **QR Code Generator** lets you instantly convert any text or URL into a scannable QR code image, which you can download and use in print materials, presentations, or digital displays.
+## Share the image
 
----
+Add the downloaded image to a document, poster, or message. Keep the code clear and leave its white border visible. Test it at its final display or print size.
 
-## 🧩 What is the QR Code Generator?
+A code containing a link depends on that link staying available. You can create a [short URL](olio://help/url-shortener) first, then use it to generate the code.
 
-A QR code is a square barcode that smartphones and tablets can scan with their camera to instantly open a URL, view text, or trigger an action. Olio Workstation's generator creates standard QR codes from any input you provide.
-
----
-
-## 🖊️ Generating a QR Code
-
-1. Navigate to **Utilities → QR Code Generator**
-2. Type or paste your **text or URL** into the input field
-3. The QR code **preview updates live** as you type — no need to click a button
-4. Review the preview to confirm the code looks correct
-
-That's it — your QR code is ready as soon as you finish typing.
-
-> 💡 **Tip:** Test-scan your QR code before distributing it. Point your phone's camera app at the preview on screen to confirm it resolves correctly.
-
----
-
-## 📥 Downloading Your QR Code
-
-1. Once satisfied with the preview, click **Download PNG**
-2. The QR code image saves to your browser's default download folder as a `.png` file
-3. Use the image in any design tool, document, or presentation
-
-The downloaded image has a white background and is suitable for print and digital use.
-
----
-
-## 💡 Tips for Best Results
-
-> 💡 **Tip:** Keep your input as short as possible. QR codes with shorter content have larger, easier-to-scan squares. Dense codes (from very long URLs) can be harder to scan.
-
-| Input Length | Scan Reliability |
-|:-------------|:----------------:|
-| Short (< 50 chars) | Excellent |
-| Medium (50–150 chars) | Good |
-| Long (150–300 chars) | Fair |
-| Very long (300+ chars) | May be difficult |
-
-**If your URL is long:**
-
-1. Use the **URL Shortener** tool first to create a compact short URL
-2. Paste the short URL into the QR Code Generator
-3. The resulting QR code will be much cleaner and easier to scan
-
----
-
-## 🗂️ Common Use Cases
-
-| Use Case | Example Input |
-|:---------|:-------------|
-| Link to a webpage | `https://yoursite.com/team-docs` |
-| Share a shortened link | `https://yourapp.com/team` |
-| Display contact info | Name, email, and phone number as plain text |
-| Wi-Fi credentials | `WIFI:T:WPA;S:NetworkName;P:Password;;` |
-| Event or meeting note | Plain text with time, location, and details |
-
----
-
-## 💡 Generation and dashboard visibility
-
-Enter text or a full URL, choose **Generate QR Code**, then **Download QR Code** to save the PNG. Generation uses the external QR service at api.qrserver.com, so the entered content is sent to that service and an internet connection is required.
-
-Scan the downloaded image before distributing it. To hide only the Home shortcut, use dashboard edit mode and hide the QR card; the generator remains available in Utilities.
+If generation or downloading fails, check your internet connection and try again.

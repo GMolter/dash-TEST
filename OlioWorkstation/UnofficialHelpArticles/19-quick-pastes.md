@@ -1,85 +1,35 @@
 ########
-Title: Quick Pastes — Private Reusable Text
+Title: Quick Pastes
 Slug: quick-pastes
-Summary: Create, organize, search, and reorder private reusable text for your signed-in account.
+Summary: Create, organize, and reuse private text.
 Sort Order: 10
 ########
 
-## 🔎 Table of Contents
+Quick Pastes is your private collection of text to reuse, such as replies, notes, and templates.
 
-1. [Quick Pastes and Pastebin](olio://help-anchor/quick-pastes-and-pastebin)
-2. [Create or edit](olio://help-anchor/create-or-edit)
-3. [Organize and find](olio://help-anchor/organize-and-find)
-4. [Use Quick Pastes in Olio Launcher](olio://help-anchor/use-quick-pastes-in-olio-launcher)
-5. [Delete](olio://help-anchor/delete)
-6. [Recover from an error](olio://help-anchor/recover-from-an-error)
-7. [💡 Fast access from Home](olio://help-anchor/fast-access-from-home)
+## Create or edit a Quick Paste
 
----
-
-# Quick Pastes — Private Reusable Text
-
-Quick Pastes keeps reusable text in a private list available only to your signed-in
-account. It does not create a link or share content with an organization or the public.
-
-> ⚠️ **Testing safety:** Use harmless sample text. Do not enter passwords, access tokens,
-> private messages, financial information, or other sensitive content for a test.
-
-## Quick Pastes and Pastebin
-
-Use **Quick Pastes** when you want private text to reuse later. Use **Pastebin** when you
-need a shareable resource with a URL, audience, expiry, or view count. The two utilities
-store separate records and changing one does not change the other.
-
-## Create or edit
-
-1. Open **Utilities → Quick Pastes**.
+1. Open **Utilities → Quick Pastes** or its shortcut on Home.
 2. Choose **New Quick Paste**.
-3. Enter a title and non-empty content. A category is optional.
+3. Enter a title and content. Add a category if helpful.
 4. Choose **Create Quick Paste**.
-5. Use the pencil action on a saved item to edit it without changing its position.
 
-Titles may contain up to 120 characters, content up to 20,000 characters, and categories
-up to 60 characters.
+Use the pencil on an existing item to edit it and save. Titles allow up to 120 characters, content up to 20,000, and categories up to 60.
 
-## Organize and find
+## Find and organize text
 
-- Use the star to favorite or unfavorite an item.
-- Use the up/down actions to set your preferred order. Clear search and category filters
-  first; reordering is disabled while only part of the list is visible.
-- Search checks the title, content, and category in your private loaded list.
-- Choose a category to show only matching items.
-- Duplicate makes a private copy at the end of the list.
+Search by title, content, or category, or choose a category filter. Open an item's editor to read its full content and select text to copy.
 
-Your order remains after refresh. Quick Paste content is not saved in browser storage.
+Use the star to mark a favorite. Use **Duplicate** to create another copy you can edit. Move items with the up and down controls; clear search and category filters before reordering.
 
-## Use Quick Pastes in Olio Launcher
+## Use it in Launcher
 
-A freshly approved Olio Launcher can read your private list. Open **Quick Pastes** there
-to synchronize, search, choose a saved category or **Favorites** from the Category
-selector, refresh, copy, or explicitly paste into the application that was active before
-the launcher.
+[Connect Olio Launcher](olio://help/olio-launcher) to browse, search, copy, and paste this text from your desktop. Create and edit the saved text here in Workstation.
 
-The launcher is read-only. Create, edit, delete, reorder, duplicate, and change favorites
-here in Workstation. Its synchronized list exists only in launcher memory; it has no
-offline cache and clears on disconnect, revocation, or exit. An older approved launcher
-may ask for a new approval because existing device access is not silently broadened.
+## Delete or retry
 
-## Delete
+Use the trash action, review the item, and confirm to permanently delete it.
 
-Choose the trash action, review the permanent-deletion warning, then confirm. Cancel if
-you selected the wrong item. A deleted Quick Paste cannot be recovered.
+If loading fails, check your connection and choose **Try again**. If saving fails, keep the form open and retry after resolving the error.
 
-## Recover from an error
-
-If loading fails, check your connection and choose **Try again**. If saving fails, the
-form stays open so you can retry. Do not paste the content into a support message or
-diagnostic log.
-
----
-
-## 💡 Fast access from Home
-
-Open Quick Pastes from its dashboard shortcut or **Utilities → Quick Pastes**. Hiding the shortcut does not remove your saved text. Quick Paste content is intentionally excluded from persistent browser dashboard caches.
-
-Approve an Olio Launcher connection from your own account to use its read-only Quick Pastes features. Manage connected launchers in Profile; editing the source text remains a Workstation action.
+To share text by link with an audience and expiry, use [Pastebin](olio://help/pastebin).

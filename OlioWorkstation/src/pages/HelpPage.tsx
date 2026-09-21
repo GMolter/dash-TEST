@@ -19,27 +19,27 @@ const TOPIC_TILES = [
 const QA_ITEMS = [
   {
     q: 'How do I join an organization?',
-    a: "On the Organization Setup screen, select Join Organization, enter the 4-digit invite code from your team, and click Join. You'll be added as a Member immediately.",
+    a: "On the Find your people screen, choose Join an organization, enter your team's 4-digit Organization code, and choose Join organization.",
   },
   {
     q: 'Can I belong to multiple organizations at once?',
-    a: "No. Each account belongs to exactly one organization at a time. You must leave your current org before joining another.",
+    a: "Your account can belong to one organization at a time. Members and admins can leave from Profile, then join another organization from setup.",
   },
   {
     q: 'What happens if I leave my organization?',
-    a: "Leaving is immediate. You'll be returned to the Organization Setup screen and will need a new invite code to re-join. Personal data (like personal Quick Links) stays with your account.",
+    a: "You lose access to the organization's shared resources and return to organization setup. To rejoin, use the team's current invite code.",
   },
   {
     q: 'How do I create a one-time secret link?',
-    a: "Go to Utilities → Secret Sharing, enter your content, and generate a link. The secret can only be viewed once — after that it's permanently destroyed.",
+    a: "Open Utilities → Secret Sharing, enter your message, choose an expiry, and select Create Secret Link. Copy the link for your recipient. Opening it displays the message immediately and uses its one viewing.",
   },
   {
     q: 'How do I shorten a URL?',
-    a: "Go to Utilities → URL Shortener, paste your long URL, optionally set a custom short code, and click Shorten. The link is scoped to your organization.",
+    a: "Open Utilities → URL Shortener, paste the full URL, optionally enter a custom short code, and choose Shorten URL. Copy the new link to share it; anyone with the link can follow it.",
   },
   {
     q: 'Where do I get an organization invite code?',
-    a: "Go to Organization → Manage (requires Owner or Admin role) and click Regenerate under the Security section. The old code will stop working immediately.",
+    a: "Ask your team for its current code. Existing members can open Organization → Overview and choose Copy beside the organization code.",
   },
 ];
 

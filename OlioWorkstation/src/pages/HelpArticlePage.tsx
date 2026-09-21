@@ -58,7 +58,7 @@ export function HelpArticlePage({ slug }: { slug: string }) {
   }, [slug]);
 
   const resolveHelpHref = useMemo(() => {
-    const byId = new Map(helpRefs.map((item) => [item.id, item]));
+    const byId = new Map(helpRefs.flatMap((item) => [[item.id, item], [item.slug, item]]));
     return (articleId: string) => {
       const hit = byId.get(articleId);
       if (!hit) return '/help';
@@ -72,7 +72,7 @@ export function HelpArticlePage({ slug }: { slug: string }) {
   );
 
   const resolveMeta = useMemo(() => {
-    const byId = new Map(helpRefs.map((item) => [item.id, item]));
+    const byId = new Map(helpRefs.flatMap((item) => [[item.id, item], [item.slug, item]]));
     const anchorById = new Map(articleAnchors.map((anchor) => [anchor.id, anchor]));
     return (link: ParsedMarkdownLink): LinkResolvedMeta => {
       if (!link.target) {

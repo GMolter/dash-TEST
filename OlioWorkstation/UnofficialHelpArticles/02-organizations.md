@@ -1,120 +1,36 @@
 ########
 Title: Organizations — Joining and Creating
 Slug: organizations
-Summary: Understand how organizations work in Olio Workstation and how to join an existing one or create your own.
+Summary: Join your team with an invite code or create a new organization.
 Sort Order: 2
 ########
 
-## 🔎 Table of Contents
+An organization is your team's workspace for shared links and organization projects. Your personal projects, Quick Pastes, and ClassDash schedule belong to your account.
 
-1. [🧩 What is an Organization?](olio://help-anchor/what-is-an-organization)
-2. [🤝 Joining an Existing Organization](olio://help-anchor/joining-an-existing-organization)
-3. [🆕 Creating a New Organization](olio://help-anchor/creating-a-new-organization)
-4. [🔗 Shared Quick Links](olio://help-anchor/shared-quick-links)
-5. [👥 Roles Explained](olio://help-anchor/roles-explained)
-6. [🔄 Switching Organizations](olio://help-anchor/switching-organizations)
-7. [❓ FAQ](olio://help-anchor/faq)
-8. [💡 Personal and team work](olio://help-anchor/personal-and-team-work)
+## Join your team
 
----
+1. On **Find your people**, choose **Join an organization**.
+2. Enter the team's 4-digit **Organization code**.
+3. Choose **Join organization**.
 
-# 🏢 Organizations — Joining and Creating
+Ask a teammate for the current code. If it fails, check all four digits and ask the owner or admin whether the code changed.
 
-Every user in Olio Workstation belongs to an **organization**. Your organization is your shared workspace — it determines who you collaborate with and controls access to shared features like links, projects, secrets, and triggers.
+## Create an organization
 
----
+1. Choose **Create an organization**.
+2. Enter an **Organization name**.
+3. Choose **Create organization**.
 
-## 🧩 What is an Organization?
+You become its owner. Open **Organization → Overview** and use **Copy** beside the organization code to invite your team.
 
-An organization is a group that shares:
+## Work with your team
 
-- **Projects** (accessible by all members)
-- **Shared Quick Links** (organization-wide bookmarks)
-- **URL Shortener** links (org-scoped)
-- **Secrets** and **Pastebin** content (depending on scope settings)
-- **Triggers/Webhooks**
+Open **Organization → Shared Links** for team bookmarks. Use **Utilities → Projects → Org** for organization projects. Choose **Personal** when creating a project for yourself.
 
-> 💡 **Tip:** You must belong to an organization to access most features. The organization setup screen appears automatically after your first login.
+Owners and admins manage the organization name, invite code, and members. Members use its shared tools and resources. See [Organization Management](olio://help/organization-management).
 
----
+## Change organizations
 
-## 🤝 Joining an Existing Organization
+Your account can belong to one organization at a time. Members and admins can use **Profile → Leave Organization**, type the organization name, and choose **Leave**. Then join another organization from setup.
 
-If your team already has an Olio Workstation organization, you can join it with a 4-digit invite code:
-
-1. On the **Organization Setup** screen, select **Join Organization**
-2. Enter the **4-digit invite code** provided by your team
-3. Click **Join Organization**
-4. You will immediately be added as a **Member** and taken to the dashboard
-
-> ⚠️ **Warning:** The invite code must be exactly 4 digits (numbers only). If you receive an error, confirm the code with your organization owner — the code may have changed.
-
----
-
-## 🆕 Creating a New Organization
-
-If you're starting fresh or setting up a workspace for your team:
-
-1. On the **Organization Setup** screen, select **Create Organization**
-2. Enter a name for your organization in the **Organization Name** field
-3. Click **Create Organization**
-4. You will be taken to the dashboard as the **Owner** of the new org
-
-Your organization will be assigned a unique 4-digit invite code automatically. Share this code with teammates so they can join.
-
-> 💡 **Tip:** Open **Organization** to view your team and the management controls available to your role.
-
----
-
-## 🔗 Shared Quick Links
-
-The **Shared Links** tab on the Organization page contains bookmarks intended for everyone in the organization. Any link created from this tab is shared automatically.
-
-Personal links are created under **Utilities → Quick Links** and appear only on that user's dashboard. Moving shared-link creation into the Organization page keeps personal and team bookmarks clearly separated.
-
----
-
-## 👥 Roles Explained
-
-Every member of an organization has one of three roles:
-
-| Role | Description | Key Permissions |
-|:-----|:------------|:----------------|
-| **Owner** | The creator of the organization | Full access; can manage members, rename the org, and delete it |
-| **Admin** | Organization administrator | Can access permitted organization management actions |
-| **Member** | Standard user | Can access all shared features; cannot manage members |
-
----
-
-## 🔄 Switching Organizations
-
-You can only belong to **one organization at a time**. To switch:
-
-1. Go to **Profile Settings**
-2. Click **Leave Organization**
-3. Confirm by typing your organization name
-4. You will be returned to the **Organization Setup** screen
-5. Join or create a different organization
-
-> ⚠️ **Warning:** Leaving an organization is immediate and irreversible through the UI. You will need a new invite code to re-join.
-
----
-
-## ❓ FAQ
-
-> **Q: What happens if I enter the wrong invite code?**
-> An error message will appear. Your account is not affected — simply re-enter the correct code and try again.
-
-> **Q: Can I be in multiple organizations at the same time?**
-> No. Each account belongs to exactly one organization at a time. You must leave your current org before joining another.
-
-> **Q: What happens to my data if I leave an organization?**
-> Personal data (your personal Quick Links, pastes marked personal-only) remains associated with your account. Shared org content stays with the organization.
-
----
-
-## 💡 Personal and team work
-
-Create personal bookmarks in **Utilities → Quick Links** and team bookmarks in **Organization → Shared Links**. Joining a team does not turn your private Quick Pastes into shared content.
-
-Owners and admins can access management controls according to their permissions. Ask an owner for the current invite code when joining fails.
+Leaving removes access to the old team's resources. To rejoin, use its current invite code. Owners have a **Delete Organization** action instead; it deletes the team's data. See [Profile and Settings](olio://help/profile-and-settings) before using it.

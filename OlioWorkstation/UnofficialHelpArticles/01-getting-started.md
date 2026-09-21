@@ -1,110 +1,33 @@
 ########
 Title: Getting Started with Olio Workstation
 Slug: getting-started
-Summary: Learn what Olio Workstation is, how to create your account, and how to sign in for the first time.
+Summary: Create your account, sign in, and open your workspace.
 Sort Order: 1
 ########
 
-## 🔎 Table of Contents
+Olio Workstation brings your links, projects, reusable text, and schedule together on Home.
 
-1. [🧩 What is Olio Workstation?](olio://help-anchor/what-is-olio-workstation)
-2. [📋 What You'll Need](olio://help-anchor/what-you-ll-need)
-3. [✍️ Creating an Account](olio://help-anchor/creating-an-account)
-4. [🔑 Signing In](olio://help-anchor/signing-in)
-5. [⚠️ Common Sign-In Issues](olio://help-anchor/common-sign-in-issues)
-6. [➡️ What Happens Next](olio://help-anchor/what-happens-next)
-7. [💡 Your first workspace](olio://help-anchor/your-first-workspace)
+## Create an account
 
----
+1. Open Olio and enter your email address and a password, then choose **Sign in**.
+2. If you are new, choose **Yes, create an account** when prompted.
+3. Add your name if you want, check your email address, and choose a password with at least 6 characters.
+4. Choose **Create account**.
+5. If **Check your inbox** appears, open the confirmation email and follow its link, then return to sign in. Check your spam folder if needed.
+6. [Join or create an organization](olio://help/organizations) to finish setup.
 
-# 🚀 Getting Started with Olio Workstation
+## Sign in
 
-Welcome to **Olio Workstation** — your all-in-one productivity dashboard for managing tasks, projects, bookmarks, and team resources. Everything your team needs is consolidated into a single, organized workspace.
+Enter your email address and password, then choose **Sign in**. Use **Show password** to check for typing mistakes.
 
----
+If you already have an account and see the invitation to create one, check your existing sign-in details and try again. For a forgotten password or an account access restriction, contact your app administrator.
 
-## 🧩 What is Olio Workstation?
+## Complete a required password change
 
-Olio Workstation is a team productivity platform that brings together:
+If Olio asks you to change your password, enter a new password with at least 12 characters and confirm it. Choose **Save password and continue**. Follow any error shown before continuing.
 
-- **Quick Links** — a personal bookmark manager
-- **URL Shortener** — shorten and track links
-- **Secret Sharing** — send one-time messages
-- **QR Code Generator** — generate scannable codes instantly
-- **Pastebin** — share code and text snippets
-- **Projects** — full project management with boards, planners, files, and resources
-- **Triggers** — webhook automation
+## Start using Home
 
-Everything is tied to your **organization**, so your team shares the same workspace.
+Open the navigation menu to reach **Utilities**, **Organization**, **Profile**, or **Help Center**. See [Home Dashboard](olio://help/home-dashboard) to arrange your workspace.
 
----
-
-## 📋 What You'll Need
-
-Before you begin, make sure you have:
-
-- A valid **email address**
-- A **password** (minimum 6 characters)
-
-> 💡 **Tip:** If you're joining an existing team, ask your organization owner for the 4-digit **organization invite code** before you start — you'll need it right after creating your account.
-
----
-
-## ✍️ Creating an Account
-
-1. Open Olio Workstation in your browser
-2. Click the **Sign Up** tab on the welcome screen
-3. Enter your **Display Name** (optional, but recommended)
-4. Enter your **Email Address**
-5. Enter a **Password** (at least 6 characters)
-6. Confirm your password in the **Confirm Password** field
-7. Click **Create Account**
-
-If there are any errors (mismatched passwords, email already in use), they will appear inline beneath the form.
-
-> 💡 **Tip:** Check for typing mistakes and extra spaces in your email address. Passwords are case-sensitive.
-
----
-
-## 🔑 Signing In
-
-If you already have an account:
-
-1. Click the **Sign In** tab on the welcome screen
-2. Enter your **Email Address**
-3. Enter your **Password**
-4. Click **Sign In**
-
-You will be taken directly to the dashboard if you already belong to an organization, or to the organization setup screen if you're new.
-
----
-
-## ⚠️ Common Sign-In Issues
-
-| Problem | Solution |
-|:--------|:---------|
-| "Invalid login credentials" | Double-check your email and password — passwords are case-sensitive |
-| Forgot password | Contact your system administrator (self-serve reset is not currently available) |
-| Account not found | You may need to create a new account with the **Sign Up** tab |
-| Password rejected on sign-up | Make sure your password is at least 6 characters long |
-
-> ⚠️ **Warning:** There is currently no self-service password reset. Keep your credentials stored safely.
-
----
-
-## ➡️ What Happens Next
-
-After your first successful sign-in, you will be taken to the **Organization Setup** screen. From there you can:
-
-- **Join** an existing organization using a 4-digit invite code
-- **Create** a new organization and become its Owner
-
-See the [Organizations — Joining and Creating](olio://help/organizations) article for full instructions on this step.
-
----
-
-## 💡 Your first workspace
-
-After signing in, finish organization setup if prompted, then open Home. Use the navigation drawer for Utilities, Organization, Profile, Help Center, and plugin access. Personal Quick Links, Quick Pastes, and dashboard preferences belong to your account.
-
-If your account requires a password change, complete that screen before continuing. See [Home Dashboard](olio://help/home-dashboard) to arrange your workspace.
+If your profile cannot load, choose **Try again** on the account setup screen.

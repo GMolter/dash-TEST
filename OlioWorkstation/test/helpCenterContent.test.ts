@@ -11,9 +11,12 @@ const articles = readdirSync(directory).filter(name => name.endsWith('.md')).map
 
 describe('Help Center content', () => {
   it('includes all maintained articles in the database migration', () => {
-    const migration = readFileSync(resolve('supabase/migrations/20260909120000_refresh_help_center.sql'), 'utf8');
-    expect(articles).toHaveLength(21);
+    const migration = readFileSync(resolve('supabase/migrations/20260921120000_update_user_help_guides.sql'), 'utf8');
+    expect(articles).toHaveLength(22);
+    expect(new Set(articles.map(article => article.slug)).size).toBe(articles.length);
     for (const article of articles) expect(migration).toContain(article.content.replaceAll("'", "''"));
+    expect(articles.some(article => article.slug === 'triggers-and-webhooks')).toBe(false);
+    expect(migration).toContain("WHERE slug='triggers-and-webhooks'");
   });
   it('uses valid article links and section anchors in the site renderer', () => {
     const slugs = new Set(articles.map(article => article.slug));

@@ -1,41 +1,30 @@
 ########
 Title: Organization Management
 Slug: organization-management
-Summary: Understand roles, manage members, and find shared organization links.
-Sort Order: 16
+Summary: View members, share the invite code, and manage team settings.
+Sort Order: 17
 ########
 
-## 🔎 Table of Contents
+Open **Organization** from the navigation menu.
 
-1. [👥 Roles and access](olio://help-anchor/roles-and-access)
-2. [⚙️ Manage members](olio://help-anchor/manage-members)
-3. [🔗 Share links](olio://help-anchor/share-links)
-4. [🚪 Leave or delete](olio://help-anchor/leave-or-delete)
+## View the team and invite someone
 
----
+The **Overview** tab shows the organization name, code, and member list. Choose **Copy** beside the code and give it to the person you want to invite. They can use it during [organization setup](olio://help/organizations).
 
-# 🏢 Organization Management
+Open **Shared Links** to use or add team bookmarks.
 
-## 👥 Roles and access
+## Change organization settings
 
-Open **Organization** from the navigation drawer. Overview provides organization and membership context; **Shared Links** contains team bookmarks. **Manage** appears when your permissions allow organization management.
+Owners and admins can open **Manage**. Edit **Organization Name** and choose **Save Changes** to rename the team.
 
-| Role | Access |
-|:-----|:-------|
-| Owner | Organization ownership and permitted management actions |
-| Admin | Permitted member-management actions |
-| Member | Shared features without management controls |
+Under **Security**, choose **Regenerate** and confirm to replace the invite code. Copy the new code for future invitations. The old code stops working; existing members stay in the organization.
 
-## ⚙️ Manage members
+## Manage members
 
-Open **Manage** and find the intended member. Use **Promote** to change a member to admin or **Demote** to change an admin to member. Owner accounts do not use these ordinary role controls. Use the removal action only after checking the selected member.
+In **Manage Members**, use **Promote** to make a member an admin or **Demote** to return an admin to member. Owners and admins have management access; only the owner can delete the organization.
 
-## 🔗 Share links
+Choose **Remove** beside a member and confirm to remove their access to the organization. Check the person's name before confirming.
 
-Create and organize team bookmarks in **Shared Links**. Personal bookmarks remain in **Utilities → Quick Links**. Ask your owner for the current organization invite code when inviting someone to join.
+## Leave or delete the organization
 
-## 🚪 Leave or delete
-
-Open **Profile** for the available organization actions. Leaving removes your membership; you need the current invite code to rejoin. Organization deletion is restricted to the owner and requires the confirmation shown in the interface.
-
-See [Profile and Settings](olio://help/profile-and-settings) for account and organization controls.
+These actions are in **Profile → Organization Management**. See [Profile and Settings](olio://help/profile-and-settings) for the steps and effects.

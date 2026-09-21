@@ -1,130 +1,34 @@
 ########
-Title: Quick Links — Bookmark Manager
+Title: Quick Links
 Slug: quick-links
-Summary: Create personal bookmarks and manage organization-wide shared links from their dedicated workspaces.
+Summary: Create bookmarks, organize personal folders, and manage team links.
 Sort Order: 5
 ########
 
-## 🔎 Table of Contents
+## Add a personal bookmark
 
-1. [🧩 What are Quick Links?](olio://help-anchor/what-are-quick-links)
-2. [➕ Adding a Link](olio://help-anchor/adding-a-link)
-3. [👥 Shared Quick Links](olio://help-anchor/shared-quick-links)
-4. [📁 Creating a Folder](olio://help-anchor/creating-a-folder)
-5. [✏️ Editing and Deleting](olio://help-anchor/editing-and-deleting)
-6. [↕️ Drag-and-Drop Reordering](olio://help-anchor/drag-and-drop-reordering)
-7. [📂 Expanding Folders](olio://help-anchor/expanding-folders)
-8. [✅ Quick-Start Checklist](olio://help-anchor/quick-start-checklist)
-9. [💡 Dashboard layout and link management](olio://help-anchor/dashboard-layout-and-link-management)
+1. Open **Utilities → Quick Links**.
+2. Choose **Link**.
+3. Enter a title and URL. Set an emoji or image URL for the icon if you want.
+4. Choose a folder, or leave it at **No folder (root)**.
+5. Choose **Create link**.
 
----
+Open your personal bookmarks from Home. Use **Customize dashboard → Elements** if their cards are hidden.
 
-# 🔗 Quick Links — Bookmark Manager
+## Organize folders
 
----
+Choose **Folder**, enter a name, pick an icon, and create the folder. Drag a link onto a folder to move it inside, or edit the link and change its **Folder** selection.
 
-## 🧩 What are Quick Links?
+Drag the handles to reorder personal links and folders. Expand a folder to reorder its links. To move a link out, edit it and select **No folder (root)**.
 
-**Quick Links** is Olio Workstation's bookmark manager. Personal links appear on your dashboard and can be organized into folders. Shared links live in the Organization page and are available to everyone in that organization.
+## Edit or delete
 
----
+Use the pencil beside a link or folder to edit it, then save your changes. Use the trash button and confirm to delete a link.
 
-## ➕ Adding a Link
+When deleting a folder, choose **Move links to root** to keep its bookmarks, or **Delete folder and all links** to remove them. Deletion cannot be undone.
 
-1. Navigate to **Utilities → Quick Links**
-2. Click **+ Add Link**
-3. Fill in the **Title** (what the link will be labeled)
-4. Paste or type the **URL**
-5. Choose an **Emoji Icon** to visually identify the link
-6. Optionally select a **Folder** to place it in
-7. Click **Save**
+## Share bookmarks with your team
 
-The link is personal automatically and will appear immediately in your personal grid and on the dashboard. There is no visibility selector in this form.
+Open **Organization → Shared Links** and choose **Link**. Links created here are available to everyone in the organization.
 
-> 💡 **Tip:** Use descriptive titles rather than raw URLs — `Team Figma` is much easier to scan than `figma.com/file/abc123xyz`.
-
----
-
-## 👥 Shared Quick Links
-
-To create a link for everyone in your organization:
-
-1. Open the menu and go to **Organization**
-2. Select the **Shared Links** tab
-3. Click **+ Add Link**
-4. Enter the icon, title, and URL
-5. Click **Save**
-
-Links created there are shared automatically and do not appear on personal dashboards. Shared links use a flat list rather than personal folders.
-
----
-
-## 📁 Creating a Folder
-
-Personal folders help you group related links together:
-
-1. Click **+ Folder**
-2. Enter a **Folder Name**
-3. Choose an **Emoji Icon** for the folder
-4. Click **Save**
-
-The folder will appear as a tile in the grid. Click it to expand or collapse the links inside.
-
----
-
-## ✏️ Editing and Deleting
-
-To edit a link or folder:
-
-1. Click the **pencil (edit) icon** that appears when you hover over a tile
-2. Update any fields
-3. Click **Save**
-
-To delete a link or folder:
-
-1. Click the **pencil icon** to enter edit mode
-2. Click the **trash icon** on the item you want to remove
-3. Confirm deletion
-
-> ⚠️ **Warning:** Deleting a folder removes the folder and **all links inside it**. This cannot be undone.
-
----
-
-## ↕️ Drag-and-Drop Reordering
-
-To reorder links or folders in the grid:
-
-1. Hover over a tile until the **grip handle** appears
-2. Click and hold the grip handle
-3. Drag the tile to its new position
-4. Release to drop
-
-Reordering is saved automatically.
-
-> 💡 **Tip:** Folders can be reordered just like individual links — drag the entire folder tile to a new position.
-
----
-
-## 📂 Expanding Folders
-
-Click any **folder tile** to expand it and reveal the links inside. Click it again to collapse. Folder state (open or closed) persists while you stay on the page.
-
----
-
-## ✅ Quick-Start Checklist
-
-Use this checklist to get Quick Links set up:
-
-- [ ] Create a folder for your most-used links (e.g., `Work`, `Dev Tools`)
-- [ ] Add your most-visited URLs with descriptive titles
-- [ ] Add emoji icons to make tiles visually distinct
-- [ ] Drag tiles into the order you want them
-- [ ] Add team-wide bookmarks from **Organization → Shared Links**
-
----
-
-## 💡 Dashboard layout and link management
-
-Manage link titles, destinations, icons, folders, and order in **Utilities → Quick Links**. Use **Organization → Shared Links** for team bookmarks. The dashboard has its own card positions and sizes: arranging a card there does not rewrite the bookmark URL.
-
-Saved links and folders are restored from browser cache while current data loads. If a change made on another device has not appeared yet, allow the background refresh to finish. Hiding a dashboard card does not delete the saved link.
+You can edit or delete shared links you created. Owners and admins can also manage other members' shared links. Shared links appear as a list in the Organization page.

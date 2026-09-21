@@ -1,113 +1,36 @@
 ########
-Title: Project Overview Tab
+Title: Project Overview and Settings
 Slug: project-overview
-Summary: Understand your project at a glance with stats cards, progress bars, and suggested actions.
-Sort Order: 11
+Summary: Navigate a project, capture notes and links, and update its settings.
+Sort Order: 12
 ########
 
-## 🔎 Table of Contents
+## Choose a workspace
 
-1. [🧩 What is the Overview Tab?](olio://help-anchor/what-is-the-overview-tab)
-2. [📈 Stats Cards](olio://help-anchor/stats-cards)
-3. [📉 Progress Bars](olio://help-anchor/progress-bars)
-4. [💡 Suggested Actions](olio://help-anchor/suggested-actions)
-5. [🧭 Quick Navigation](olio://help-anchor/quick-navigation)
-6. [🤖 AI Plan Generation](olio://help-anchor/ai-plan-generation)
-7. [💡 Continue into project tools](olio://help-anchor/continue-into-project-tools)
+Open a project from **Utilities → Projects**.
 
----
+| Workspace | Purpose |
+|:----------|:--------|
+| Overview | Check completion, open work, and suggested next steps |
+| [Boards](olio://help/project-board) | Move cards through stages of work |
+| [Planner](olio://help/project-planner) | Build and order a task list |
+| [Files](olio://help/project-files) | Write documents and organize uploads |
+| [Resources](olio://help/project-resources) | Keep useful external links |
 
-# 📊 Project Overview Tab
+Overview shows board and planner progress separately. Choose a quick action to open the workspace you need, or **Open AI Plan Builder** to draft a plan.
 
-The **Overview Tab** is the first thing you see when you open a project. It aggregates data from all other project tabs into a single at-a-glance dashboard, giving you a snapshot of progress, workload, and where to focus next.
+## Capture a note or link
 
----
+Use **Quick Note** to choose a destination folder, name the note, and open it in Files. Use **Quick Link** to save a URL with an optional title and description under Resources.
 
-## 🧩 What is the Overview Tab?
+The project search field finds actions such as **Create New Task**, **Create New Document**, and **Capture Quick Note**. Press **Ctrl/Cmd+K** outside an editor to focus it.
 
-The Overview Tab answers three questions:
+## Update settings
 
-1. **How much work exists?** (Stats Cards)
-2. **How much is done?** (Progress Bars)
-3. **What should I do next?** (Suggested Actions)
+Open **Settings**, change the project name, description, or status, then choose **Save Changes**. Status choices are Planning, Active, Review, Completed, and Archived.
 
-It doesn't store any data of its own — everything displayed is pulled live from your Board, Planner, Files, and Resources tabs.
+## Delete a project
 
----
+In Settings, choose **Delete Project...**. Read the warning, enter the project name, select the acknowledgment, and choose **Delete Project**.
 
-## 📈 Stats Cards
-
-Four stat cards summarize the scope of your project:
-
-| Card | What It Shows |
-|:-----|:-------------|
-| **Board Cards** | Total open cards across all board columns |
-| **Planner Steps** | Total steps in the planner (excluding archived) |
-| **Files** | Total documents and uploaded files |
-| **Resources** | Total external links saved |
-
-Each card shows both a **completed count** and a **total count** where applicable (e.g., `5 / 12 cards complete`).
-
----
-
-## 📉 Progress Bars
-
-The overall project progress is a **weighted combination** of two metrics:
-
-| Source | Weight |
-|:-------|:------:|
-| Board card completion | 70% |
-| Planner step completion | 30% |
-
-The combined score determines the **progress label**:
-
-| Score | Label |
-|:-----:|:------|
-| 80%+ | Strong momentum |
-| 50–79% | Steady progress |
-| Below 50% | Needs focus |
-
-> 💡 **Tip:** The board carries more weight in the progress calculation because it typically tracks day-to-day tasks. Use the planner for milestone-level tracking.
-
----
-
-## 💡 Suggested Actions
-
-Below the progress bars, the system suggests where to direct your attention based on current workload:
-
-- If you have many **open board cards**, it recommends focusing on the Board
-- If you have many **incomplete planner steps**, it recommends the Planner
-- If all steps and cards are complete, it surfaces a congratulatory message
-
-These suggestions are heuristic — use them as a prompt, not a directive.
-
----
-
-## 🧭 Quick Navigation
-
-Each **stat card is clickable**. Clicking a card jumps you directly to the corresponding tab:
-
-| Card | Navigates To |
-|:-----|:------------|
-| Board Cards | Board Tab |
-| Planner Steps | Planner Tab |
-| Files | Files Tab |
-| Resources | Resources Tab |
-
-This makes the Overview a fast navigation hub for large projects.
-
----
-
-## 🤖 AI Plan Generation
-
-The Overview Tab surfaces the **Generate AI Plan** option if your project doesn't yet have planner steps. Clicking it opens the AI plan generation interface in the Planner tab.
-
-See the [Project Planner](olio://help/project-planner) article for full details on AI plan generation, including usage limits.
-
----
-
-## 💡 Continue into project tools
-
-Use Overview for project context, then open **Board** for task lanes, **Planner** for dates, **Files** for documents and attachments, or **Resources** for reference links.
-
-Project status and task progress are separate. Update the project status in settings when its overall phase changes.
+Deleting removes the project and its contents. For an organization project, this affects everyone using it. Set the status to Archived if you want to keep the project.
