@@ -40,8 +40,15 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
   const [form, setForm] = useState<AccountForm>(EMPTY_FORM);
   const [temporaryPassword, setTemporaryPassword] = useState("");
   const [organizationInputVersion, setOrganizationInputVersion] = useState(0);
-  const resources = overview?.resources || [];
-  const selected = resources.find((item) => item.key === selectedResource);
+  const resources = useMemo(() => {
+    const items = overview?.resources || [];
+    const folders = items.find((item) => item.key === "quicklink-folders");
+    return items.filter((item) => item.key !== "quicklink-folders").map((item) => item.key === "quicklinks" && folders ? {
+      ...item, label: "Quick links & folders", total: item.total === null || folders.total === null ? null : item.total + folders.total,
+    } : item);
+  }, [overview?.resources]);
+  const normalizedResource = selectedResource === "quicklink-folders" ? "quicklinks" : selectedResource;
+  const selected = resources.find((item) => item.key === normalizedResource);
   const grouped = useMemo(() => {
     const visible = resources.filter((item) => showEmpty || item.total === null || item.total > 0);
     return Object.entries(visible.reduce<Record<string, typeof visible>>((groups, item) => {
@@ -134,7 +141,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
       <section className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4 sm:flex-row sm:items-end sm:justify-between">
         <div><button onClick={() => onSelectResource("")} className="text-xs text-blue-300 hover:text-blue-200">← Account overview</button><h3 className="mt-1 text-lg font-semibold text-white">{selected?.label || "Account data"}</h3><p className="mt-1 text-sm text-slate-400">Only records owned by {name}, or contained in their projects, are shown.</p></div>
         <label className="text-xs text-slate-400">Account data
-          <select value={selectedResource} onChange={(event) => onSelectResource(event.target.value)} className="mt-1 block min-w-60 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white">
+          <select value={normalizedResource} onChange={(event) => onSelectResource(event.target.value)} className="mt-1 block min-w-60 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white">
             {resources.map((item) => <option key={item.key} value={item.key}>{item.label} ({item.total ?? "unavailable"})</option>)}
           </select>
         </label>

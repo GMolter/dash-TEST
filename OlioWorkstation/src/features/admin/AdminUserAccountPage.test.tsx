@@ -34,6 +34,7 @@ describe("AdminUserAccountPage", () => {
         resources: [
           { key: "projects", label: "Projects", group: "projects", total: 2, unavailable: false },
           { key: "quicklinks", label: "Quick links", group: "utilities", total: 2, unavailable: false },
+          { key: "quicklink-folders", label: "Quick-link folders", group: "utilities", total: 0, unavailable: false },
           { key: "quick-pastes", label: "Quick Pastes", group: "content", total: 0, unavailable: false },
         ],
       }}
@@ -50,6 +51,8 @@ describe("AdminUserAccountPage", () => {
     expect(screen.getByText("Password change required")).toBeInTheDocument();
     expect(screen.getByText("4 records")).toBeInTheDocument();
     expect(screen.queryByText("Quick Pastes")).not.toBeInTheDocument();
+    expect(screen.getByText("Quick links & folders")).toBeInTheDocument();
+    expect(screen.queryByText("Quick-link folders")).not.toBeInTheDocument();
     await user.click(screen.getByText("Membership actions"));
     await user.click(screen.getByRole("button", { name: "Review membership removal" }));
     expect(onAccountOperation).toHaveBeenCalledWith("remove-organization");

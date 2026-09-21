@@ -10,6 +10,7 @@ import { AdminOperationDialog } from "./AdminOperationDialog";
 import { AdminRecordDrawer } from "./AdminRecordDrawer";
 import { AdminResourceTable } from "./AdminResourceTable";
 import { AdminUserAccountPage } from "./AdminUserAccountPage";
+import { AdminAccountQuicklinks } from "./AdminAccountQuicklinks";
 import type { AdminListResponse, AdminOperation, AdminOverview, AdminReference, AdminRow, AdminUserAccountOverview } from "./types";
 import { formatAdminValue, humanizeAdminText } from "./adminFormat";
 
@@ -92,6 +93,11 @@ export function AdminOperationsConsole() {
   const sectionResources = useMemo(() => resources.filter((item) => item.group === section), [resources, section]);
   const selectedResource = sectionResources.find((item) => item.key === resource);
   const ownerAccountLocked = data?.resource === "users" && row?.app_owner === true && !overview?.isOwner;
+  const accountLinks = Boolean(accountUserId) && ["quicklinks", "quicklink-folders"].includes(resource);
+  const accountDefaults = useMemo(() => accountOverview ? {
+    user_id: accountUserId, owner_id: accountUserId, org_id: accountOverview.user.org_id || "",
+    scope: "personal", scope_personal: true,
+  } : undefined, [accountUserId, accountOverview]);
 
   const bootstrap = useCallback(async () => {
     setAccessError(null);
@@ -140,7 +146,7 @@ export function AdminOperationsConsole() {
   useEffect(() => { void refreshAccount(); }, [refreshAccount]);
 
   const refreshResource = useCallback(async () => {
-    if (access !== "ready" || section === "overview" || !resource || (accountUserId && !accountOverview)) return;
+    if (access !== "ready" || section === "overview" || !resource || accountLinks || (accountUserId && !accountOverview)) return;
     setLoading(true);
     setError(null);
     try {
@@ -157,7 +163,7 @@ export function AdminOperationsConsole() {
       else if (status === 403) setAccess("denied");
       else setError(nextError instanceof Error ? nextError.message : "Could not load records.");
     } finally { setLoading(false); }
-  }, [access, accountOverview, accountUserId, direction, filters, page, requestedRecord, resource, search, section, sort]);
+  }, [access, accountLinks, accountOverview, accountUserId, direction, filters, page, requestedRecord, resource, search, section, sort]);
 
   useEffect(() => { void refreshResource(); }, [refreshResource]);
 
@@ -362,9 +368,9 @@ export function AdminOperationsConsole() {
 
           {section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : accountUserId ? (
             <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
-              {resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
+              {accountLinks && accountOverview ? <AdminAccountQuicklinks key={accountUserId} user={accountOverview.user} onComplete={() => { void refreshAccount(); void loadAdminOverview().then(setOverview).catch(() => undefined); }} onOpenReference={openReference} /> : resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
-                onOpen={(nextRow) => { if (data?.resource === "users") { openAccount(nextRow); return; } setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => undefined}
+                onOpen={(nextRow) => { if (data?.resource === "users") { openAccount(nextRow); return; } setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
                 onPage={setPage} onSort={(field) => { setPage(1); setSort(field); setDirection((current) => sort === field && current === "asc" ? "desc" : "asc"); }}
                 onBulkDelete={() => requestOperation("delete", undefined, [...selected])} onBulkUpdate={(field, value) => requestOperation("update", { [field]: value }, [...selected])} />}
             </AdminUserAccountPage>
@@ -395,7 +401,7 @@ export function AdminOperationsConsole() {
         </main>
       </div>
 
-      {data && (creating || (row && data.resource !== "users")) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} revealed={revealed}
+      {data && !accountLinks && (creating || (row && data.resource !== "users")) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} initialValues={accountDefaults} accountUserId={accountUserId || undefined} initialLabels={accountOverview ? { user_id: String(accountOverview.user.display_name || accountOverview.user.email), owner_id: String(accountOverview.user.display_name || accountOverview.user.email), org_id: accountOverview.user._admin_refs?.org_id?.label || "" } : undefined} revealed={revealed}
         lockedMessage={ownerAccountLocked ? "This is an application-owner account. Only another application owner can change its profile, access, password, or lifecycle." : undefined}
         onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => { void revealField(field); }} onOpenReference={openReference}
         onOpenAccount={!accountUserId && data.resource === "users" ? openAccount : undefined}

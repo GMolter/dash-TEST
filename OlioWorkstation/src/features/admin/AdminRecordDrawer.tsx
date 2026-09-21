@@ -10,6 +10,9 @@ type Props = {
   actions: string[];
   row: AdminRow | null;
   creating: boolean;
+  initialValues?: Record<string, unknown>;
+  initialLabels?: Record<string, string>;
+  accountUserId?: string;
   revealed: Record<string, unknown>;
   onClose: () => void;
   onReveal: (field: string) => void;
@@ -19,7 +22,7 @@ type Props = {
   onOperation: (kind: string, values?: Record<string, unknown>) => void;
 };
 
-export function AdminRecordDrawer({ label, fields, actions, row, creating, revealed, onClose, onReveal, onOpenReference, onOpenAccount, lockedMessage, onOperation }: Props) {
+export function AdminRecordDrawer({ label, fields, actions, row, creating, initialValues, initialLabels, accountUserId, revealed, onClose, onReveal, onOpenReference, onOpenAccount, lockedMessage, onOperation }: Props) {
   const [editing, setEditing] = useState(creating);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [temporaryPassword, setTemporaryPassword] = useState("");
@@ -31,13 +34,13 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, revea
     setTemporaryPassword("");
     const next: Record<string, unknown> = {};
     for (const field of fields) {
-      const value = creating ? defaultValue(field) : row?.[field.name];
+      const value = creating ? initialValues?.[field.name] ?? defaultValue(field) : row?.[field.name];
       next[field.name] = field.type === "json" && value !== null && value !== undefined
         ? JSON.stringify(value, null, 2)
         : value ?? (field.type === "boolean" ? false : "");
     }
     setValues(next);
-  }, [creating, fields, row]);
+  }, [creating, fields, row, initialValues]);
 
   useEffect(() => {
     if (Object.keys(revealed).length) setValues((current) => ({ ...current, ...revealed }));
@@ -49,7 +52,7 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, revea
     const allowed = fields.filter((field) => creating ? field.create : field.editable);
     return Object.fromEntries(allowed
       .filter((field) => creating || values[field.name] !== (field.type === "json" && row?.[field.name] != null ? JSON.stringify(row[field.name], null, 2) : row?.[field.name] ?? (field.type === "boolean" ? false : "")))
-      .map((field) => [field.name, values[field.name]]));
+      .map((field) => [field.name, referenceResource(field.name) && values[field.name] === "" ? null : values[field.name]]));
   }
 
   const changed = changedValues();
@@ -71,7 +74,7 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, revea
         {field.sensitive && !creating && revealedValue === undefined ? (
           <div className="flex min-h-10 items-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-3 text-sm text-amber-100/70">Protected information</div>
         ) : editable ? (
-          referenceResource(field.name) ? <ReferenceInput key={`${row?._admin_id || "new"}:${field.name}`} field={field} value={values[field.name]} initialLabel={reference?.label} onChange={(value) => setValues((current) => ({ ...current, [field.name]: value }))} />
+          referenceResource(field.name) ? <ReferenceInput key={`${row?._admin_id || "new"}:${field.name}`} field={field} value={values[field.name]} initialLabel={reference?.label || initialLabels?.[field.name]} accountUserId={["project_id", "folder_id", "column_id", "parent_id"].includes(field.name) ? accountUserId : undefined} onChange={(value) => setValues((current) => ({ ...current, [field.name]: value }))} />
             : <FieldInput field={field} value={values[field.name]} onChange={(value) => setValues((current) => ({ ...current, [field.name]: value }))} />
         ) : (
           <div className="min-h-10 break-words rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2 text-sm text-slate-200">
@@ -179,7 +182,7 @@ function FieldInput({ field, value, onChange }: { field: AdminField; value: unkn
   return <input type={type} value={formatInputValue(value, field.type)} onChange={(event) => onChange(event.target.value)} className={classes} />;
 }
 
-export function ReferenceInput({ field, value, initialLabel, onChange }: { field: AdminField; value: unknown; initialLabel?: string; onChange: (value: unknown) => void }) {
+export function ReferenceInput({ field, value, initialLabel, accountUserId, onChange }: { field: AdminField; value: unknown; initialLabel?: string; accountUserId?: string; onChange: (value: unknown) => void }) {
   const resource = referenceResource(field.name)!;
   const [query, setQuery] = useState(initialLabel || "");
   const [options, setOptions] = useState<AdminRow[]>([]);
@@ -193,7 +196,7 @@ export function ReferenceInput({ field, value, initialLabel, onChange }: { field
     const timer = window.setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await loadAdminResource({ resource, page: 1, pageSize: 8, search: text });
+        const response = await loadAdminResource({ resource, page: 1, pageSize: 8, search: text, accountUserId });
         if (active) setOptions(response.rows);
       } catch {
         if (active) setOptions([]);
@@ -202,7 +205,7 @@ export function ReferenceInput({ field, value, initialLabel, onChange }: { field
       }
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [chosen, query, resource]);
+  }, [chosen, query, resource, accountUserId]);
 
   return <div className="relative">
     <input value={query} placeholder={`Search ${adminFieldLabel(field).toLowerCase()} by name…`} onChange={(event) => { setQuery(event.target.value); setChosen(false); onChange(""); }} className="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-blue-400/50" />

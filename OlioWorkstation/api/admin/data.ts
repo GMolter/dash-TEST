@@ -710,7 +710,7 @@ export default async function handler(req: any, res: any) {
       const accountScope = accountUserId ? ADMIN_ACCOUNT_SCOPES[resource.key] : undefined;
       if (accountUserId && !accountScope) return res.status(400).json({ error: "This data view is not available in account management." });
       const accountContext = accountUserId ? await userAccountContext(service, accountUserId) : null;
-      const actions = accountContext ? resourceActions(resource).filter((action) => action !== "create") : resourceActions(resource);
+      const actions = accountContext && ["self", "actor", "owner"].includes(accountScope!) ? resourceActions(resource).filter((action) => action !== "create") : resourceActions(resource);
 
       const requestedRecord = queryValue(req, "record");
       if (requestedRecord && SAFE_ID.test(requestedRecord)) {
