@@ -326,19 +326,20 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
   const deleteOrg = async () => {
     if (!organization) return { success: false, error: 'No organization' };
-    if (!profile || profile.role !== 'owner') {
+    if (!user || !profile || profile.role !== 'owner' || organization.owner_id !== user.id || profile.org_id !== organization.id) {
       return { success: false, error: 'Only the owner can delete the organization' };
     }
 
     try {
       setError(null);
 
-      const { error: deleteError } = await supabase
+      const { error: deleteError, count } = await supabase
         .from('organizations')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', organization.id);
 
       if (deleteError) throw deleteError;
+      if (count !== 1) throw new Error('Organization could not be deleted. Refresh and check that you are still its owner.');
 
       await refreshOrg();
       return { success: true };

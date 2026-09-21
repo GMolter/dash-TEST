@@ -7,8 +7,8 @@ import { Building2, Copy, Users, Settings, Crown, Shield as ShieldIcon, User, Re
 type Tab = 'overview' | 'shared-links' | 'manage';
 
 export function OrganizationPage() {
-  const { organization, members, updateOrg, regenerateCode, updateMemberRole, removeMember } = useOrg();
-  const { canManageOrg } = usePermission();
+  const { organization, members, updateOrg, regenerateCode, updateMemberRole, removeMember, deleteOrg } = useOrg();
+  const { canManageOrg, canDeleteOrg } = usePermission();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [copied, setCopied] = useState(false);
 
@@ -23,6 +23,27 @@ export function OrganizationPage() {
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleteChecked, setDeleteChecked] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDelete = async () => {
+    if (!canDeleteOrg() || deleting || !deleteChecked || confirmText !== organization?.name) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      const result = await deleteOrg();
+      if (result.success) setShowDeleteModal(false);
+      else setDeleteError(result.error || 'Failed to delete organization');
+    } catch {
+      setDeleteError('Failed to delete organization. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const copyCode = () => {
     if (organization) {
@@ -316,10 +337,87 @@ export function OrganizationPage() {
                   ))}
                 </div>
               </div>
+              {canDeleteOrg() && (
+                <section className="rounded-2xl border border-red-500/30 bg-red-950/20 p-5">
+                  <h3 className="text-lg font-semibold text-white mb-2">Delete Organization</h3>
+                  <p className="text-sm text-slate-300 mb-4">
+                    Permanently delete this organization and its data, and remove all members. This cannot be undone.
+                  </p>
+                  <button
+                    onClick={() => { setConfirmText(''); setDeleteChecked(false); setDeleteError(''); setShowDeleteModal(true); }}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-medium transition-colors"
+                  >
+                    Delete Organization
+                  </button>
+                </section>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {showDeleteModal && canDeleteOrg() && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6" role="dialog" aria-modal="true" aria-labelledby="delete-org-title">
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 max-w-md w-full">
+            <h3 id="delete-org-title" className="text-xl font-semibold text-white mb-4">Delete Organization</h3>
+
+            <div className="mb-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={deleteChecked}
+                  onChange={(e) => setDeleteChecked(e.target.checked)}
+                  className="mt-1"
+                />
+                <span className="text-slate-300 text-sm">
+                  I understand this will delete the organization and all its data, and remove all current members.
+                </span>
+              </label>
+            </div>
+
+            <p className="text-slate-400 mb-4">
+              To confirm, please type the organization name: <strong className="text-white">{organization?.name}</strong>
+            </p>
+
+            <input
+              aria-label="Organization name to confirm deletion"
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="Type organization name"
+              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
+            />
+
+            {deleteError && (
+              <div className="p-3 bg-red-900/20 border border-red-700 rounded-lg text-red-400 text-sm mb-4">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                disabled={deleting}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setConfirmText('');
+                  setDeleteChecked(false);
+                  setDeleteError('');
+                }}
+                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting || !deleteChecked || confirmText !== organization.name}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showRegenerateDialog && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">

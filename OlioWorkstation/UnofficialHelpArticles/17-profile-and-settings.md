@@ -1,7 +1,7 @@
 ########
 Title: Profile and Settings
 Slug: profile-and-settings
-Summary: Customize the background, manage Launcher devices, and leave or delete an organization.
+Summary: Customize the background, manage Launcher devices, and leave an organization.
 Sort Order: 18
 ########
 
@@ -27,12 +27,6 @@ See [Connect Olio Launcher](olio://help/olio-launcher) for connection instructio
 Members and admins can choose **Leave Organization**, type the organization name exactly, and choose **Leave**.
 
 You lose access to its shared resources and return to organization setup. Use the team's current code to rejoin, or join a different team.
-
-## Delete an organization
-
-Owners can choose **Delete Organization**. Read the warning, check the acknowledgment, type the organization name exactly, and choose **Delete**.
-
-This permanently deletes the organization and its data and removes all members. Use it only when the team no longer needs that workspace.
 
 ## Sign out
 

@@ -25,6 +25,17 @@ In **Manage Members**, use **Promote** to make a member an admin or **Demote** t
 
 Choose **Remove** beside a member and confirm to remove their access to the organization. Check the person's name before confirming.
 
-## Leave or delete the organization
+## Delete the organization
 
-These actions are in **Profile → Organization Management**. See [Profile and Settings](olio://help/profile-and-settings) for the steps and effects.
+Only the owner can see and use **Delete Organization** in **Organization → Manage**.
+
+1. Choose **Delete Organization**.
+2. Read the warning and check the acknowledgment.
+3. Type the organization name exactly.
+4. Choose **Delete**.
+
+This permanently deletes the organization and its data and removes all members. This cannot be undone.
+
+## Leave the organization
+
+Members and admins can leave from **Profile → Organization Management**. See [Profile and Settings](olio://help/profile-and-settings) for the steps.

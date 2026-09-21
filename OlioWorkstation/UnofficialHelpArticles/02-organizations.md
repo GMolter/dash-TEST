@@ -33,4 +33,4 @@ Owners and admins manage the organization name, invite code, and members. Member
 
 Your account can belong to one organization at a time. Members and admins can use **Profile → Leave Organization**, type the organization name, and choose **Leave**. Then join another organization from setup.
 
-Leaving removes access to the old team's resources. To rejoin, use its current invite code. Owners have a **Delete Organization** action instead; it deletes the team's data. See [Profile and Settings](olio://help/profile-and-settings) before using it.
+Leaving removes access to the old team's resources. To rejoin, use its current invite code. Owners can delete the organization from **Organization → Manage**. See [Organization Management](olio://help/organization-management) for the steps and effects.

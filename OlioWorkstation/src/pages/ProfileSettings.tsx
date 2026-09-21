@@ -29,12 +29,10 @@ export function ProfileSettings({
   onAppBackgroundPresetChange,
 }: ProfileSettingsProps) {
   const { user, signOut } = useAuth();
-  const { profile, organization, leaveOrg, deleteOrg } = useOrg();
+  const { profile, organization, leaveOrg } = useOrg();
   const { isOwner } = usePermission();
   const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [confirmText, setConfirmText] = useState('');
-  const [deleteChecked, setDeleteChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showThemeModal, setShowThemeModal] = useState(false);
@@ -85,23 +83,6 @@ export function ProfileSettings({
 
     if (!result.success) {
       setError(result.error || 'Failed to leave organization');
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (confirmText !== organization?.name || !deleteChecked) {
-      setError('Please complete all verification steps');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    const result = await deleteOrg();
-
-    if (!result.success) {
-      setError(result.error || 'Failed to delete organization');
       setLoading(false);
     }
   };
@@ -187,31 +168,19 @@ export function ProfileSettings({
                 <div className="text-white font-medium">{organization.name}</div>
               </div>
 
-              <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-yellow-400">
-                    {isOwner()
-                      ? 'As the owner, deleting the organization will remove all members and delete all organization data.'
-                      : 'Leaving the organization will remove your access to all organization resources.'}
+              {!isOwner() && (
+                <>
+                  <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+                    <p className="text-sm text-yellow-400">Leaving the organization will remove your access to all organization resources.</p>
                   </div>
-                </div>
-              </div>
-
-              {isOwner() ? (
-                <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="w-full py-3 bg-red-600 hover:bg-red-700 rounded-lg text-white font-medium transition-colors"
-                >
-                  Delete Organization
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowLeaveModal(true)}
-                  className="w-full py-3 bg-orange-600 hover:bg-orange-700 rounded-lg text-white font-medium transition-colors"
-                >
-                  Leave Organization
-                </button>
+                  <button
+                    onClick={() => setShowLeaveModal(true)}
+                    className="w-full py-3 bg-orange-600 hover:bg-orange-700 rounded-lg text-white font-medium transition-colors"
+                  >
+                    Leave Organization
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -455,66 +424,6 @@ export function ProfileSettings({
         document.body
       )}
 
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 max-w-md w-full">
-            <h3 className="text-xl font-semibold text-white mb-4">Delete Organization</h3>
-
-            <div className="mb-4">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={deleteChecked}
-                  onChange={(e) => setDeleteChecked(e.target.checked)}
-                  className="mt-1"
-                />
-                <span className="text-slate-300 text-sm">
-                  I understand this will delete the organization and all its data, and remove all current members.
-                </span>
-              </label>
-            </div>
-
-            <p className="text-slate-400 mb-4">
-              To confirm, please type the organization name: <strong className="text-white">{organization?.name}</strong>
-            </p>
-
-            <input
-              type="text"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type organization name"
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
-            />
-
-            {error && (
-              <div className="p-3 bg-red-900/20 border border-red-700 rounded-lg text-red-400 text-sm mb-4">
-                {error}
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setConfirmText('');
-                  setDeleteChecked(false);
-                  setError('');
-                }}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={loading}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
-              >
-                {loading ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
