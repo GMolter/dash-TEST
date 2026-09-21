@@ -4,6 +4,40 @@ import { describe, expect, it, vi } from "vitest";
 import { AdminResourceTable } from "./AdminResourceTable";
 
 describe("AdminResourceTable entity references", () => {
+  it("replaces admin status with login recency colors while preserving the admin filter", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 21, 12));
+    try {
+      const user = userEvent.setup();
+      const onFilters = vi.fn();
+      const rows = [0, 1, 2, 3, 5, 6, 7].map((days) => ({
+        _admin_id: String(days), display_name: `User ${days}`, app_admin: true,
+        last_sign_in_at: new Date(2026, 8, 21 - days, 12).toISOString(),
+      }));
+      render(<AdminResourceTable data={{ resource: "users", label: "Users",
+        rows: [...rows, { _admin_id: "never", display_name: "New user", app_admin: false, last_sign_in_at: "" }], total: 8,
+        fields: [
+          { name: "display_name", label: "Display name", type: "text" },
+          { name: "email", label: "Email", type: "text" },
+          { name: "role", label: "Organization role", type: "text" },
+          { name: "app_admin", label: "App admin", type: "boolean" },
+          { name: "last_sign_in_at", label: "Last sign in", type: "datetime" },
+        ], actions: [], redactedFields: [], filterFields: ["app_admin"], sortFields: [], page: 1, pageSize: 25, sort: "created_at", direction: "desc",
+      }} loading={false} search="" filters={{}} selected={new Set()} onSearch={vi.fn()} onFilters={onFilters} onSelection={vi.fn()} onOpen={vi.fn()} onOpenReference={vi.fn()} onCreate={vi.fn()} onPage={vi.fn()} onSort={vi.fn()} onBulkDelete={vi.fn()} onBulkUpdate={vi.fn()} />);
+      expect(screen.getByRole("columnheader", { name: "Last Active" })).toBeInTheDocument();
+      expect(screen.queryByRole("columnheader", { name: "App admin" })).not.toBeInTheDocument();
+      for (const label of ["Today", "1 Day Ago", "2 Days Ago"]) expect(screen.getByText(label)).toHaveClass("bg-emerald-400/15");
+      for (const label of ["3 Days Ago", "5 Days Ago", "6 Days Ago"]) expect(screen.getByText(label)).toHaveClass("bg-orange-400/15");
+      expect(screen.getByText("7 Days Ago")).toHaveClass("bg-red-400/15");
+      expect(screen.getByText("No login recorded")).toHaveClass("bg-slate-400/10");
+      await user.click(screen.getByRole("button", { name: "Filter" }));
+      await user.selectOptions(screen.getByLabelText("Filter field"), "app_admin");
+      await user.selectOptions(screen.getByLabelText("Filter value"), "true");
+      await user.click(screen.getByRole("button", { name: "Apply" }));
+      expect(onFilters).toHaveBeenCalledWith({ app_admin: true });
+    } finally { vi.useRealTimers(); }
+  });
+
   it("offers every declared status and resets the value when changing fields", async () => {
     const user = userEvent.setup();
     const onFilters = vi.fn();

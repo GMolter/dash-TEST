@@ -33,7 +33,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
   const suggestionsId = useId();
   const activeFilterField = data?.fields.find((field) => field.name === filterField);
   useEffect(() => { setFilterField(""); setFilterValue(""); setFilterOpen(false); }, [data?.resource]);
-  const columns = useMemo(() => chooseColumns(data?.fields || [], rows), [data?.fields, rows]);
+  const columns = useMemo(() => chooseColumns(data?.fields || [], rows, data?.resource), [data?.fields, rows, data?.resource]);
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row._admin_id));
   const editableFields = data?.fields.filter((field) => field.editable && !field.sensitive && ["text", "number", "boolean", "select"].includes(field.type)) || [];
   const bulkAllowed = !!data && !["users", "organizations", "launcher-devices", "launcher-pairings", "admin-access-requests", "app-settings", "audit-log", "project-activity"].includes(data.resource);
@@ -176,10 +176,11 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
   );
 }
 
-function chooseColumns(fields: AdminField[], rows: AdminRow[]) {
-  const preferred = ["display_name", "email", "name", "title", "device_name", "code", "slug", "status", "role", "app_admin", "project_id", "owner_id", "user_id", "org_id", "updated_at", "created_at"];
+function chooseColumns(fields: AdminField[], rows: AdminRow[], resource?: string) {
+  const preferred = ["display_name", "email", "name", "title", "device_name", "code", "slug", "status", "role", "last_sign_in_at", "app_admin", "project_id", "owner_id", "user_id", "org_id", "updated_at", "created_at"];
   const technical = new Set(["device_identifier", "icon", "favicon_url", "dorm_lat", "dorm_lng", "location_lat", "location_lng", "position", "sort_index", "sort_order", "order_index"]);
   const safe = fields.filter((field) => {
+    if (resource === "users" && field.name === "app_admin") return false;
     if (field.sensitive || field.name === "temporary_password" || field.name === "id") return false;
     if (field.name.endsWith("_id") && !rows.some((row) => row._admin_refs?.[field.name])) return false;
     return !technical.has(field.name) && !["json", "textarea"].includes(field.type);
@@ -188,12 +189,24 @@ function chooseColumns(fields: AdminField[], rows: AdminRow[]) {
     const index = preferred.indexOf(name);
     return index === -1 ? preferred.length : index;
   };
-  return [...safe].sort((a, b) => rank(a.name) - rank(b.name)).slice(0, 5);
+  return [...safe].sort((a, b) => rank(a.name) - rank(b.name)).slice(0, 5)
+    .map((field) => field.name === "last_sign_in_at" ? { ...field, label: "Last Active" } : field);
 }
 
 function tableValue(value: unknown, field: AdminField) {
+  if (field.name === "last_sign_in_at") return <LastActiveBadge value={value} />;
   if (value === null || value === undefined || value === "") return <span className="text-slate-600">—</span>;
   if (typeof value === "boolean") return <span className={`rounded-full px-2 py-1 text-xs ${value ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-400/10 text-slate-400"}`}>{value ? "Yes" : "No"}</span>;
   return formatAdminValue(value, field.type, field.name);
+}
+
+function LastActiveBadge({ value }: { value: unknown }) {
+  const date = value ? new Date(String(value)) : null;
+  if (!date || Number.isNaN(date.getTime())) return <span className="rounded-full bg-slate-400/10 px-2 py-1 text-xs text-slate-400">No login recorded</span>;
+  // Compare local calendar days; UTC day numbers avoid daylight-saving offsets.
+  const dayNumber = (day: Date) => Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()) / 86_400_000;
+  const days = Math.max(0, dayNumber(new Date()) - dayNumber(date));
+  const color = days <= 2 ? "bg-emerald-400/15 text-emerald-200" : days <= 6 ? "bg-orange-400/15 text-orange-200" : "bg-red-400/15 text-red-200";
+  return <span title={`Last login: ${formatAdminValue(value, "datetime")}`} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${color}`}>{days === 0 ? "Today" : `${days} ${days === 1 ? "Day" : "Days"} Ago`}</span>;
 }
 
