@@ -1,205 +1,54 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BookOpenText, ChevronDown, Search, ArrowRight, Users, Link2, Shield, EyeOff } from 'lucide-react';
+import { ArrowRight, Search, X, Compass, LayoutGrid, FolderOpen, Link2, SlidersHorizontal } from 'lucide-react';
+import { ArticleRow, HelpShell } from '../components/HelpCenter';
+import { helpTopics, topicFor, articleHref, type HelpSummary } from '../lib/helpCenter';
 
-type HelpArticle = {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string;
-  updated_at: string;
-};
-
-const TOPIC_TILES = [
-  { icon: Users, label: 'Organizations', sub: 'Joining, leaving, and managing teams' },
-  { icon: Link2, label: 'URL Shortener', sub: 'Shorten and manage links' },
-  { icon: EyeOff, label: 'Secret Sharing', sub: 'One-time secret links' },
-  { icon: Shield, label: 'Security & Access', sub: 'Invite codes, roles, and permissions' },
-];
-
-const QA_ITEMS = [
-  {
-    q: 'How do I join an organization?',
-    a: "On the Find your people screen, choose Join an organization, enter your team's 4-digit Organization code, and choose Join organization.",
-  },
-  {
-    q: 'Can I belong to multiple organizations at once?',
-    a: "Your account can belong to one organization at a time. Members and admins can leave from Profile, then join another organization from setup.",
-  },
-  {
-    q: 'What happens if I leave my organization?',
-    a: "You lose access to the organization's shared resources and return to organization setup. To rejoin, use the team's current invite code.",
-  },
-  {
-    q: 'How do I create a one-time secret link?',
-    a: "Open Utilities → Secret Sharing, enter your message, choose an expiry, and select Create Secret Link. Copy the link for your recipient. Opening it displays the message immediately and uses its one viewing.",
-  },
-  {
-    q: 'How do I shorten a URL?',
-    a: "Open Utilities → URL Shortener, paste the full URL, optionally enter a custom short code, and choose Shorten URL. Copy the new link to share it; anyone with the link can follow it.",
-  },
-  {
-    q: 'Where do I get an organization invite code?',
-    a: "Ask your team for its current code. Existing members can open Organization → Overview and choose Copy beside the organization code.",
-  },
-];
-
-function QAItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-b border-slate-800 last:border-0">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-3 py-4 text-left group"
-      >
-        <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{q}</span>
-        <ChevronDown
-          className={`h-4 w-4 flex-none text-slate-600 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-      {open && (
-        <p className="pb-4 text-sm text-slate-500 leading-relaxed">{a}</p>
-      )}
-    </div>
-  );
-}
-
+const icons = [Compass, LayoutGrid, FolderOpen, Link2, SlidersHorizontal];
 export function HelpPage() {
-  const [articles, setArticles] = useState<HelpArticle[]>([]);
+  const [articles, setArticles] = useState<HelpSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
+  const [topic, setTopic] = useState('all');
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      try {
-        const r = await fetch('/api/public/help-articles', { cache: 'no-store' });
-        const j = await r.json();
-        if (!cancelled) setArticles(Array.isArray(j.articles) ? j.articles : []);
-      } catch {
-        // silent
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
+    setLoading(true); setError(false);
+    fetch('/api/public/help-articles', { cache: 'no-store' }).then(async response => {
+      if (!response.ok) throw new Error('Unable to load guides');
+      const data = await response.json();
+      if (!Array.isArray(data.articles)) throw new Error('Unable to load guides');
+      if (!cancelled) setArticles(data.articles);
+    }).catch(() => { if (!cancelled) setError(true); }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
-
+  }, [attempt]);
   const query = search.trim().toLowerCase();
-
-  const filteredArticles = useMemo(() => {
-    if (!query) return articles;
-    return articles.filter((a) =>
-      `${a.title} ${a.summary}`.toLowerCase().includes(query)
-    );
-  }, [articles, query]);
-
-  return (
-    <div className="flex flex-col h-screen bg-slate-950/55 text-white overflow-hidden backdrop-blur-[2px]">
-      {/* Header */}
-      <header className="z-20 min-h-28 shrink-0 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
-        <div className="flex min-h-28 items-center px-4 [padding-left:7rem] sm:px-6 sm:[padding-left:8rem]">
-          <div className="flex items-center gap-2.5">
-            <BookOpenText className="h-5 w-5 text-indigo-200" />
-            <span className="text-lg font-semibold text-slate-100">Help Center</span>
-          </div>
-        </div>
-      </header>
-
-      {/* Body */}
-      <div className="flex flex-1 min-h-0">
-
-        {/* Sidebar */}
-        <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-slate-950/20 md:flex">
-          <div className="p-4 border-b border-slate-800">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Articles</p>
-          </div>
-          <nav className="flex-1 overflow-y-auto p-3">
-            {loading ? (
-              <p className="text-xs text-slate-600 px-2 py-2">Loading...</p>
-            ) : articles.length === 0 ? (
-              <p className="text-xs text-slate-600 px-2 py-2">No articles yet.</p>
-            ) : filteredArticles.length === 0 ? (
-              <p className="text-xs text-slate-600 px-2 py-2">No articles match.</p>
-            ) : (
-              filteredArticles.map((article) => (
-                <a
-                  key={article.id}
-                  href={`/help/article/${article.slug}`}
-                  className="flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors group"
-                >
-                  <ArrowRight className="h-3 w-3 shrink-0 text-slate-700 group-hover:text-slate-500 transition-colors" />
-                  <span className="truncate">{article.title}</span>
-                </a>
-              ))
-            )}
-          </nav>
-        </aside>
-
-        {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
-
-          {/* Hero */}
-          <div className="border-b border-white/10 bg-slate-900/20 px-10 py-14 backdrop-blur-md">
-            <div className="max-w-2xl mx-auto space-y-6">
-              <div className="space-y-2">
-                <h1 className="text-4xl font-bold text-white tracking-tight">How can we help?</h1>
-                <p className="text-slate-400 text-base">Search the docs or browse common questions below.</p>
-              </div>
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search for articles..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-700 bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 text-sm transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Content below hero */}
-          <div className="px-10 py-10">
-            <div className="max-w-2xl mx-auto space-y-12">
-
-              {/* Topic tiles — hide when searching */}
-              {!query && (
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Topics</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {TOPIC_TILES.map(({ icon: Icon, label, sub }) => (
-                      <div
-                        key={label}
-                        className="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4"
-                      >
-                        <div className="mt-0.5 rounded-lg border border-slate-700 bg-slate-800 p-2">
-                          <Icon className="h-4 w-4 text-slate-300" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-200">{label}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Q&A */}
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Common Questions</p>
-                <div className="rounded-xl border border-slate-800 bg-slate-900/20 px-5">
-                  {QA_ITEMS.map((item) => (
-                    <QAItem key={item.q} q={item.q} a={item.a} />
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
-  );
+  const filtered = useMemo(() => articles.filter(article => {
+    const category = topicFor(article.slug);
+    const text = `${article.title} ${article.summary || ''} ${category?.name || ''}`.toLowerCase();
+    return (topic === 'all' || category?.id === topic) && query.split(/\s+/).every(word => text.includes(word));
+  }), [articles, query, topic]);
+  const featured = ['getting-started', 'home-dashboard', 'plugins-and-classdash'].map(slug => articles.find(article => article.slug === slug)).filter((article): article is HelpSummary => !!article);
+  return <HelpShell><main id="help-main" className="help-home">
+    <section className="help-hero">
+      <div className="help-eyebrow"><span /> A GUIDE TO YOUR WORKSPACE</div>
+      <h1>Find your way.<br /><span>Make it yours.</span></h1>
+      <p>Practical answers for whatever you’re working on.</p>
+      <div className="help-search"><Search size={21} aria-hidden="true" /><input aria-label="Search help articles" placeholder="Try “quick links” or “join a team”" value={search} onChange={event => { setSearch(event.target.value); setTopic('all'); }} />{search && <button aria-label="Clear search" onClick={() => setSearch('')}><X size={18} /></button>}</div>
+      <div className="help-search-hint">Explore the guides below, or search by tool or task.</div>
+      <div className="help-orbit" aria-hidden="true"><div /><div /><div /><BookMark /></div>
+    </section>
+    {!query && topic === 'all' && !loading && !error && featured.length > 0 && <section className="help-featured" aria-label="Start here">{featured.map((article) => <a key={article.id} href={articleHref(article.slug)}><span className="help-eyebrow">{article.slug === 'getting-started' ? 'NEW TO OLIO' : article.slug === 'home-dashboard' ? 'MAKE IT YOURS' : 'PLAN YOUR DAY'}</span><strong>{article.title}</strong><span>{article.summary}</span><ArrowRight size={20} aria-hidden="true" /></a>)}</section>}
+    <section className="help-library" aria-labelledby="guide-heading">
+      <div className="help-section-heading"><div><div className="help-eyebrow">THE GUIDE LIBRARY</div><h2 id="guide-heading">{query ? 'Search results' : 'What would you like to do?'}</h2></div><span aria-live="polite">{!loading && !error && `${filtered.length} ${filtered.length === 1 ? 'guide' : 'guides'}`}</span></div>
+      <div className="help-filters" aria-label="Filter by topic"><button aria-pressed={topic === 'all'} onClick={() => setTopic('all')}>All guides</button>{helpTopics.map(item => <button key={item.id} aria-pressed={topic === item.id} onClick={() => setTopic(item.id)}>{item.name}</button>)}</div>
+      {loading ? <div className="help-state" role="status">Loading your guides…</div> : error ? <div className="help-state" role="alert"><h3>We couldn’t load the guides.</h3><p>Check your connection and try again.</p><button onClick={() => setAttempt(value => value + 1)}>Try again</button></div> : filtered.length === 0 ? <div className="help-state"><Search size={28} /><h3>{query ? 'No matching guides yet.' : 'No guides in this view.'}</h3><p>{query ? 'Try a tool name or a shorter search.' : 'Choose another topic to keep exploring.'}</p>{(query || topic !== 'all') && <button onClick={() => { setSearch(''); setTopic('all'); }}>Show all guides</button>}</div> : query ? <div className="help-results">{filtered.map(article => <ArticleRow key={article.id} article={article} />)}</div> : <div className="help-topic-grid">{[...helpTopics, { id: 'more', name: 'More guides', description: 'More ways to get the most out of Olio.', slugs: [] }].map((category, index) => {
+        const matches = filtered.filter(article => (topicFor(article.slug)?.id || 'more') === category.id);
+        const Icon = icons[index] || Compass;
+        return matches.length > 0 && <section key={category.id} className="help-topic-card"><div className="help-topic-heading"><span className="help-topic-icon"><Icon size={21} /></span><span><h3>{category.name}</h3><p>{category.description}</p></span></div>{matches.map(article => <ArticleRow key={article.id} article={article} />)}</section>;
+      })}</div>}
+    </section>
+    <section className="help-bottom-note"><Compass size={25} /><div><h2>A good place to start</h2><p>Pick a tool in your workspace, then use these guides to make it work for you.</p></div><a href="/">Open Olio <ArrowRight size={16} /></a></section>
+  </main></HelpShell>;
 }
+function BookMark() { return <span className="help-orbit-center"><Compass size={48} strokeWidth={1} /></span>; }

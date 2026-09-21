@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import { HelpShell, ArticleRow } from '../components/HelpCenter';
+import { topicFor } from '../lib/helpCenter';
 import { LinkedContent } from '../components/linking/renderLinkedContent';
 import type { LinkResolvedMeta } from '../components/linking/types';
 import type { ParsedMarkdownLink } from '../lib/linking';
@@ -25,10 +27,15 @@ export function HelpArticlePage({ slug }: { slug: string }) {
   const [helpRefs, setHelpRefs] = useState<HelpLinkRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setMissing(false);
+    setLoading(true);
+    setError(false);
+    setArticle(null);
 
     async function load() {
       try {
@@ -37,15 +44,15 @@ export function HelpArticlePage({ slug }: { slug: string }) {
           if (!cancelled) setMissing(true);
           return;
         }
+        if (!r.ok) throw new Error('Unable to load article');
         const j = await r.json();
-        const refsRes = await fetch('/api/public/help-articles', { cache: 'no-store' });
-        const refsJson = await refsRes.json().catch(() => ({}));
+        const refsJson = await fetch('/api/public/help-articles', { cache: 'no-store' }).then(response => response.ok ? response.json() : {}).catch(() => ({}));
         if (!cancelled) {
           setArticle(j.article || null);
           setHelpRefs(Array.isArray(refsJson.articles) ? (refsJson.articles as HelpLinkRef[]) : []);
         }
       } catch {
-        if (!cancelled) setMissing(true);
+        if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -55,7 +62,7 @@ export function HelpArticlePage({ slug }: { slug: string }) {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, attempt]);
 
   const resolveHelpHref = useMemo(() => {
     const byId = new Map(helpRefs.flatMap((item) => [[item.id, item], [item.slug, item]]));
@@ -132,57 +139,22 @@ export function HelpArticlePage({ slug }: { slug: string }) {
       if (!target) return;
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, [article?.id]);
+  }, [article]);
 
-  return (
-    <div className="min-h-screen bg-slate-950/55 text-white backdrop-blur-[2px]">
-      <header className="sticky top-0 z-20 min-h-28 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
-        <div className="flex min-h-28 items-center px-4 [padding-left:7rem] sm:px-6 sm:[padding-left:8rem] lg:px-10 lg:[padding-left:8rem]">
-          <a
-            href="/help"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/[0.07] hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Help Center</span>
-          </a>
-        </div>
-      </header>
-
-      <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-8">
-        <section className="glass-panel rounded-[1.5rem] p-6">
-          {loading ? (
-            <div className="text-sm text-slate-400">Loading article...</div>
-          ) : missing || !article ? (
-            <div className="text-sm text-slate-400">This article was not found.</div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-400">
-                <FileText className="h-4 w-4" />
-                <span className="text-xs uppercase tracking-wide">Documentation</span>
-              </div>
-              <h1 className="text-2xl font-semibold text-white">{article.title}</h1>
-              {article.summary && <p className="text-slate-300 text-sm">{article.summary}</p>}
-              <div className="text-xs text-slate-500">
-                Updated {new Date(article.updated_at).toLocaleString()}
-              </div>
-              <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-4">
-                <LinkedContent
-                  content={article.content || 'No content yet.'}
-                  resolveMeta={resolveMeta}
-                  resolveHelpHref={resolveHelpHref}
-                  className="space-y-4 text-sm leading-6 text-slate-100 font-sans break-words [overflow-wrap:anywhere]"
-                  onActivateHelpTeleport={(anchorId) => {
-                    const target = document.getElementById(anchorId);
-                    if (!target) return;
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    window.history.replaceState(null, '', `#${anchorId}`);
-                  }}
-                />
-              </div>
-            </div>
-          )}
-        </section>
-      </div>
-    </div>
-  );
+  const topic = topicFor(slug);
+  const sections = articleAnchors.filter(anchor => anchor.level === 2);
+  const related = helpRefs.filter(ref => ref.slug !== slug && topicFor(ref.slug)?.id === topic?.id).slice(0, 4);
+  const sectionLinks = <nav className="help-toc" aria-label="Article sections">{sections.map(anchor => <a key={anchor.id} href={'#' + anchor.id}>{anchor.title}</a>)}</nav>;
+  const date = article?.updated_at ? new Date(article.updated_at) : null;
+  return <HelpShell><main id="help-main" className="help-reader">
+    <nav className="help-breadcrumb" aria-label="Breadcrumb"><a href="/help">Help Center</a><ChevronRight size={13} /><span>{topic?.name || 'Guides'}</span></nav>
+    {loading ? <div className="help-state" role="status">Opening your guide…</div> : error ? <div className="help-state" role="alert"><h1>We couldn’t open this guide.</h1><p>Check your connection and try again.</p><button onClick={() => setAttempt(value => value + 1)}>Try again</button></div> : missing || !article ? <div className="help-state"><h1>This guide isn’t available.</h1><p>Browse the library to find another guide.</p><a href="/help">Explore all guides</a></div> : <>
+      <div className="help-reading-grid"><article>
+        <header className="help-article-header"><div className="help-eyebrow">{topic?.name.toUpperCase() || 'OLIO GUIDE'}</div><h1>{article.title}</h1>{article.summary && <p>{article.summary}</p>}<div className="help-article-meta"><span>{Math.max(1, Math.ceil(article.content.split(/\s+/).length / 200))} min read</span>{date && !Number.isNaN(date.getTime()) && <span>Updated {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>}</div></header>
+        {sections.length > 0 && <details className="help-mobile-toc"><summary>In this guide</summary>{sectionLinks}</details>}
+        <LinkedContent content={article.content || 'This guide is being prepared.'} resolveMeta={resolveMeta} resolveHelpHref={resolveHelpHref} className="help-prose" onActivateHelpTeleport={(anchorId) => { const target = document.getElementById(anchorId); if (target) { target.scrollIntoView({ block: 'start' }); window.history.replaceState(null, '', '#' + anchorId); } }} />
+      </article><aside className="help-reading-aside">{sections.length > 0 && <><div className="help-eyebrow">IN THIS GUIDE</div>{sectionLinks}</>}<a className="help-article-row" style={{ marginTop: 28 }} href="/help"><span>Browse all guides</span><ChevronRight size={16} /></a></aside></div>
+      {related.length > 0 && <section className="help-related"><h2>Keep exploring</h2><div className="help-related-grid">{related.map(ref => <ArticleRow key={ref.id} article={ref} />)}</div></section>}
+    </>}
+  </main></HelpShell>;
 }

@@ -7,7 +7,7 @@ afterEach(() => vi.unstubAllGlobals());
 it('opens maintained slug links and editor-created ID links to the published article', async () => {
   const target = { id: 'a1b2c3', slug: 'quick-pastes', title: 'Quick Pastes' };
   vi.stubGlobal('fetch', vi.fn(async (url: string) => ({
-    status: 200,
+    status: 200, ok: true,
     json: async () => url.startsWith('/api/public/help-article?')
       ? { article: {
         id: 'source', slug: 'utilities-hub', title: 'Utilities Hub', summary: '',
