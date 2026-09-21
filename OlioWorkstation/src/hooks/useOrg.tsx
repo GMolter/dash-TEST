@@ -32,11 +32,12 @@ interface OrgContextType {
   refreshOrg: (options?: { silent?: boolean }) => Promise<void>;
   joinOrg: (code: string) => Promise<{ success: boolean; error?: string }>;
   createOrg: (name: string) => Promise<{ success: boolean; error?: string }>;
-  updateOrg: (updates: Partial<Organization>) => Promise<{ success: boolean; error?: string }>;
+  updateOrg: (updates: Pick<Organization, 'name'>) => Promise<{ success: boolean; error?: string }>;
   regenerateCode: () => Promise<{ success: boolean; newCode?: string; error?: string }>;
   leaveOrg: () => Promise<{ success: boolean; error?: string }>;
   deleteOrg: () => Promise<{ success: boolean; error?: string }>;
   updateMemberRole: (memberId: string, newRole: 'member' | 'admin' | 'owner') => Promise<{ success: boolean; error?: string }>;
+  transferOwnership: (memberId: string) => Promise<{ success: boolean; error?: string }>;
   removeMember: (memberId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -238,7 +239,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     return completeSetup('create_organization_with_owner', { p_name: name.trim() });
   };
 
-  const updateOrg = async (updates: Partial<Organization>) => {
+  const updateOrg = async (updates: Pick<Organization, 'name'>) => {
     if (!organization) return { success: false, error: 'No organization' };
     if (!profile || !['owner', 'admin'].includes(profile.role)) {
       return { success: false, error: 'Permission denied' };
@@ -249,7 +250,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
       const { error: updateError } = await supabase
         .from('organizations')
-        .update(updates)
+        .update({ name: updates.name.trim() })
         .eq('id', organization.id);
 
       if (updateError) throw updateError;
@@ -302,31 +303,27 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const leaveOrg = async () => {
-    if (!user) return { success: false, error: 'Not authenticated' };
-
+  const manageMember = async (memberId: string, action: 'role' | 'remove' | 'leave' | 'transfer', role?: string) => {
+    if (!user || !organization) return { success: false, error: 'Please sign in to your organization.' };
     try {
-      setError(null);
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ org_id: null, role: 'member' })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
-
-      await refreshOrg();
+      const { error: memberError } = await supabase.rpc('manage_organization_member', {
+        p_org_id: organization.id, p_member_id: memberId, p_action: action, p_role: role ?? null,
+      });
+      if (memberError) throw memberError;
+      await refreshOrg({ silent: true });
       return { success: true };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to leave organization';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
+      const message = typeof err === 'object' && err !== null && 'message' in err ? String(err.message) : 'Could not update this member.';
+      return { success: false, error: message };
     }
   };
 
+  const leaveOrg = () => manageMember(user?.id ?? '', 'leave');
+  const transferOwnership = (memberId: string) => manageMember(memberId, 'transfer');
+
   const deleteOrg = async () => {
     if (!organization) return { success: false, error: 'No organization' };
-    if (!user || !profile || profile.role !== 'owner' || organization.owner_id !== user.id || profile.org_id !== organization.id) {
+    if (!user || !profile || profile.role !== 'owner' || profile.org_id !== organization.id) {
       return { success: false, error: 'Only the owner can delete the organization' };
     }
 
@@ -350,53 +347,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateMemberRole = async (memberId: string, newRole: 'member' | 'admin' | 'owner') => {
-    if (!profile || !['owner', 'admin'].includes(profile.role)) {
-      return { success: false, error: 'Permission denied' };
-    }
-
-    try {
-      setError(null);
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', memberId);
-
-      if (updateError) throw updateError;
-
-      await refreshOrg();
-      return { success: true };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update member role';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    }
-  };
-
-  const removeMember = async (memberId: string) => {
-    if (!profile || !['owner', 'admin'].includes(profile.role)) {
-      return { success: false, error: 'Permission denied' };
-    }
-
-    try {
-      setError(null);
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ org_id: null, role: 'member' })
-        .eq('id', memberId);
-
-      if (updateError) throw updateError;
-
-      await refreshOrg();
-      return { success: true };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to remove member';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    }
-  };
+  const updateMemberRole = (memberId: string, role: 'member' | 'admin' | 'owner') => manageMember(memberId, 'role', role);
+  const removeMember = (memberId: string) => manageMember(memberId, 'remove');
 
   return (
     <OrgContext.Provider
@@ -415,6 +367,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         deleteOrg,
         updateMemberRole,
         removeMember,
+        transferOwnership,
       }}
     >
       {children}
