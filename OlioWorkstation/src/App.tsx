@@ -371,7 +371,6 @@ function App() {
           <span className="font-mono text-slate-200">{formatTime(currentTime)}</span>
         </p>
         <div className="mx-auto mt-4 h-px w-14 bg-gradient-to-r from-transparent via-violet-400 to-transparent shadow-[0_0_14px_rgba(139,92,246,0.9)]" />
-        <button type="button" onClick={() => navigateTo('/?edit=dashboard')} className="mx-auto mt-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/35 px-3.5 py-2 text-xs font-medium text-slate-300 backdrop-blur hover:border-indigo-300/25 hover:text-white"><LayoutDashboard className="h-3.5 w-3.5" /> Customize dashboard</button>
       </section>
 
       {banner.enabled && banner.text?.trim() && (
@@ -394,6 +393,9 @@ function App() {
         onNavigate={navigateTo}
         onOpenTool={(tool) => setView({ type: 'tool', tool })}
       />
+      <div className="mt-8 text-center">
+        <button type="button" onClick={() => navigateTo('/?edit=dashboard')} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/35 px-3.5 py-2 text-xs font-medium text-slate-300 backdrop-blur hover:border-indigo-300/25 hover:text-white"><LayoutDashboard className="h-3.5 w-3.5" /> Customize dashboard</button>
+      </div>
     </div>
     );
   };
