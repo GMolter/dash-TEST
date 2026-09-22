@@ -14,9 +14,9 @@ describe('Help Center content', () => {
     const migration = readFileSync(resolve('supabase/migrations/20260921120000_update_user_help_guides.sql'), 'utf8');
     expect(articles).toHaveLength(22);
     expect(new Set(articles.map(article => article.slug)).size).toBe(articles.length);
-    const deletionUpdate = readFileSync(resolve('supabase/migrations/20260921130000_move_organization_deletion_help.sql'), 'utf8');
+    const deletionUpdate = readFileSync(resolve('supabase/migrations/20260922150000_organization_workspace_help.sql'), 'utf8');
     for (const article of articles) {
-      const source = ['organizations', 'organization-management', 'profile-and-settings'].includes(article.slug) ? deletionUpdate : migration;
+      const source = ['organizations', 'utilities-hub', 'quick-links', 'organization-management', 'profile-and-settings'].includes(article.slug) ? deletionUpdate : migration;
       expect(source).toContain(article.content.replaceAll("'", "''"));
     }
     expect(articles.some(article => article.slug === 'triggers-and-webhooks')).toBe(false);

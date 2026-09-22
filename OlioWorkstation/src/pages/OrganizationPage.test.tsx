@@ -1,21 +1,31 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
-  profile: { role: 'owner' },
+  profile: { id: 'owner', role: 'owner' },
   organization: { id: 'org', name: 'Test Team', code: '1234' },
-  members: [], deleteOrg: vi.fn(), leaveOrg: vi.fn(),
+  members: [] as { id: string; display_name: string; email: string; role: string }[], updateMemberRole: vi.fn(), transferOwnership: vi.fn(), removeMember: vi.fn(), refreshOrg: vi.fn(), deleteOrg: vi.fn(), leaveOrg: vi.fn(),
 }));
 vi.mock('../hooks/useOrg', () => ({ useOrg: () => state }));
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ user: {}, signOut: vi.fn() }) }));
 vi.mock('../components/Quicklinks', () => ({ Quicklinks: () => null }));
 vi.mock('../components/LauncherDevices', () => ({ LauncherDevices: () => null }));
 vi.mock('../components/AnimatedBackground', () => ({ AnimatedBackground: () => null }));
+const workspace = vi.hoisted(() => ({ announcements: [], resources: [], loading: false, error: '', refresh: vi.fn(), saveAnnouncement: vi.fn(), saveResource: vi.fn(), remove: vi.fn() }));
+vi.mock('../features/organization/useOrganizationWorkspace', async importOriginal => ({
+  ...await importOriginal<typeof import('../features/organization/useOrganizationWorkspace')>(),
+  useOrganizationWorkspace: () => workspace,
+  useOrganizationActivity: () => ({ items: [], loading: false, error: '', more: false, refresh: vi.fn() }),
+}));
 import { OrganizationPage } from './OrganizationPage';
 import { ProfileSettings } from './ProfileSettings';
 
-beforeEach(() => { state.profile.role = 'owner'; state.deleteOrg.mockReset().mockResolvedValue({ success: true }); });
+beforeEach(() => {
+  state.profile.role = 'owner'; state.members = [];
+  for (const fn of [state.deleteOrg, state.updateMemberRole, state.transferOwnership, state.removeMember]) fn.mockReset().mockResolvedValue({ success: true });
+  workspace.saveAnnouncement.mockReset().mockResolvedValue(undefined); workspace.saveResource.mockReset().mockResolvedValue(undefined);
+});
 function openDelete() {
-  fireEvent.click(screen.getByRole('button', { name: 'Manage' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Admin' }));
   fireEvent.click(screen.getByRole('button', { name: 'Delete Organization' }));
 }
 function confirmDelete() {
@@ -26,8 +36,8 @@ describe('Organization deletion', () => {
   it.each(['admin', 'member'])('does not expose deletion to a %s', role => {
     state.profile.role = role;
     render(<OrganizationPage />);
-    if (role === 'admin') fireEvent.click(screen.getByRole('button', { name: 'Manage' }));
-    else expect(screen.queryByRole('button', { name: 'Manage' })).not.toBeInTheDocument();
+    if (role === 'admin') fireEvent.click(screen.getByRole('button', { name: 'Admin' }));
+    else expect(screen.queryByRole('button', { name: 'Admin' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Delete Organization' })).not.toBeInTheDocument();
   });
   it('requires both acknowledgments and closes after success', async () => {
@@ -70,5 +80,63 @@ describe('Organization deletion', () => {
     render(<ProfileSettings appBackgroundTheme="contour-drift" appBackgroundPreset="teal" getPresetForTheme={() => 'teal'} onAppBackgroundThemeChange={vi.fn()} onAppBackgroundPresetChange={vi.fn()} />);
     expect(screen.queryByRole('button', { name: 'Delete Organization' })).not.toBeInTheDocument();
     expect(!!screen.queryByRole('button', { name: 'Leave Organization' })).toBe(role !== 'owner');
+  });
+});
+
+describe('Organization workspace', () => {
+  it('copies the large header join code', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    render(<OrganizationPage />);
+    const code = screen.getByRole('button', { name: 'Copy join code' });
+    expect(code).toHaveTextContent('1234'); fireEvent.click(code);
+    await waitFor(() => expect(writeText).toHaveBeenCalledExactlyOnceWith('1234'));
+  });
+  it('publishes an announcement with pinned state', async () => {
+    render(<OrganizationPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'New announcement' }));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Team update' } });
+    fireEvent.change(screen.getByLabelText('Announcement'), { target: { value: 'Meet on Friday.' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Publish announcement' }));
+    await waitFor(() => expect(workspace.saveAnnouncement).toHaveBeenCalledWith({ title: 'Team update', body: 'Meet on Friday.', pinned: true }, undefined));
+  });
+  it('allows members to add written resources but not announcements', async () => {
+    state.profile.role = 'member'; render(<OrganizationPage />);
+    expect(screen.queryByRole('button', { name: 'New announcement' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Resources', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add resource' }));
+    fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'note' } });
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Guide' } });
+    fireEvent.change(screen.getByLabelText('Content'), { target: { value: 'How to get started' } });
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add resource' }));
+    await waitFor(() => expect(workspace.saveResource).toHaveBeenCalledWith(expect.objectContaining({ kind: 'note', title: 'Guide', content: 'How to get started' }), undefined));
+  });
+  it('confirms adding an equal owner before changing their role', async () => {
+    state.members = [{ id: 'owner', role: 'owner', display_name: 'Owner', email: 'owner@example.test' }, { id: 'member', role: 'member', display_name: 'Robin', email: 'robin@example.test' }];
+    render(<OrganizationPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'People', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Robin' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add as owner' }));
+    expect(state.updateMemberRole).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toHaveTextContent('You will remain an owner');
+    fireEvent.click(screen.getByRole('button', { name: 'Add owner' }));
+    await waitFor(() => expect(state.updateMemberRole).toHaveBeenCalledExactlyOnceWith('member', 'owner'));
+  });
+  it('confirms ownership transfer and explains the sender becomes admin', async () => {
+    state.members = [{ id: 'member', role: 'member', display_name: 'Robin', email: 'robin@example.test' }];
+    render(<OrganizationPage />); fireEvent.click(screen.getByRole('button', { name: 'People', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Robin' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer my ownership' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('You will become an admin');
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }));
+    await waitFor(() => expect(state.transferOwnership).toHaveBeenCalledExactlyOnceWith('member'));
+  });
+  it('prevents the last owner from demoting themselves', () => {
+    state.members = [{ id: 'owner', role: 'owner', display_name: 'Owner', email: 'owner@example.test' }];
+    render(<OrganizationPage />); fireEvent.click(screen.getByRole('button', { name: 'People', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Owner' }));
+    expect(screen.getByRole('button', { name: 'Change to admin' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Change to member' })).toBeDisabled();
   });
 });

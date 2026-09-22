@@ -29,7 +29,7 @@ export function ProfileSettings({
   onAppBackgroundPresetChange,
 }: ProfileSettingsProps) {
   const { user, signOut } = useAuth();
-  const { profile, organization, leaveOrg } = useOrg();
+  const { profile, organization, members, leaveOrg } = useOrg();
   const { isOwner } = usePermission();
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -168,7 +168,7 @@ export function ProfileSettings({
                 <div className="text-white font-medium">{organization.name}</div>
               </div>
 
-              {!isOwner() && (
+              {(!isOwner() || members.filter(member => member.role === 'owner').length > 1) && (
                 <>
                   <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0" />

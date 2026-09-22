@@ -1,33 +1,77 @@
 ########
 Title: Organization Management
 Slug: organization-management
-Summary: View members, share the invite code, and manage team settings.
+Summary: Share announcements and resources, follow team activity, and manage people and ownership.
 Sort Order: 17
 ########
 
-Open **Organization** from the navigation menu.
+Open **Organization** from the navigation menu. The header shows your team and its join code. Click the large **Join code** to copy it, then give it to a teammate to use during [organization setup](olio://help/organizations).
 
-## View the team and invite someone
+## Overview
 
-The **Overview** tab shows the organization name, code, and member list. Choose **Copy** beside the code and give it to the person you want to invite. They can use it during [organization setup](olio://help/organizations).
+**Overview** brings together recent announcements, activity, and people. Pinned announcements appear first. Use **Refresh organization** to load the latest changes.
 
-Open **Shared Links** to use or add team bookmarks.
+## Announcements
 
-## Change organization settings
+Open **Announcements** to read and search team updates. Owners and admins can choose **New announcement**, enter a title and message, and choose **Publish announcement**. Check **Pin to the top of announcements** to keep an important post visible first.
 
-Owners and admins can open **Manage**. Edit **Organization Name** and choose **Save Changes** to rename the team.
+Use a post's edit, pin, or delete button to manage it. Deleting requires confirmation and cannot be undone.
 
-Under **Security**, choose **Regenerate** and confirm to replace the invite code. Copy the new code for future invitations. The old code stops working; existing members stay in the organization.
+## Activity
 
-## Manage members
+**Activity** shows new announcements, resource changes, membership and role changes, organization settings, shared link changes, and organization project changes. Choose a category to filter the feed, **Refresh activity** to get the latest updates, or **Load more activity** to read older entries.
 
-In **Manage Members**, use **Promote** to make a member an admin or **Demote** to return an admin to member. Owners and admins have management access; only the owner can delete the organization.
+The feed starts recording when the workspace features become available. Personal links and personal projects do not appear here.
 
-Choose **Remove** beside a member and confirm to remove their access to the organization. Check the person's name before confirming.
+## Resource library
+
+Open **Resources → Library** to find your team's guides, templates, references, and tools. Search by title, description, or note content, and use the category filter to narrow the list.
+
+1. Choose **Add resource**.
+2. Choose **Link** for an existing website or document, or **Note or guide** to write content in Olio.
+3. Enter a title, choose a category, and optionally add a description.
+4. Enter an http or https URL for a link, or write the note's content.
+5. Choose **Add resource**.
+
+Everyone can add resources and edit or delete their own entries. Owners and admins can manage all entries. Links open in a new tab; **Read note** opens written content. Deleting a library entry does not delete the external document it links to.
+
+Your team's existing bookmarks are under **Resources → Shared links**. See [Quick Links](olio://help/quick-links).
+
+## People and roles
+
+Open **People** to search teammates by name, email, or role. Choose **Manage** beside a person to see the actions available to you.
+
+- **Members** can read announcements and activity, use shared tools, and contribute resources.
+- **Admins** can publish announcements, manage resources and settings, promote members to admin, and remove members.
+- **Owners** can also manage admins and other owners, transfer ownership, and delete the organization.
+
+An organization can have multiple owners with equal permissions. Application administrator access is separate from organization roles.
+
+## Add or transfer ownership
+
+Only owners can change ownership. The teammate must already belong to your organization.
+
+To add an owner, open **People → Manage** beside a teammate, choose **Add as owner**, read the confirmation, and choose **Add owner**. You remain an owner. The new owner can manage other owners and delete the organization.
+
+To hand off your own role, choose **Transfer my ownership** beside another teammate, then confirm with **Transfer ownership**. They become an owner and you become an admin. Other owners keep their roles.
+
+Owners can use **Change to admin** or **Change to member** to change an owner's role. The last owner cannot step down or be removed until another owner is added or ownership is transferred.
+
+## Organization settings
+
+Owners and admins can open **Admin**. Edit **Organization name** and choose **Save changes** to rename the team.
+
+Under **Invite access**, choose **Regenerate code** and confirm to replace the join code. Copy the new code from the header. The old code stops working; current members keep their access.
+
+## Leave or remove a teammate
+
+Choose **Remove teammate** in a person's management dialog and confirm to remove their access. Owners can remove other owners only when another owner remains. Admins can remove members.
+
+To leave yourself, open **Profile → Leave Organization**, type the organization name, and confirm. Owners can leave when another owner remains; the last owner must add or transfer ownership first. See [Profile and Settings](olio://help/profile-and-settings).
 
 ## Delete the organization
 
-Only the owner can see and use **Delete Organization** in **Organization → Manage**.
+Only owners can see and use **Delete Organization** in **Organization → Admin**.
 
 1. Choose **Delete Organization**.
 2. Read the warning and check the acknowledgment.
@@ -35,7 +79,3 @@ Only the owner can see and use **Delete Organization** in **Organization → Man
 4. Choose **Delete**.
 
 This permanently deletes the organization and its data and removes all members. This cannot be undone.
-
-## Leave the organization
-
-Members and admins can leave from **Profile → Organization Management**. See [Profile and Settings](olio://help/profile-and-settings) for the steps.

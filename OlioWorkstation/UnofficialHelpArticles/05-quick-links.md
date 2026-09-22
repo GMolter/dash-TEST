@@ -29,6 +29,6 @@ When deleting a folder, choose **Move links to root** to keep its bookmarks, or 
 
 ## Share bookmarks with your team
 
-Open **Organization → Shared Links** and choose **Link**. Links created here are available to everyone in the organization.
+Open **Organization → Resources → Shared links** and choose **Link**. Links created here are available to everyone in the organization.
 
 You can edit or delete shared links you created. Owners and admins can also manage other members' shared links. Shared links appear as a list in the Organization page.

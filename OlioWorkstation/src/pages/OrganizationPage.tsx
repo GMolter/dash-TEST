@@ -43,7 +43,7 @@ function OrganizationWorkspace() {
   useEffect(() => { setEditName(organization?.name ?? ''); }, [organization?.name]);
   // A role refresh immediately removes management actions, including an open editor.
   useEffect(() => {
-    if (!manager && (dialog?.kind === 'announcement' || dialog?.kind === 'member' || dialog?.kind === 'confirm')) setDialog(null);
+    if (!manager && (dialog?.kind === 'announcement' || dialog?.kind === 'member')) setDialog(null);
     if (!owner && dialog?.kind === 'delete-org') setDialog(null);
   }, [manager, owner, dialog]);
   if (!organization) return null;
@@ -74,7 +74,7 @@ function OrganizationWorkspace() {
   const invitePanel = <section className="org-panel"><div className="org-section-heading"><h2>Better together</h2><Users size={18} className="text-violet-300" /></div><p className="org-subtitle">Give this code to a teammate to invite them into your organization.</p><strong className="org-invite-code">{organization.code}</strong><button className="org-button" onClick={copyCode} disabled={busy}><Copy size={15} />Copy invite code</button></section>;
 
   return <div className="org-workspace">
-    <header className="org-hero"><div className="org-hero-top"><div><div className="org-eyebrow"><Building2 size={14} />Your shared workspace</div><h1>{organization.name}</h1><p>A place for your people, knowledge, and what’s happening next.</p></div><div className="org-actions"><RoleBadge role={profile?.role ?? 'member'} /><button className="org-icon-button" aria-label="Refresh organization" disabled={busy || workspace.loading} onClick={() => { void run(async () => { await Promise.all([workspace.refresh(), org.refreshOrg({ silent: true })]); }, 'Workspace refreshed.'); }}><RefreshCw size={16} /></button></div></div>
+    <header className="org-hero"><div className="org-hero-top"><div><div className="org-eyebrow"><Building2 size={14} />Your shared workspace</div><h1>{organization.name}</h1><p>A place for your people, knowledge, and what’s happening next.</p></div><div className="org-hero-right"><div className="org-actions"><RoleBadge role={profile?.role ?? 'member'} /><button className="org-icon-button" aria-label="Refresh organization" disabled={busy || workspace.loading} onClick={() => { void run(async () => { await Promise.all([workspace.refresh(), org.refreshOrg({ silent: true })]); }, 'Workspace refreshed.'); }}><RefreshCw size={16} /></button></div><button className="org-header-code" aria-label="Copy join code" onClick={copyCode} disabled={busy}><span>Join code</span><strong>{organization.code}</strong><span><Copy size={13} /> Click to copy</span></button></div></div>
       <div className="org-stats"><span><strong>{members.length}</strong>{members.length === 1 ? 'person' : 'people'}</span><span><strong>{ownerCount}</strong>{ownerCount === 1 ? 'owner' : 'owners'}</span><span><strong>{workspace.loading ? '—' : workspace.announcements.length}</strong>announcements</span><span><strong>{workspace.loading ? '—' : workspace.resources.length}</strong>resources</span></div>
     </header>
     <nav className="org-nav" aria-label="Organization sections">{tabs.filter(item => item.id !== 'admin' || manager).map(item => <button key={item.id} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => { setTab(item.id); setError(''); }}><item.icon size={16} />{item.label}</button>)}</nav>

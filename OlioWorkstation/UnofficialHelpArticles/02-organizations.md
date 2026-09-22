@@ -21,11 +21,11 @@ Ask a teammate for the current code. If it fails, check all four digits and ask 
 2. Enter an **Organization name**.
 3. Choose **Create organization**.
 
-You become its owner. Open **Organization → Overview** and use **Copy** beside the organization code to invite your team.
+You become its owner. Click the large **Join code** in the Organization header to copy it and invite your team.
 
 ## Work with your team
 
-Open **Organization → Shared Links** for team bookmarks. Use **Utilities → Projects → Org** for organization projects. Choose **Personal** when creating a project for yourself.
+Open **Organization → Resources → Shared links** for team bookmarks. Use **Utilities → Projects → Org** for organization projects. Choose **Personal** when creating a project for yourself.
 
 Owners and admins manage the organization name, invite code, and members. Members use its shared tools and resources. See [Organization Management](olio://help/organization-management).
 
@@ -33,4 +33,4 @@ Owners and admins manage the organization name, invite code, and members. Member
 
 Your account can belong to one organization at a time. Members and admins can use **Profile → Leave Organization**, type the organization name, and choose **Leave**. Then join another organization from setup.
 
-Leaving removes access to the old team's resources. To rejoin, use its current invite code. Owners can delete the organization from **Organization → Manage**. See [Organization Management](olio://help/organization-management) for the steps and effects.
+Leaving removes access to the old team's resources. To rejoin, use its current invite code. Owners can delete the organization from **Organization → Admin**. See [Organization Management](olio://help/organization-management) for the steps and effects.

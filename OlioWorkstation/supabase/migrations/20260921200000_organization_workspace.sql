@@ -141,7 +141,7 @@ CREATE TABLE public.org_resources (
   created_by uuid DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  CHECK ((kind = 'link' AND url ~* '^https?://[^[:space:]]+$' AND char_length(url) <= 2048)
+  CHECK ((kind = 'link' AND url IS NOT NULL AND url ~* '^https?://[^[:space:]]+$' AND char_length(url) <= 2048)
       OR (kind = 'note' AND url IS NULL AND char_length(btrim(content)) > 0))
 );
 CREATE TABLE public.org_activity (
@@ -265,3 +265,5 @@ CREATE TRIGGER activity_links AFTER INSERT OR UPDATE OR DELETE ON public.quickli
 CREATE TRIGGER activity_projects AFTER INSERT OR UPDATE OR DELETE ON public.projects FOR EACH ROW EXECUTE FUNCTION public.record_org_activity();
 
 COMMIT;
+
+NOTIFY pgrst, 'reload schema';

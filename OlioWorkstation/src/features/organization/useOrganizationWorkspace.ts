@@ -78,7 +78,8 @@ export function useOrganizationWorkspace(orgId: string | undefined) {
     if (!orgId) throw new Error('Organization unavailable.');
     const url = input.kind === 'link' ? safeResourceUrl(input.url?.trim() ?? '') : null;
     if (input.kind === 'link' && !url) throw new Error('Enter a valid http or https URL without a username or password.');
-    const payload = { ...input, title: input.title.trim(), description: input.description.trim(), content: input.kind === 'note' ? input.content.trim() : '', url };
+    const payload = { title: input.title.trim(), description: input.description.trim(), category: input.category,
+      kind: input.kind, content: input.kind === 'note' ? input.content.trim() : '', url };
     const query = id ? supabase.from('org_resources').update(payload).eq('org_id', orgId).eq('id', id)
       : supabase.from('org_resources').insert({ ...payload, org_id: orgId });
     const { error } = await query.select('id').single();

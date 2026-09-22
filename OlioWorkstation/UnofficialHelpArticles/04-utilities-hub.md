@@ -21,4 +21,4 @@ Open **Utilities** from the navigation menu, then choose a tool.
 
 Choose **Back to Utilities** to return from a tool. Use the navigation menu to open Home at any time.
 
-Team bookmarks are in **Organization → Shared Links**. To change the shortcuts visible on Home, open **Customize dashboard → Elements**.
+Team bookmarks are in **Organization → Resources → Shared links**. To change the shortcuts visible on Home, open **Customize dashboard → Elements**.

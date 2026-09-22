@@ -24,7 +24,7 @@ See [Connect Olio Launcher](olio://help/olio-launcher) for connection instructio
 
 ## Leave an organization
 
-Members and admins can choose **Leave Organization**, type the organization name exactly, and choose **Leave**.
+Members and admins can choose **Leave Organization**, type the organization name exactly, and choose **Leave**. Owners can also leave when another owner remains. If you are the last owner, add another owner or transfer ownership from **Organization → People** first. See [Organization Management](olio://help/organization-management).
 
 You lose access to its shared resources and return to organization setup. Use the team's current code to rejoin, or join a different team.
 
