@@ -179,7 +179,7 @@ function FieldInput({ field, value, onChange }: { field: AdminField; value: unkn
   if (field.type === "select") return <select value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} className={classes}><option value="">Select…</option>{field.options?.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
   if (field.type === "textarea" || field.type === "json") return <textarea rows={field.type === "json" ? 7 : 5} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} className={`${classes} ${field.type === "json" ? "font-mono" : ""}`} />;
   const type = field.name.includes("password") ? "password" : field.type === "number" ? "number" : field.type === "datetime" ? "datetime-local" : field.type;
-  return <input type={type} value={formatInputValue(value, field.type)} onChange={(event) => onChange(event.target.value)} className={classes} />;
+  return <input aria-label={field.label} type={type} value={formatInputValue(value, field.type)} onChange={(event) => onChange(field.type === "datetime" && event.target.value ? new Date(event.target.value).toISOString() : event.target.value)} className={classes} />;
 }
 
 export function ReferenceInput({ field, value, initialLabel, accountUserId, onChange }: { field: AdminField; value: unknown; initialLabel?: string; accountUserId?: string; onChange: (value: unknown) => void }) {
@@ -219,7 +219,7 @@ export function ReferenceInput({ field, value, initialLabel, accountUserId, onCh
 
 export function referenceResource(fieldName: string) {
   return ({
-    target_user_id: "users", requested_by: "users", reviewed_by: "users", user_id: "users", owner_id: "users", actor_id: "users",
+    created_by: "users", target_user_id: "users", requested_by: "users", reviewed_by: "users", user_id: "users", owner_id: "users", actor_id: "users",
     org_id: "organizations", organization_id: "organizations",
     project_id: "projects", column_id: "project-board-columns",
     folder_id: "quicklink-folders", device_id: "launcher-devices",
@@ -237,7 +237,7 @@ function formatInputValue(value: unknown, type: string) {
   if (value == null) return "";
   if (type === "datetime") {
     const date = new Date(String(value));
-    return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16);
+    return Number.isNaN(date.getTime()) ? String(value) : new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
   return String(value);
 }

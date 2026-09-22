@@ -9,6 +9,7 @@ import { loadAdminOverview, loadAdminResource, loadAdminUserAccount, revealAdmin
 import { AdminOperationDialog } from "./AdminOperationDialog";
 import { AdminRecordDrawer } from "./AdminRecordDrawer";
 import { AdminResourceTable } from "./AdminResourceTable";
+import { AdminOrganizationPage } from "./AdminOrganizationPage";
 import { AdminUserAccountPage } from "./AdminUserAccountPage";
 import { AdminAccountQuicklinks } from "./AdminAccountQuicklinks";
 import type { AdminListResponse, AdminOperation, AdminOverview, AdminReference, AdminRow, AdminUserAccountOverview } from "./types";
@@ -61,6 +62,8 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
 
 export function AdminOperationsConsole() {
   const initial = readLocation();
+  const [organizationId, setOrganizationId] = useState(initial.organization);
+  const [organizationRefresh, setOrganizationRefresh] = useState(0);
   const [access, setAccess] = useState<AccessState>("checking");
   const [accessError, setAccessError] = useState<string | null>(null);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
@@ -146,7 +149,7 @@ export function AdminOperationsConsole() {
   useEffect(() => { void refreshAccount(); }, [refreshAccount]);
 
   const refreshResource = useCallback(async () => {
-    if (access !== "ready" || section === "overview" || !resource || accountLinks || (accountUserId && !accountOverview)) return;
+    if (access !== "ready" || organizationId || section === "overview" || !resource || accountLinks || (accountUserId && !accountOverview)) return;
     setLoading(true);
     setError(null);
     try {
@@ -163,7 +166,7 @@ export function AdminOperationsConsole() {
       else if (status === 403) setAccess("denied");
       else setError(nextError instanceof Error ? nextError.message : "Could not load records.");
     } finally { setLoading(false); }
-  }, [access, accountLinks, accountOverview, accountUserId, direction, filters, page, requestedRecord, resource, search, section, sort]);
+  }, [access, organizationId, accountLinks, accountOverview, accountUserId, direction, filters, page, requestedRecord, resource, search, section, sort]);
 
   useEffect(() => { void refreshResource(); }, [refreshResource]);
 
@@ -172,14 +175,17 @@ export function AdminOperationsConsole() {
     query.set("section", section);
     if (section !== "overview" && resource) query.set("resource", resource);
     if (accountUserId) query.set("account", accountUserId);
+    if (organizationId) query.set("organization", organizationId);
     if (row?._admin_id) query.set("record", row._admin_id);
     window.history.replaceState({}, "", `/admin?${query.toString()}`);
-  }, [accountUserId, resource, row, section]);
+  }, [accountUserId, organizationId, resource, row, section]);
 
   function selectSection(nextSection: string) {
+    setOrganizationId("");
     setAccountUserId("");
     setAccountOverview(null);
     setAccountError(null);
+    setError(null);
     setSection(nextSection);
     setMobileOpen(false);
     setPage(1);
@@ -199,6 +205,7 @@ export function AdminOperationsConsole() {
   }
 
   function selectResource(nextResource: string) {
+    setOrganizationId("");
     setResource(nextResource);
     setPage(1);
     setSort(undefined);
@@ -226,6 +233,7 @@ export function AdminOperationsConsole() {
   }
 
   function openAccount(accountRow: AdminRow) {
+    setOrganizationId("");
     setSection("people");
     setAccountUserId(accountRow._admin_id);
     setAccountOverview(null);
@@ -242,7 +250,13 @@ export function AdminOperationsConsole() {
     selectResource("users");
   }
 
+  function openOrganization(id: string) {
+    selectSection("organizations"); setResource("organizations"); setOrganizationId(id);
+  }
+
   function openReference(reference: AdminReference) {
+    if (reference.resource === "organizations") { openOrganization(reference.id); return; }
+    setOrganizationId("");
     if (reference.resource === "users") { openAccount({ _admin_id: reference.id }); return; }
     const target = resources.find((item) => item.key === reference.resource);
     if (!target) return;
@@ -360,17 +374,17 @@ export function AdminOperationsConsole() {
               <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-200 lg:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
               <div><h1 className="text-2xl font-semibold">{accountUserId ? "Account management" : NAVIGATION.find((item) => item.key === section)?.label || "Overview"}</h1></div>
             </div>
-            <button onClick={() => { if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
+            <button onClick={() => { if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
           </header>
 
           {toast && <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100"><span>{toast}</span><button onClick={() => setToast(null)}><X className="h-4 w-4" /></button></div>}
           {error && <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-          {section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : accountUserId ? (
+          {organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : accountUserId ? (
             <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
               {accountLinks && accountOverview ? <AdminAccountQuicklinks key={accountUserId} user={accountOverview.user} onComplete={() => { void refreshAccount(); void loadAdminOverview().then(setOverview).catch(() => undefined); }} onOpenReference={openReference} /> : resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
-                onOpen={(nextRow) => { if (data?.resource === "users") { openAccount(nextRow); return; } setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
+                onOpen={(nextRow) => { if (data?.resource === "organizations") { openOrganization(nextRow._admin_id); return; } if (data?.resource === "users") { openAccount(nextRow); return; } setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
                 onPage={setPage} onSort={(field) => { setPage(1); setSort(field); setDirection((current) => sort === field && current === "asc" ? "desc" : "asc"); }}
                 onBulkDelete={() => requestOperation("delete", undefined, [...selected])} onBulkUpdate={(field, value) => requestOperation("update", { [field]: value }, [...selected])} />}
             </AdminUserAccountPage>
@@ -393,7 +407,7 @@ export function AdminOperationsConsole() {
               </section>
               <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
-                onOpen={(nextRow) => { if (data?.resource === "users") { openAccount(nextRow); return; } setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
+                onOpen={(nextRow) => { if (data?.resource === "organizations") { openOrganization(nextRow._admin_id); return; } if (data?.resource === "users") { openAccount(nextRow); return; } setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
                 onPage={setPage} onSort={(field) => { setPage(1); setSort(field); setDirection((current) => sort === field && current === "asc" ? "desc" : "asc"); }}
                 onBulkDelete={() => requestOperation("delete", undefined, [...selected])} onBulkUpdate={(field, value) => requestOperation("update", { [field]: value }, [...selected])} />
             </>
@@ -401,7 +415,7 @@ export function AdminOperationsConsole() {
         </main>
       </div>
 
-      {data && !accountLinks && (creating || (row && data.resource !== "users")) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} initialValues={accountDefaults} accountUserId={accountUserId || undefined} initialLabels={accountOverview ? { user_id: String(accountOverview.user.display_name || accountOverview.user.email), owner_id: String(accountOverview.user.display_name || accountOverview.user.email), org_id: accountOverview.user._admin_refs?.org_id?.label || "" } : undefined} revealed={revealed}
+      {data && !organizationId && !accountLinks && (creating || (row && data.resource !== "users")) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} initialValues={accountDefaults} accountUserId={accountUserId || undefined} initialLabels={accountOverview ? { user_id: String(accountOverview.user.display_name || accountOverview.user.email), owner_id: String(accountOverview.user.display_name || accountOverview.user.email), org_id: accountOverview.user._admin_refs?.org_id?.label || "" } : undefined} revealed={revealed}
         lockedMessage={ownerAccountLocked ? "This is an application-owner account. Only another application owner can change its profile, access, password, or lifecycle." : undefined}
         onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => { void revealField(field); }} onOpenReference={openReference}
         onOpenAccount={!accountUserId && data.resource === "users" ? openAccount : undefined}
@@ -447,7 +461,8 @@ function readLocation() {
   const query = new URLSearchParams(window.location.search);
   const account = query.get("account") || (query.get("resource") === "users" ? query.get("record") : "") || "";
   const requestedResource = query.get("resource") || "";
-  return { section: account ? "people" : query.get("section") || "overview", resource: account ? (requestedResource === "users" ? "" : requestedResource) : requestedResource || "users", record: account ? "" : query.get("record") || "", account };
+  const organization = query.get("organization") || (requestedResource === "organizations" ? query.get("record") : "") || "";
+  return { organization, section: organization ? "organizations" : account ? "people" : query.get("section") || "overview", resource: account ? (requestedResource === "users" ? "" : requestedResource) : requestedResource || "users", record: account || organization ? "" : query.get("record") || "", account };
 }
 
 function navigate(path: string) {

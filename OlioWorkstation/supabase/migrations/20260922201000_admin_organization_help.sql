@@ -1,11 +1,5 @@
-########
-Title: Organization Management
-Slug: organization-management
-Summary: Share announcements and resources, follow team activity, and manage people and ownership.
-Sort Order: 17
-########
-
-Open **Organization** from the navigation menu. The header shows your team and its join code. Click the large **Join code** to copy it, then give it to a teammate to use during [organization setup](olio://help/organizations).
+BEGIN;
+UPDATE public.help_articles SET content='Open **Organization** from the navigation menu. The header shows your team and its join code. Click the large **Join code** to copy it, then give it to a teammate to use during [organization setup](olio://help/organizations).
 
 ## Overview
 
@@ -15,7 +9,7 @@ Open **Organization** from the navigation menu. The header shows your team and i
 
 Open **Announcements** to read and search team updates. Owners and admins can choose **New announcement**, enter a title and message, and choose **Publish announcement**. Check **Pin to the top of announcements** to keep an important post visible first.
 
-Use a post's edit, pin, or delete button to manage it. Deleting requires confirmation and cannot be undone.
+Use a post''s edit, pin, or delete button to manage it. Deleting requires confirmation and cannot be undone.
 
 ## Activity
 
@@ -25,17 +19,17 @@ The feed starts recording when the workspace features become available. Personal
 
 ## Resource library
 
-Open **Resources → Library** to find your team's guides, templates, references, and tools. Search by title, description, or note content, and use the category filter to narrow the list.
+Open **Resources → Library** to find your team''s guides, templates, references, and tools. Search by title, description, or note content, and use the category filter to narrow the list.
 
 1. Choose **Add resource**.
 2. Choose **Link** for an existing website or document, or **Note or guide** to write content in Olio.
 3. Enter a title, choose a category, and optionally add a description.
-4. Enter an http or https URL for a link, or write the note's content.
+4. Enter an http or https URL for a link, or write the note''s content.
 5. Choose **Add resource**.
 
 Everyone can add resources and edit or delete their own entries. Owners and admins can manage all entries. Links open in a new tab; **Read note** opens written content. Deleting a library entry does not delete the external document it links to.
 
-Your team's existing bookmarks are under **Resources → Shared links**. See [Quick Links](olio://help/quick-links).
+Your team''s existing bookmarks are under **Resources → Shared links**. See [Quick Links](olio://help/quick-links).
 
 ## People and roles
 
@@ -55,7 +49,7 @@ To add an owner, open **People → Manage** beside a teammate, choose **Add as o
 
 To hand off your own role, choose **Transfer my ownership** beside another teammate, then confirm with **Transfer ownership**. They become an owner and you become an admin. Other owners keep their roles.
 
-Owners can use **Change to admin** or **Change to member** to change an owner's role. The last owner cannot step down or be removed until another owner is added or ownership is transferred.
+Owners can use **Change to admin** or **Change to member** to change an owner''s role. The last owner cannot step down or be removed until another owner is added or ownership is transferred.
 
 ## Organization settings
 
@@ -65,7 +59,7 @@ Under **Invite access**, choose **Regenerate code** and confirm to replace the j
 
 ## Leave or remove a teammate
 
-Choose **Remove teammate** in a person's management dialog and confirm to remove their access. Owners can remove other owners only when another owner remains. Admins can remove members.
+Choose **Remove teammate** in a person''s management dialog and confirm to remove their access. Owners can remove other owners only when another owner remains. Admins can remove members.
 
 To leave yourself, open **Profile → Leave Organization**, type the organization name, and confirm. Owners can leave when another owner remains; the last owner must add or transfer ownership first. See [Profile and Settings](olio://help/profile-and-settings).
 
@@ -89,4 +83,5 @@ If you have access to the application admin panel, open **Admin → Organization
 
 Use **Announcements**, **Library**, and **History** to add, edit, or delete entries, including their authors and dates. The remaining sections manage the organization’s links, folders, projects, pastes, secrets, short URLs, and triggers. Search and filters help find records, and supported lists allow bulk changes.
 
-Changes require a reason and confirmation. Editing organization history changes the team’s activity feed; the separate admin audit log retains the administrative change.
+Changes require a reason and confirmation. Editing organization history changes the team’s activity feed; the separate admin audit log retains the administrative change.', updated_at=now() WHERE slug='organization-management';
+COMMIT;

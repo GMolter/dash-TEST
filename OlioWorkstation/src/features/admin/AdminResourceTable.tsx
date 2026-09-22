@@ -178,7 +178,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
 }
 
 function chooseColumns(fields: AdminField[], rows: AdminRow[], resource?: string) {
-  const preferred = ["display_name", "email", "name", "title", "device_name", "code", "slug", "status", "role", "last_active_at", "app_admin", "project_id", "owner_id", "user_id", "org_id", "updated_at", "created_at"];
+  const preferred = resource === "org-activity" ? ["actor_name", "action", "subject", "category", "created_at"] : ["display_name", "email", "name", "title", "device_name", "code", "slug", "status", "role", "last_active_at", "app_admin", "project_id", "owner_id", "user_id", "org_id", "updated_at", "created_at"];
   const technical = new Set(["device_identifier", "icon", "favicon_url", "dorm_lat", "dorm_lng", "location_lat", "location_lng", "position", "sort_index", "sort_order", "order_index"]);
   const safe = fields.filter((field) => {
     if (resource === "users" && field.name === "app_admin") return false;

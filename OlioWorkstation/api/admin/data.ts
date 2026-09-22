@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { requireAdminAccess } from "../_utils/adminAccess.js";
 import { getSupabaseServiceConfig } from "../_utils/supabaseConfig.js";
 import { attachAppActivity } from "../_utils/appActivity.js";
+import { validateOrganizationValues, organizationWriteValues, validateOrganizationMemberAction } from "../_utils/adminOrganization.js";
 import {
   ADMIN_RESOURCE_LIST,
   ADMIN_RESOURCES,
@@ -21,7 +22,7 @@ type OperationKind =
   | "create" | "update" | "delete" | "reveal"
   | "ban" | "unban" | "reset-password" | "request-admin" | "revoke-admin"
   | "approve-admin" | "reject-admin" | "request-delete" | "remove-organization"
-  | "transfer-owner" | "regenerate-code"
+  | "transfer-owner" | "regenerate-code" | "set-member" | "remove-member"
   | "revoke" | "cancel";
 
 type AdminOperation = {
@@ -190,7 +191,7 @@ function resourceActions(resource: AdminResource) {
   if (resource.readOnly) return sensitiveColumns(resource).length ? ["reveal"] : [];
   const actions = ["create", "update", "delete"];
   if (sensitiveColumns(resource).length) actions.push("reveal");
-  if (resource.key === "organizations") actions.push("transfer-owner", "regenerate-code");
+  if (resource.key === "organizations") actions.push("transfer-owner", "regenerate-code", "set-member", "remove-member");
   return actions;
 }
 
@@ -225,6 +226,18 @@ function assertOperation(resource: AdminResource, operation: AdminOperation) {
   if (operation.kind === "reset-password") allowed.add("temporary_password");
   if (operation.kind === "transfer-owner") allowed.add("owner_id");
   const values = operation.values && typeof operation.values === "object" ? operation.values : {};
+  if (resource.key === "organizations" && ["set-member", "remove-member", "transfer-owner"].includes(operation.kind)) {
+    validateOrganizationMemberAction(operation.kind, values);
+    operation.values = values;
+    return;
+  }
+  if (creating && resource.key === "organizations" && values.code === "") delete values.code;
+  validateOrganizationValues(resource.key, values);
+  if (resource.key.startsWith("org-")) {
+    for (const field of resource.fields) {
+      if (field.name in values && field.options && !field.options.includes(String(values[field.name]))) throw new Error("INVALID_" + field.name);
+    }
+  }
   if (operation.kind === "ban" && !["1h", "24h", "168h", "720h", "2160h"].includes(String(values.ban_duration))) {
     throw new Error("INVALID_BAN_DURATION");
   }
@@ -434,7 +447,7 @@ async function impactPreview(service: any, resource: AdminResource, operation: A
   const counts: Record<string, number> = {};
   const id = operation.ids?.[0];
   if (operation.kind === "delete" && id && resource.key === "organizations") {
-    for (const [label, table] of [["users", "profiles"], ["projects", "projects"], ["quick links", "quicklinks"], ["pastes", "pastes"]] as const) counts[label] = await countTable(service, table, ["org_id", id]);
+    for (const [label, table] of [["users", "profiles"], ["projects", "projects"], ["quick links", "quicklinks"], ["pastes", "pastes"], ["announcements", "org_announcements"], ["library entries", "org_resources"], ["history entries", "org_activity"], ["link folders", "quicklink_folders"], ["secrets", "secrets"], ["short URLs", "short_urls"], ["triggers", "triggers"]] as const) counts[label] = await countTable(service, table, ["org_id", id]);
   }
   if (operation.kind === "delete" && id && resource.key === "projects") {
     for (const [label, table] of [["cards", "project_board_cards"], ["steps", "project_planner_steps"], ["resources", "project_resources"], ["files", "project_files"]] as const) counts[label] = await countTable(service, table, ["project_id", id]);
@@ -577,9 +590,9 @@ async function executeUser(service: any, operation: AdminOperation, actor: { use
 }
 
 async function executeNormal(service: any, resource: AdminResource, operation: AdminOperation, actor: { userId: string }) {
-  const values = normalizedValues(resource, operation.values || {});
+  const values = organizationWriteValues(resource.key, normalizedValues(resource, operation.values || {}), operation.kind === "create", actor.userId);
   if (operation.kind === "create") {
-    if (resource.key === "organizations") {
+    if (resource.key === "organizations" && !values.code) {
       let code = "";
       for (let tries = 0; tries < 20; tries += 1) {
         code = Math.floor(1000 + Math.random() * 9000).toString();
@@ -628,16 +641,14 @@ async function executeNormal(service: any, resource: AdminResource, operation: A
     if (error) throw error;
     return data;
   }
-  if (operation.kind === "transfer-owner" && resource.key === "organizations") {
-    const ownerId = String(values.owner_id || "");
-    const { data: nextOwner, error: memberError } = await service.from("profiles").select("id,org_id").eq("id", ownerId).single();
-    if (memberError || nextOwner?.org_id !== id) throw new Error("OWNER_MUST_BE_MEMBER");
-    const { error: updateError } = await service.rpc("admin_transfer_organization_owner", {
-      p_organization_id: id,
-      p_new_owner_id: ownerId,
+  if (resource.key === "organizations" && ["set-member", "remove-member", "transfer-owner"].includes(operation.kind)) {
+    const raw = operation.values || {};
+    const { data, error } = await service.rpc("admin_manage_organization_member", {
+      p_actor_id: actor.userId, p_org_id: id, p_member_id: raw.member_id || raw.owner_id,
+      p_action: operation.kind, p_role: raw.role || null, p_previous_owner_id: raw.previous_owner_id || null,
     });
-    if (updateError) throw updateError;
-    return { id, owner_id: ownerId };
+    if (error) throw error;
+    return data;
   }
   if (operation.kind === "revoke" && resource.guided === "launcher-device") {
     const { error } = await service.from(resource.table).delete().eq("id", id);
@@ -650,7 +661,7 @@ async function executeNormal(service: any, resource: AdminResource, operation: A
     return data;
   }
   if (operation.kind === "update") {
-    if (resource.fields.some((field) => field.name === "updated_at")) values.updated_at = new Date().toISOString();
+    if (!("updated_at" in values) && resource.fields.some((field) => field.name === "updated_at")) values.updated_at = new Date().toISOString();
     let query = service.from(resource.table).update(values);
     if ((operation.ids || []).length > 1 && !resource.primaryKey.includes(",")) query = query.in(resource.primaryKey, operation.ids);
     else query = applyId(query, resource, id);
@@ -780,7 +791,18 @@ export default async function handler(req: any, res: any) {
     assertOperation(resource, operation);
     if (resource.key === "users") await guardUserOperation(service, access.userId, access.appOwner, operation);
     const beforeRows = operation.kind === "create" ? [] : await fetchRows(service, resource, operation.ids || [], true);
-    const fingerprint = sha(beforeRows);
+    let membershipState: unknown = null;
+    if (resource.key === "organizations" && ["set-member", "remove-member", "transfer-owner"].includes(operation.kind)) {
+      const { data, error } = await service.from("profiles").select("id,org_id,role").or(`org_id.eq.${operation.ids![0]},id.eq.${operation.values?.member_id || operation.values?.owner_id}`).order("id");
+      if (error) throw error;
+      membershipState = data;
+    }
+    if (resource.key === "organizations" && operation.values?.code) {
+      const { data, error } = await service.from("organizations").select("id").eq("code", operation.values.code).maybeSingle();
+      if (error) throw error;
+      if (data && data.id !== operation.ids?.[0]) throw new Error("INVALID_JOIN_CODE: That join code is already in use.");
+    }
+    const fingerprint = sha({ beforeRows, membershipState });
     const digest = sha(operation);
 
     if (phase === "prepare") {
@@ -807,7 +829,7 @@ export default async function handler(req: any, res: any) {
       operation_id: payload.operationId, actor_id: access.userId, actor_email: access.email,
       action: operation.kind, resource: resource.key, target_ids: operation.ids || [], reason: operation.reason,
       changed_fields: operation.kind === "reveal" ? operation.revealFields || [] : Object.keys(operation.values || {}),
-      before_data: sanitizeAudit(resource, beforeRows), after_data: sanitizeAudit(resource, operation.values || {}), status: "pending",
+      before_data: sanitizeAudit(resource, membershipState ? { organizations: beforeRows, members: membershipState } : beforeRows), after_data: sanitizeAudit(resource, operation.values || {}), status: "pending",
     };
     const { data: audit, error: auditError } = await service.from("admin_audit_log").insert(auditInsert).select("id").single();
     if (auditError) {
@@ -836,11 +858,13 @@ export default async function handler(req: any, res: any) {
     }
     if (["42703", "42P01", "PGRST204", "PGRST205", "PGRST202"].includes(error?.code)) {
       console.error("admin database schema unavailable", { code: error.code });
-      return res.status(503).json({ error: "Admin database setup is incomplete. Apply the latest Supabase migrations, including 20260908120000_admin_operations_console.sql and 20260908170000_add_app_owners_and_admin_reviews.sql, then refresh." });
+      return res.status(503).json({ error: "Admin database setup is incomplete. Apply the latest Supabase migrations, including 20260908120000_admin_operations_console.sql 20260908170000_add_app_owners_and_admin_reviews.sql, and 20260922200000_admin_organization_management.sql, then refresh." });
     }
     if (error?.message === "ACCOUNT_OWNS_ORGANIZATION" || (error?.code === "23503" && String(error?.message).includes('organizations_owner_id_fkey'))) {
       return res.status(409).json({ error: 'This account owns an organization. Transfer its ownership, or delete that organization, before deleting this account.' });
     }
+    if (error?.code === "23505") return res.status(409).json({ error: "That value is already in use. Choose another value and try again." });
+    if (error?.code === "P0001") return res.status(409).json({ error: error.message });
     const status = statusForError(error);
     console.error("admin data request failed", { code: String(error?.code || error?.message || "UNKNOWN").slice(0, 100) });
     return res.status(status).json({ error: status === 500 ? "Admin operation failed." : String(error?.message || error?.code || "Invalid request") });

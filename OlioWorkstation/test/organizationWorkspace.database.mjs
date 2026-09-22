@@ -84,6 +84,37 @@ try {
  await db.query("insert into projects(org_id,name) values ($1,'Team project')",[team]);
  await db.query("insert into projects(org_id,name) values (null,'Personal project')");
  assert.equal((await db.query("select * from org_activity where category='projects'")).rows.length,1);checks++;
+
+ // Application admin management: isolated from authenticated org owners.
+ await db.exec('reset role; alter table profiles add column app_admin boolean default false, add column app_owner boolean default false;');
+ await db.query('update profiles set app_admin=true where id=$1',[admin]);
+ const adminMigration=readFileSync('supabase/migrations/20260922200000_admin_organization_management.sql','utf8');
+ await db.exec(adminMigration); await db.exec(adminMigration); checks++;
+ await as(member);
+ await fails("select admin_manage_organization_member($1,$2,$3,'set-member','owner')",[admin,team,owner],'permission denied');
+ await fails('update org_announcements set created_by=$1 where id=$2',[admin,a]);
+ await db.exec('reset role; set role service_role;');
+ await fails("select admin_manage_organization_member($1,$2,$3,'set-member','owner')",[owner,team,owner],'administrator');
+ await db.query('update profiles set app_owner=true where id=$1',[owner]);
+ await fails("select admin_manage_organization_member($1,$2,$3,'set-member','owner')",[admin,team,owner],'application owner');
+ await db.query('update profiles set app_owner=false where id=$1',[owner]);
+ await fails("select admin_manage_organization_member($1,$2,$3,'remove-member')",[admin,team,member],'last owner');
+ await fails("select admin_manage_organization_member($1,$2,$3,'set-member','member')",[admin,team,outsider],'current organization');
+ await db.query("select admin_manage_organization_member($1,$2,$3,'set-member','owner')",[admin,team,owner]); checks++;
+ assert.equal((await db.query("select count(*)::int as n from profiles where org_id=$1 and role='owner'",[team])).rows[0].n,2); checks++;
+ await db.query("select admin_manage_organization_member($1,$2,$3,'transfer-owner',null,$4)",[admin,team,coowner,owner]);
+ assert.equal((await db.query('select role from profiles where id=$1',[owner])).rows[0].role,'admin'); checks++;
+ await db.query("select admin_manage_organization_member($1,$2,$3,'remove-member')",[admin,team,coowner]);
+ assert.equal((await db.query('select org_id from profiles where id=$1',[coowner])).rows[0].org_id,null); checks++;
+ await db.query("select admin_manage_organization_member($1,$2,$3,'set-member','member')",[admin,team,coowner]); checks++;
+ await db.query("update org_announcements set created_by=$1, created_at='2020-01-02T00:00:00Z',updated_at='2020-01-03T00:00:00Z',pinned=true where id=$2",[admin,a]);
+ const edited=(await db.query('select * from org_announcements where id=$1',[a])).rows[0];
+ assert.equal(edited.created_by,admin);assert.equal(edited.created_at.toISOString(),'2020-01-02T00:00:00.000Z');assert.equal(edited.updated_at.toISOString(),'2020-01-03T00:00:00.000Z');checks++;
+ await db.query('update org_resources set org_id=$1,created_by=$2 where id=$3',[other,outsider,r]); checks++;
+ await db.query('update org_resources set org_id=$1 where id=$2',[team,r]);
+ const event=(await db.query("insert into org_activity(org_id,actor_name,category,action,subject) values ($1,'Admin','settings','corrected','History') returning id",[team])).rows[0].id;
+ await db.query("update org_activity set subject='Corrected',created_at='2020-01-01' where id=$1",[event]);
+ assert.equal((await db.query('delete from org_activity where id=$1 returning id',[event])).rows.length,1);checks++;
  await as(owner); assert.equal((await db.query('delete from organizations where id=$1 returning id',[team])).rows.length,0);checks++;
  await as(member); assert.equal((await db.query('delete from organizations where id=$1 returning id',[team])).rows.length,1);checks++;
  assert.equal((await db.query('select * from org_resources')).rows.length,0);checks++;
