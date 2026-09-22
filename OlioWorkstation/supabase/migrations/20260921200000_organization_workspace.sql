@@ -1,3 +1,4 @@
+-- Safe to rerun: retain existing tables and rows, and replace only this migration's policies and triggers.
 BEGIN;
 
 -- Profile roles are authoritative; owner_id remains a compatible reference to one owner.
@@ -11,15 +12,18 @@ REVOKE ALL ON FUNCTION public.org_has_role(uuid, text[]) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.org_has_role(uuid, text[]) TO authenticated;
 
 DROP POLICY IF EXISTS organization_delete_requires_owner ON public.organizations;
-DROP POLICY IF EXISTS organization_owner_can_delete ON public.organizations;
 CREATE POLICY organization_delete_requires_owner ON public.organizations AS RESTRICTIVE FOR DELETE TO authenticated
   USING (public.org_has_role(id, ARRAY['owner']));
+DROP POLICY IF EXISTS organization_owner_can_delete ON public.organizations;
 CREATE POLICY organization_owner_can_delete ON public.organizations FOR DELETE TO authenticated
   USING (public.org_has_role(id, ARRAY['owner']));
+DROP POLICY IF EXISTS organization_workspace_read ON public.organizations;
 CREATE POLICY organization_workspace_read ON public.organizations FOR SELECT TO authenticated
   USING (public.org_has_role(id));
+DROP POLICY IF EXISTS organization_workspace_update_guard ON public.organizations;
 CREATE POLICY organization_workspace_update_guard ON public.organizations AS RESTRICTIVE FOR UPDATE TO authenticated
   USING (public.org_has_role(id, ARRAY['owner','admin'])) WITH CHECK (public.org_has_role(id, ARRAY['owner','admin']));
+DROP POLICY IF EXISTS organization_workspace_update ON public.organizations;
 CREATE POLICY organization_workspace_update ON public.organizations FOR UPDATE TO authenticated
   USING (public.org_has_role(id, ARRAY['owner','admin'])) WITH CHECK (public.org_has_role(id, ARRAY['owner','admin']));
 
@@ -50,6 +54,7 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+DROP TRIGGER IF EXISTS guard_org_membership ON public.profiles;
 CREATE TRIGGER guard_org_membership BEFORE INSERT OR UPDATE OR DELETE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.guard_org_membership();
 
@@ -62,6 +67,7 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+DROP TRIGGER IF EXISTS guard_org_owner_reference ON public.organizations;
 CREATE TRIGGER guard_org_owner_reference BEFORE UPDATE ON public.organizations
   FOR EACH ROW EXECUTE FUNCTION public.guard_org_owner_reference();
 
@@ -119,7 +125,7 @@ $$;
 REVOKE ALL ON FUNCTION public.admin_transfer_organization_owner(uuid, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_transfer_organization_owner(uuid, uuid) TO service_role;
 
-CREATE TABLE public.org_announcements (
+CREATE TABLE IF NOT EXISTS public.org_announcements (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   title text NOT NULL CHECK (char_length(btrim(title)) BETWEEN 1 AND 160),
@@ -129,7 +135,7 @@ CREATE TABLE public.org_announcements (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE TABLE public.org_resources (
+CREATE TABLE IF NOT EXISTS public.org_resources (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   title text NOT NULL CHECK (char_length(btrim(title)) BETWEEN 1 AND 160),
@@ -144,7 +150,7 @@ CREATE TABLE public.org_resources (
   CHECK ((kind = 'link' AND url IS NOT NULL AND url ~* '^https?://[^[:space:]]+$' AND char_length(url) <= 2048)
       OR (kind = 'note' AND url IS NULL AND char_length(btrim(content)) > 0))
 );
-CREATE TABLE public.org_activity (
+CREATE TABLE IF NOT EXISTS public.org_activity (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   actor_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -154,28 +160,37 @@ CREATE TABLE public.org_activity (
   subject text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX org_announcements_list ON public.org_announcements(org_id, pinned DESC, created_at DESC);
-CREATE INDEX org_resources_list ON public.org_resources(org_id, updated_at DESC);
-CREATE INDEX org_activity_list ON public.org_activity(org_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS org_announcements_list ON public.org_announcements(org_id, pinned DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS org_resources_list ON public.org_resources(org_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS org_activity_list ON public.org_activity(org_id, created_at DESC, id DESC);
 ALTER TABLE public.org_announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.org_resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.org_activity ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.org_announcements, public.org_resources, public.org_activity FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.org_announcements, public.org_resources TO authenticated;
 GRANT SELECT ON public.org_activity TO authenticated;
+DROP POLICY IF EXISTS announcements_read ON public.org_announcements;
 CREATE POLICY announcements_read ON public.org_announcements FOR SELECT TO authenticated USING (public.org_has_role(org_id));
+DROP POLICY IF EXISTS announcements_insert ON public.org_announcements;
 CREATE POLICY announcements_insert ON public.org_announcements FOR INSERT TO authenticated
   WITH CHECK (public.org_has_role(org_id, ARRAY['owner','admin']) AND created_by = auth.uid());
+DROP POLICY IF EXISTS announcements_update ON public.org_announcements;
 CREATE POLICY announcements_update ON public.org_announcements FOR UPDATE TO authenticated
   USING (public.org_has_role(org_id, ARRAY['owner','admin'])) WITH CHECK (public.org_has_role(org_id, ARRAY['owner','admin']));
+DROP POLICY IF EXISTS announcements_delete ON public.org_announcements;
 CREATE POLICY announcements_delete ON public.org_announcements FOR DELETE TO authenticated USING (public.org_has_role(org_id, ARRAY['owner','admin']));
+DROP POLICY IF EXISTS resources_read ON public.org_resources;
 CREATE POLICY resources_read ON public.org_resources FOR SELECT TO authenticated USING (public.org_has_role(org_id));
+DROP POLICY IF EXISTS resources_insert ON public.org_resources;
 CREATE POLICY resources_insert ON public.org_resources FOR INSERT TO authenticated WITH CHECK (public.org_has_role(org_id) AND created_by = auth.uid());
+DROP POLICY IF EXISTS resources_update ON public.org_resources;
 CREATE POLICY resources_update ON public.org_resources FOR UPDATE TO authenticated
   USING (public.org_has_role(org_id) AND (created_by = auth.uid() OR public.org_has_role(org_id, ARRAY['owner','admin'])))
   WITH CHECK (public.org_has_role(org_id) AND (created_by = auth.uid() OR public.org_has_role(org_id, ARRAY['owner','admin'])));
+DROP POLICY IF EXISTS resources_delete ON public.org_resources;
 CREATE POLICY resources_delete ON public.org_resources FOR DELETE TO authenticated
   USING (public.org_has_role(org_id) AND (created_by = auth.uid() OR public.org_has_role(org_id, ARRAY['owner','admin'])));
+DROP POLICY IF EXISTS activity_read ON public.org_activity;
 CREATE POLICY activity_read ON public.org_activity FOR SELECT TO authenticated USING (public.org_has_role(org_id));
 
 CREATE OR REPLACE FUNCTION public.stamp_org_content()
@@ -193,7 +208,9 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+DROP TRIGGER IF EXISTS stamp_org_announcements ON public.org_announcements;
 CREATE TRIGGER stamp_org_announcements BEFORE INSERT OR UPDATE ON public.org_announcements FOR EACH ROW EXECUTE FUNCTION public.stamp_org_content();
+DROP TRIGGER IF EXISTS stamp_org_resources ON public.org_resources;
 CREATE TRIGGER stamp_org_resources BEFORE INSERT OR UPDATE ON public.org_resources FOR EACH ROW EXECUTE FUNCTION public.stamp_org_content();
 
 -- Write only concise, shared facts; never copy invite codes, private content, URLs or email addresses.
@@ -257,11 +274,17 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.record_org_activity() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS activity_announcements ON public.org_announcements;
 CREATE TRIGGER activity_announcements AFTER INSERT OR UPDATE OR DELETE ON public.org_announcements FOR EACH ROW EXECUTE FUNCTION public.record_org_activity();
+DROP TRIGGER IF EXISTS activity_resources ON public.org_resources;
 CREATE TRIGGER activity_resources AFTER INSERT OR UPDATE OR DELETE ON public.org_resources FOR EACH ROW EXECUTE FUNCTION public.record_org_activity();
+DROP TRIGGER IF EXISTS activity_people ON public.profiles;
 CREATE TRIGGER activity_people AFTER INSERT OR UPDATE OR DELETE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.record_org_activity();
+DROP TRIGGER IF EXISTS activity_settings ON public.organizations;
 CREATE TRIGGER activity_settings AFTER UPDATE ON public.organizations FOR EACH ROW EXECUTE FUNCTION public.record_org_activity();
+DROP TRIGGER IF EXISTS activity_links ON public.quicklinks;
 CREATE TRIGGER activity_links AFTER INSERT OR UPDATE OR DELETE ON public.quicklinks FOR EACH ROW EXECUTE FUNCTION public.record_org_activity();
+DROP TRIGGER IF EXISTS activity_projects ON public.projects;
 CREATE TRIGGER activity_projects AFTER INSERT OR UPDATE OR DELETE ON public.projects FOR EACH ROW EXECUTE FUNCTION public.record_org_activity();
 
 COMMIT;

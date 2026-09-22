@@ -36,6 +36,25 @@ try {
  assert.equal((await db.query('select * from org_announcements')).rows.length,1);checks++;
  await fails("insert into org_announcements(org_id,title,body) values ($1,'No','No')",[team]);
  const r=(await db.query("insert into org_resources(org_id,title,kind,content) values ($1,'Guide','note','Team guide') returning id",[team])).rows[0].id;checks++;
+ // Reapply with populated tables, then repair a partial installation, preserving every row.
+ await db.exec('reset role');
+ const snapshot = async () => {
+   const data = {};
+   for (const table of ['organizations','profiles','org_announcements','org_resources','org_activity']) {
+     data[table] = (await db.query('select * from public.' + table + ' order by id')).rows;
+   }
+   return data;
+ };
+ const original = await snapshot();
+ const migration = readFileSync('supabase/migrations/20260921200000_organization_workspace.sql','utf8');
+ await db.exec(migration);
+ assert.deepEqual(await snapshot(), original); checks++;
+ await db.exec('drop policy organization_workspace_read on public.organizations; drop trigger activity_resources on public.org_resources;');
+ await db.exec(migration);
+ assert.deepEqual(await snapshot(), original); checks++;
+ assert.equal((await db.query("select count(*)::int as total from pg_policies where schemaname='public' and tablename='organizations' and policyname='organization_workspace_read'")).rows[0].total,1); checks++;
+ assert.equal((await db.query("select count(*)::int as total from pg_trigger where tgname='activity_resources' and tgrelid='public.org_resources'::regclass")).rows[0].total,1); checks++;
+ await as(member);
  await fails("insert into org_resources(org_id,title,kind) values ($1,'Bad link','link')",[team]);
  await fails("insert into org_resources(org_id,title,kind,url) values ($1,'Bad link','link','javascript:alert(1)')",[team]);
  await fails('update org_resources set org_id=$1 where id=$2',[other,r]);
@@ -68,5 +87,5 @@ try {
  await as(owner); assert.equal((await db.query('delete from organizations where id=$1 returning id',[team])).rows.length,0);checks++;
  await as(member); assert.equal((await db.query('delete from organizations where id=$1 returning id',[team])).rows.length,1);checks++;
  assert.equal((await db.query('select * from org_resources')).rows.length,0);checks++;
- console.log(`PASS: ${checks} organization database checks (content, permissions, ownership, privacy, deletion).`);
+ console.log(`PASS: ${checks} organization database checks (reruns, data preservation, partial repair, content, permissions, ownership, privacy, deletion).`);
 } finally {await db.close();}

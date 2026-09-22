@@ -37,6 +37,7 @@ export type AdminAccountScope =
   | "user" | "organization" | "user-or-organization" | "owner" | "actor";
 
 const REFERENCE_FIELDS: Record<string, AdminReferenceTarget> = {
+  created_by: { resource: "users", labelFields: ["display_name", "email"] },
   user_id: { resource: "users", labelFields: ["display_name", "email"] },
   target_user_id: { resource: "users", labelFields: ["display_name", "email"] },
   owner_id: { resource: "users", labelFields: ["display_name", "email"] },
@@ -59,6 +60,7 @@ export function referenceTarget(resourceKey: string, fieldName: string): AdminRe
 }
 
 const REFERENCE_LABELS: Record<string, string> = {
+  created_by: "Author",
   user_id: "User",
   target_user_id: "Requested administrator",
   owner_id: "Owner",
@@ -105,7 +107,34 @@ export const ADMIN_RESOURCES: Record<string, AdminResource> = {
     key: "organizations", label: "Organizations", group: "organizations", table: "organizations", primaryKey: "id",
     searchFields: ["name"], filterFields: ["owner_id"], defaultSort: "created_at", sortFields: ["created_at", "name"],
     fields: [f("id", "ID"), f("name", "Name", "text", { editable: true, create: true, required: true }),
-      f("code", "Join code", "text", { sensitive: true, auditReveal: false }), f("owner_id", "Owner ID", "text", { create: true, required: true }), f("created_at", "Created", "datetime")],
+      f("code", "Join code", "text", { sensitive: true, auditReveal: false, editable: true, create: true }), f("owner_id", "Owner ID", "text", { create: true, required: true }), f("created_at", "Created", "datetime", { editable: true, create: true })],
+  },
+  "org-announcements": {
+    key: "org-announcements", label: "Organization announcements", group: "organizations", table: "org_announcements", primaryKey: "id",
+    searchFields: ["title", "body"], filterFields: ["org_id", "created_by", "pinned"], defaultSort: "created_at", sortFields: ["created_at", "updated_at", "title", "pinned"],
+    fields: [f("id", "ID"), f("org_id", "Organization", "text", { editable: true, create: true, required: true }),
+      f("title", "Title", "text", { editable: true, create: true, required: true }), f("body", "Message", "textarea", { editable: true, create: true, required: true }),
+      f("pinned", "Pinned", "boolean", { editable: true, create: true }), f("created_by", "Author", "text", { editable: true, create: true }),
+      f("created_at", "Published", "datetime", { editable: true, create: true }), f("updated_at", "Updated", "datetime", { editable: true, create: true })],
+  },
+  "org-resources": {
+    key: "org-resources", label: "Organization library", group: "organizations", table: "org_resources", primaryKey: "id",
+    searchFields: ["title", "description", "content"], filterFields: ["org_id", "created_by", "kind", "category"], defaultSort: "updated_at", sortFields: ["created_at", "updated_at", "title", "category"],
+    fields: [f("id", "ID"), f("org_id", "Organization", "text", { editable: true, create: true, required: true }),
+      f("title", "Title", "text", { editable: true, create: true, required: true }), f("description", "Description", "textarea", { editable: true, create: true }),
+      f("kind", "Type", "select", { editable: true, create: true, required: true, options: ["link", "note"] }),
+      f("category", "Category", "select", { editable: true, create: true, required: true, options: ["General", "Guides", "Templates", "Reference", "Tools"] }),
+      f("url", "URL", "text", { editable: true, create: true }), f("content", "Note content", "textarea", { editable: true, create: true }),
+      f("created_by", "Author", "text", { editable: true, create: true }), f("created_at", "Created", "datetime", { editable: true, create: true }), f("updated_at", "Updated", "datetime", { editable: true, create: true })],
+  },
+  "org-activity": {
+    key: "org-activity", label: "Organization history", group: "organizations", table: "org_activity", primaryKey: "id",
+    searchFields: ["actor_name", "action", "subject"], filterFields: ["org_id", "actor_id", "category"], defaultSort: "created_at", sortFields: ["created_at", "category", "action"],
+    fields: [f("id", "ID"), f("org_id", "Organization", "text", { editable: true, create: true, required: true }),
+      f("actor_id", "Actor", "text", { editable: true, create: true }), f("actor_name", "Displayed actor name", "text", { editable: true, create: true, required: true }),
+      f("category", "Category", "select", { editable: true, create: true, required: true, options: ["announcements", "resources", "people", "settings", "links", "projects"] }),
+      f("action", "Action", "text", { editable: true, create: true, required: true }), f("subject", "Subject", "text", { editable: true, create: true, required: true }),
+      f("created_at", "Occurred", "datetime", { editable: true, create: true })],
   },
   projects: {
     key: "projects", label: "Projects", group: "projects", table: "projects", primaryKey: "id",
@@ -272,6 +301,7 @@ function resourceActionsForCatalog(resource: AdminResource) {
   if (resource.guided === "launcher-pairing") return ["cancel"];
   if (resource.guided === "admin-review") return ["approve-admin", "reject-admin"];
   if (resource.readOnly) return resource.fields.some((field) => field.sensitive) ? ["reveal"] : [];
+  if (resource.key === "organizations") return ["create", "update", "delete", "reveal", "transfer-owner", "regenerate-code", "set-member", "remove-member"];
   return ["create", "update", "delete", ...(resource.fields.some((field) => field.sensitive) ? ["reveal"] : [])];
 }
 
