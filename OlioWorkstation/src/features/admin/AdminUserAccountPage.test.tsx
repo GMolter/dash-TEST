@@ -20,6 +20,7 @@ describe("AdminUserAccountPage", () => {
           app_admin: false,
           force_password_change: true,
           created_at: "2026-09-08T14:30:00.000Z",
+          last_active_at: "2026-09-23T14:30:45.000Z",
         },
         userFields: [
           { name: "id", label: "User ID", type: "text" },
@@ -48,6 +49,9 @@ describe("AdminUserAccountPage", () => {
     />);
 
     expect(screen.getByRole("heading", { name: "Avery Stone" })).toBeInTheDocument();
+    expect(screen.getByText("Last Active")).toBeInTheDocument();
+    expect(screen.getByText(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "long" }).format(new Date("2026-09-23T14:30:45.000Z")))).toBeVisible();
+    expect(screen.getByRole("button", { name: /Example organization/ })).toBeInTheDocument();
     expect(screen.getByText("Password change required")).toBeInTheDocument();
     expect(screen.getByText("4 records")).toBeInTheDocument();
     expect(screen.queryByText("Quick Pastes")).not.toBeInTheDocument();

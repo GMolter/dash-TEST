@@ -2,6 +2,13 @@ import type { AdminField, AdminFieldType } from "./types";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:T|$)/;
 
+export function formatLastActive(value: unknown, status?: unknown): string {
+  if (status === "unavailable") return "Tracking unavailable";
+  const date = value ? new Date(String(value)) : null;
+  if (!date || Number.isNaN(date.getTime())) return "Not yet tracked";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "long" }).format(date);
+}
+
 export function humanizeAdminText(value: string) {
   return value
     .replace(/[_-]+/g, " ")

@@ -12,6 +12,7 @@ describe("AdminResourceTable entity references", () => {
       const onFilters = vi.fn();
       const rows = [0, 1, 2, 3, 5, 6, 7].map((days) => ({
         _admin_id: String(days), display_name: `User ${days}`, app_admin: true,
+        org_id: "org-1", _admin_refs: { org_id: { id: "org-1", label: "Example organization", resource: "organizations" } },
         last_active_at: new Date(2026, 8, 21 - days, 12).toISOString(),
       }));
       render(<AdminResourceTable data={{ resource: "users", label: "Users",
@@ -22,14 +23,19 @@ describe("AdminResourceTable entity references", () => {
           { name: "role", label: "Organization role", type: "text" },
           { name: "app_admin", label: "App admin", type: "boolean" },
           { name: "last_active_at", label: "Last sign in", type: "datetime" },
+          { name: "org_id", label: "Organization", type: "text" },
         ], actions: [], redactedFields: [], filterFields: ["app_admin"], sortFields: [], page: 1, pageSize: 25, sort: "created_at", direction: "desc",
       }} loading={false} search="" filters={{}} selected={new Set()} onSearch={vi.fn()} onFilters={onFilters} onSelection={vi.fn()} onOpen={vi.fn()} onOpenReference={vi.fn()} onCreate={vi.fn()} onPage={vi.fn()} onSort={vi.fn()} onBulkDelete={vi.fn()} onBulkUpdate={vi.fn()} />);
       expect(screen.getByRole("columnheader", { name: "Last Active" })).toBeInTheDocument();
+      expect(screen.getByRole("columnheader", { name: "Last Session" })).toBeInTheDocument();
+      expect(screen.queryByRole("columnheader", { name: "Organization" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Example organization")).not.toBeInTheDocument();
+      expect(screen.getByText(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "long" }).format(new Date(rows[0].last_active_at)))).toBeVisible();
       expect(screen.queryByRole("columnheader", { name: "App admin" })).not.toBeInTheDocument();
       for (const label of ["Today", "1 Day Ago", "2 Days Ago"]) expect(screen.getByText(label)).toHaveClass("bg-emerald-400/15");
       for (const label of ["3 Days Ago", "5 Days Ago", "6 Days Ago"]) expect(screen.getByText(label)).toHaveClass("bg-orange-400/15");
       expect(screen.getByText("7 Days Ago")).toHaveClass("bg-red-400/15");
-      expect(screen.getByText("Not yet tracked")).toHaveClass("bg-slate-400/10");
+      expect(screen.getAllByText("Not yet tracked")).toHaveLength(2);
       await user.click(screen.getByRole("button", { name: "Filter" }));
       await user.selectOptions(screen.getByLabelText("Filter field"), "app_admin");
       await user.selectOptions(screen.getByLabelText("Filter value"), "true");

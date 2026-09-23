@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Ban, KeyRound, Layers3, Save, Trash2, UserCheck, UserRoundCog, X } from "lucide-react";
 import type { AdminReference, AdminRow, AdminUserAccountOverview } from "./types";
-import { AdminDisplayValue, adminFieldLabel } from "./adminFormat";
+import { AdminDisplayValue, adminFieldLabel, formatLastActive } from "./adminFormat";
 import { ReferenceInput } from "./AdminRecordDrawer";
 
 type Props = {
@@ -160,7 +160,9 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
         </section>
         <section className="rounded-2xl border border-white/10 bg-slate-950/35 p-5">
           <h3 className="font-medium text-white">Account activity</h3>
-          <dl className="mt-4 space-y-4">{fields.map((field) => <div key={field.name} className="flex flex-wrap justify-between gap-2 text-sm"><dt className="text-slate-500">{adminFieldLabel(field)}</dt><dd className="text-slate-200"><AdminDisplayValue value={user[field.name]} field={field} /></dd></div>)}</dl>
+          <dl className="mt-4 space-y-4">
+            <div className="flex flex-wrap justify-between gap-2 text-sm"><dt className="text-slate-500">Last Active</dt><dd className="text-slate-200">{formatLastActive(user.last_active_at, user._admin_activity_status)}</dd></div>
+            {fields.map((field) => <div key={field.name} className="flex flex-wrap justify-between gap-2 text-sm"><dt className="text-slate-500">{adminFieldLabel(field)}</dt><dd className="text-slate-200"><AdminDisplayValue value={user[field.name]} field={field} /></dd></div>)}</dl>
           <details className="mt-5 border-t border-white/10 pt-4"><summary className="cursor-pointer text-xs text-slate-500">Technical details</summary><p className="mt-3 break-all text-xs text-slate-400">User ID: {user._admin_id}</p></details>
         </section>
       </div>

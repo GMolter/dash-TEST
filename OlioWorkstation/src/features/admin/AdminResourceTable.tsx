@@ -2,7 +2,7 @@ import { ReferenceInput, referenceResource } from "./AdminRecordDrawer";
 import { useEffect, useId, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronLeft, ChevronRight, Database, Filter, Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import type { AdminField, AdminListResponse, AdminReference, AdminRow } from "./types";
-import { adminFieldLabel, formatAdminValue, humanizeAdminText } from "./adminFormat";
+import { adminFieldLabel, formatAdminValue, formatLastActive, humanizeAdminText } from "./adminFormat";
 
 type Props = {
   data: AdminListResponse | null;
@@ -156,8 +156,8 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
                 {selectable && <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={selected.has(row._admin_id)} onChange={() => toggleOne(row._admin_id)} aria-label={`Select ${row._admin_id}`} className="accent-blue-500" /></td>}
                 {columns.map((field) => {
                   const reference = row._admin_refs?.[field.name];
-                  return <td key={field.name} onClick={() => onOpen(row)} className="max-w-[260px] truncate px-3 py-3">
-                    {reference ? <button onClick={(event) => { event.stopPropagation(); onOpenReference(reference); }} className="inline-flex max-w-full items-center gap-1.5 truncate font-medium text-blue-200 hover:text-blue-100 hover:underline"><span className="truncate">{reference.label}</span><ArrowUpRight className="h-3.5 w-3.5 shrink-0" /></button> : tableValue(row[field.name], field, row._admin_activity_status)}
+                  return <td key={field.name} onClick={() => onOpen(row)} className={field.name === "last_session_at" ? "whitespace-nowrap px-3 py-3" : "max-w-[260px] truncate px-3 py-3"}>
+                    {field.name === "last_session_at" ? formatLastActive(row.last_active_at, row._admin_activity_status) : reference ? <button onClick={(event) => { event.stopPropagation(); onOpenReference(reference); }} className="inline-flex max-w-full items-center gap-1.5 truncate font-medium text-blue-200 hover:text-blue-100 hover:underline"><span className="truncate">{reference.label}</span><ArrowUpRight className="h-3.5 w-3.5 shrink-0" /></button> : tableValue(row[field.name], field, row._admin_activity_status)}
                   </td>;
                 })}
               </tr>
@@ -178,10 +178,15 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
 }
 
 function chooseColumns(fields: AdminField[], rows: AdminRow[], resource?: string) {
+  if (resource === "users") {
+    const columns = ["display_name", "email", "role", "last_active_at"]
+      .flatMap((name) => fields.filter((field) => field.name === name && !field.sensitive))
+      .map((field) => field.name === "last_active_at" ? { ...field, label: "Last Active" } : field);
+    return [...columns, { name: "last_session_at", label: "Last Session", type: "datetime" } as AdminField];
+  }
   const preferred = resource === "org-activity" ? ["actor_name", "action", "subject", "category", "created_at"] : ["display_name", "email", "name", "title", "device_name", "code", "slug", "status", "role", "last_active_at", "app_admin", "project_id", "owner_id", "user_id", "org_id", "updated_at", "created_at"];
   const technical = new Set(["device_identifier", "icon", "favicon_url", "dorm_lat", "dorm_lng", "location_lat", "location_lng", "position", "sort_index", "sort_order", "order_index"]);
   const safe = fields.filter((field) => {
-    if (resource === "users" && field.name === "app_admin") return false;
     if (field.sensitive || field.name === "temporary_password" || field.name === "id") return false;
     if (field.name.endsWith("_id") && !rows.some((row) => row._admin_refs?.[field.name])) return false;
     return !technical.has(field.name) && !["json", "textarea"].includes(field.type);
