@@ -72,6 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     let sessionRevision = 0;
+    let verificationPending = false;
+    let nextVerificationAt = 0;
     setLoading(true);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
@@ -89,6 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const refreshVerifiedSession = async (showLoading = false) => {
+      if (verificationPending || (!showLoading && Date.now() < nextVerificationAt)) return;
+      verificationPending = true;
       const revision = sessionRevision;
       if (showLoading && mounted) setLoading(true);
       try {
@@ -107,6 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
           const { data: verified, error: userError } = await supabase.auth.getUser(currentSession.access_token);
+          if (!mounted || revision !== sessionRevision) return;
+          if (userError?.status === 429) nextVerificationAt = Date.now() + 60_000;
+          if (userError && (userError.status === 401 || ['session_not_found', 'user_not_found', 'refresh_token_not_found'].includes(userError.code ?? ''))) {
+            setSession(null);
+            setUser(null);
+            await supabase.auth.signOut({ scope: 'local' });
+            return;
+          }
           if (!userError && verified.user) verifiedUser = verified.user;
         }
         if (mounted && revision === sessionRevision) {
@@ -119,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError(err instanceof Error ? err.message : 'Failed to initialize auth');
         }
       } finally {
+        verificationPending = false;
         if (showLoading && mounted) setLoading(false);
       }
     };

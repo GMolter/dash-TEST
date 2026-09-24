@@ -96,6 +96,46 @@ describe("AuthProvider session safety", () => {
     expect(auth.getUser).toHaveBeenCalledWith("session-token");
   });
 
+  it('discards a session rejected by auth instead of restoring its cached user', async () => {
+    auth.getUser.mockResolvedValue({ data: { user: null }, error: { status: 401, code: 'session_not_found' } });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    expect(await screen.findByText('Signed out')).toBeInTheDocument();
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it('preserves the session and backs off focus checks after rate limiting', async () => {
+    auth.getUser.mockResolvedValue({ data: { user: null }, error: { status: 429 } });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await screen.findByText('Signed in');
+    fireEvent.focus(window);
+    fireEvent(document, new Event('visibilitychange'));
+    expect(auth.getSession).toHaveBeenCalledTimes(1);
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('coalesces focus checks while session verification is pending', async () => {
+    let finish: ((value: unknown) => void) | undefined;
+    auth.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(auth.getUser).toHaveBeenCalledTimes(1));
+    fireEvent.focus(window);
+    fireEvent(document, new Event('visibilitychange'));
+    expect(auth.getSession).toHaveBeenCalledTimes(1);
+    await act(async () => finish?.({ data: { user: sessionUser }, error: null }));
+    expect(await screen.findByText('Signed in')).toBeInTheDocument();
+  });
+
+  it('does not clear a new login when verification of the previous session fails', async () => {
+    let finish: ((value: unknown) => void) | undefined;
+    auth.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(auth.getUser).toHaveBeenCalledTimes(1));
+    act(() => auth.authEvent?.('SIGNED_IN', { access_token: 'new-token', user: sessionUser } as unknown as Session));
+    await act(async () => finish?.({ data: { user: null }, error: { status: 401 } }));
+    expect(await screen.findByText('Signed in')).toBeInTheDocument();
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
+
   it("clears local auth state and falls back to local logout when global logout fails", async () => {
     auth.signOut.mockImplementation(async (options?: { scope?: string }) => options?.scope === "local" ? { error: null } : { error: new Error("global logout failed") });
     render(<AuthProvider><Probe /></AuthProvider>);
