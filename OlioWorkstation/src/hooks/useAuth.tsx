@@ -21,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [startupIssue, setStartupIssue] = useState<string | null>(null);
   const [ban, setBan] = useState<AccountBan | null>(null);
   useAppActivity(user?.id);
   const lastUserId = useRef<string | null>(null);
@@ -74,7 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let sessionRevision = 0;
     let verificationPending = false;
     let nextVerificationAt = 0;
+    let startupRetry: number | undefined;
     setLoading(true);
+    const startupTimer = window.setTimeout(() => {
+      if (mounted) setStartupIssue('Sign-in is taking longer than expected. Another tab may still be refreshing your session, or the service may be temporarily rate limited.');
+    }, 12_000);
+    const finishStartup = () => {
+      window.clearTimeout(startupTimer);
+      window.clearTimeout(startupRetry);
+      if (mounted) { setStartupIssue(null); setLoading(false); }
+    };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
@@ -88,6 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setSession(newSession);
       setUser(newSession?.user ?? null);
+      // A fresh auth event supersedes the initial read, which may still be
+      // waiting on refresh retries. Do not leave the new session behind a spinner.
+      finishStartup();
     });
 
     const refreshVerifiedSession = async (showLoading = false) => {
@@ -124,15 +137,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted && revision === sessionRevision) {
           setSession(currentSession);
           setUser(verifiedUser);
+          finishStartup();
         }
       } catch (err) {
         console.error('Auth init error:', err);
-        if (mounted) {
+        if (mounted && revision === sessionRevision) {
           setError(err instanceof Error ? err.message : 'Failed to initialize auth');
+          if (showLoading) {
+            window.clearTimeout(startupTimer);
+            setStartupIssue('We could not finish checking your saved sign-in. Your saved session has not been cleared. Wait a minute before reloading.');
+            window.clearTimeout(startupRetry);
+            startupRetry = window.setTimeout(() => { if (mounted) void refreshVerifiedSession(true); }, 60_000);
+          }
         }
       } finally {
         verificationPending = false;
-        if (showLoading && mounted) setLoading(false);
+        if (showLoading && mounted) {
+          window.clearTimeout(startupTimer);
+          setLoading(false);
+        }
       }
     };
 
@@ -146,6 +169,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      window.clearTimeout(startupTimer);
+      window.clearTimeout(startupRetry);
       window.removeEventListener('focus', refreshWhenVisible);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
       subscription.unsubscribe();
@@ -221,7 +246,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, session, loading, error, signUp, signIn, signOut }}>
-      {ban ? <div className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-white" role="alert">
+      {startupIssue && !ban ? <div className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-white">
+        <section className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-7" role="status">
+          <h1 className="text-2xl font-semibold">Sign-in is temporarily delayed</h1>
+          <p className="mt-3 text-slate-300">{startupIssue}</p>
+          <p className="mt-3 text-sm text-slate-400">Keep this tab open. Olio will continue when verification succeeds; failed startup checks retry once a minute.</p>
+          <button onClick={() => window.location.reload()} className="mt-6 rounded-xl bg-violet-600 px-4 py-2">Reload Olio</button>
+        </section>
+      </div> : ban ? <div className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-white" role="alert">
         <section className="w-full max-w-lg rounded-2xl border border-red-400/20 bg-slate-900 p-7">
           <h1 className="text-2xl font-semibold">Your account has been suspended</h1>
           <p className="mt-3 text-slate-300">You have been signed out. You can sign in again after {new Date(ban.banned_until).toLocaleString()}.</p>

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Session } from '@supabase/supabase-js';
 
 const auth = vi.hoisted(() => ({
@@ -45,6 +45,49 @@ function Probe() {
 }
 
 describe("AuthProvider session safety", () => {
+  afterEach(() => vi.useRealTimers());
+  it('finishes startup on a fresh session event even when the initial read is stuck', async () => {
+    auth.getSession.mockImplementationOnce(() => new Promise(() => {}));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    act(() => auth.authEvent?.('TOKEN_REFRESHED', { access_token: 'new-token', user: sessionUser } as unknown as Session));
+    expect(screen.getByText('Signed in')).toBeInTheDocument();
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('shows recovery after a stalled check and automatically recovers when it completes', async () => {
+    vi.useFakeTimers();
+    let finish: ((value: unknown) => void) | undefined;
+    auth.getSession.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await act(async () => { await vi.advanceTimersByTimeAsync(12_000); });
+    expect(screen.getByText('Sign-in is temporarily delayed')).toBeInTheDocument();
+    expect(auth.getSession).toHaveBeenCalledTimes(1);
+    expect(auth.signOut).not.toHaveBeenCalled();
+    await act(async () => { finish?.({ data: { session: { access_token: 'new-token', user: sessionUser } }, error: null }); });
+    expect(screen.getByText('Signed in')).toBeInTheDocument();
+    expect(screen.queryByText('Sign-in is temporarily delayed')).not.toBeInTheDocument();
+  });
+
+  it('does not show the login form or clear saved auth when startup refresh is temporarily unavailable', async () => {
+    auth.getSession.mockResolvedValueOnce({ data: { session: null }, error: new Error('Refresh temporarily unavailable') });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    expect(await screen.findByText('Sign-in is temporarily delayed')).toBeInTheDocument();
+    expect(screen.queryByText('Signed out')).not.toBeInTheDocument();
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed startup only after a minute and recovers without signing out', async () => {
+    vi.useFakeTimers();
+    auth.getSession.mockResolvedValueOnce({ data: { session: null }, error: new Error('Rate limited') });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await act(async () => { await vi.advanceTimersByTimeAsync(59_000); });
+    expect(auth.getSession).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Sign-in is temporarily delayed')).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(auth.getSession).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('Signed in')).toBeInTheDocument();
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
   it('does not overwrite a new login with a stale initial session read', async () => {
     let finish: ((value: unknown) => void) | undefined;
     auth.getSession.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
