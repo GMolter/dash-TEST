@@ -131,9 +131,9 @@ describe('Quick Links management redesign', () => {
     expect(createButton).toBeDisabled();
 
     await user.type(within(dialog).getByLabelText('Title'), 'Project board');
-    await user.type(within(dialog).getByLabelText('URL'), 'https://boards.example.com/work');
+    await user.type(within(dialog).getByLabelText('URL'), 'boards.example.com/work');
     await user.clear(within(dialog).getByLabelText('Icon'));
-    await user.type(within(dialog).getByLabelText('Icon'), '🚀');
+    await user.type(within(dialog).getByLabelText('Icon'), 'cdn.example.com/rocket.png');
 
     expect(within(dialog).getByText('Project board')).toBeInTheDocument();
     expect(within(dialog).getByText('boards.example.com')).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe('Quick Links management redesign', () => {
     await waitFor(() => expect(insertMock).toHaveBeenCalledWith(expect.objectContaining({
       title: 'Project board',
       url: 'https://boards.example.com/work',
-      icon: '🚀',
+      icon: 'https://cdn.example.com/rocket.png',
       scope: 'personal',
       folder_id: null,
     })));

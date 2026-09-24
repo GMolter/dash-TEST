@@ -248,15 +248,30 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
   };
 
   // ── URL helpers ───────────────────────────────────────────────────────────────
-  const looksLikeUrl = (value: string) => {
+  const hasHttpProtocol = (value: string) => {
     const v = (value || '').trim();
-    return v.startsWith('http://') || v.startsWith('https://');
+    return /^https?:\/\//i.test(v);
+  };
+
+  const normalizeUrl = (raw: string) => {
+    const u = (raw || '').trim();
+    if (!u) return u;
+    return hasHttpProtocol(u) ? u : 'https://' + u;
+  };
+
+  const looksLikeImageUrl = (value: string) => {
+    const v = (value || '').trim();
+    return hasHttpProtocol(v) || /^[^\s/@]+\.[^\s/]{2,}(?:[/?#:].*)?$/i.test(v);
+  };
+
+  const normalizeIcon = (raw: string) => {
+    const i = (raw || '').trim();
+    if (!i) return i;
+    return looksLikeImageUrl(i) ? normalizeUrl(i) : i;
   };
 
   const formatUrl = (raw: string) => {
-    const u = (raw || '').trim();
-    if (!u) return u;
-    return u.startsWith('http://') || u.startsWith('https://') ? u : 'https://' + u;
+    return normalizeUrl(raw);
   };
 
   const faviconFor = (rawUrl: string) => {
@@ -286,8 +301,8 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
 
   // ── LinkIcon ──────────────────────────────────────────────────────────────────
   const LinkIcon = ({ link, size = 40 }: { link: Quicklink; size?: number }) => {
-    const customImg = looksLikeUrl(link.icon) ? link.icon.trim() : '';
-    const fallbackEmoji = !looksLikeUrl(link.icon) && (link.icon || '').trim() ? link.icon : '🔗';
+    const customImg = looksLikeImageUrl(link.icon) ? normalizeIcon(link.icon) : '';
+    const fallbackEmoji = !looksLikeImageUrl(link.icon) && (link.icon || '').trim() ? link.icon : '🔗';
     const favicon = faviconFor(link.url);
     const primarySrc = customImg || favicon;
     const [imgOk, setImgOk] = useState(!!primarySrc);
@@ -309,7 +324,7 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
   const addLink = async () => {
     if (!title || !url || !organization || !user) return;
     const { error } = await supabase.from('quicklinks').insert({
-      title, url, icon, order_index: links.length,
+      title: title.trim(), url: normalizeUrl(url), icon: normalizeIcon(icon), order_index: links.length,
       org_id: organization.id, user_id: user.id, scope: collection, folder_id: collection === 'personal' ? linkFolderId || null : null,
     });
     if (!error) { resetForm(); loadLinks(); }
@@ -318,7 +333,7 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
   const updateLink = async () => {
     if (!editingLink || !title || !url) return;
     const { error } = await supabase.from('quicklinks')
-      .update({ title, url, icon, scope: collection, folder_id: collection === 'personal' ? linkFolderId || null : null })
+      .update({ title: title.trim(), url: normalizeUrl(url), icon: normalizeIcon(icon), scope: collection, folder_id: collection === 'personal' ? linkFolderId || null : null })
       .eq('id', editingLink.id);
     if (!error) { resetForm(); loadLinks(); }
   };
@@ -815,8 +830,9 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
                       <Globe2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                       <input
                         id="quicklink-url"
-                        type="url"
-                        placeholder="https://example.com"
+                        type="text"
+                        inputMode="url"
+                        placeholder="example.com"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         className="h-12 w-full rounded-xl border border-white/10 bg-slate-900/80 pl-11 pr-4 text-white outline-none placeholder:text-slate-600 focus:border-indigo-400/70 focus:ring-4 focus:ring-indigo-500/10"
@@ -834,7 +850,7 @@ export function Quicklinks({ editMode = false, collection = 'personal' }: Props)
                       onChange={(e) => setIcon(e.target.value)}
                       className="h-12 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 text-white outline-none placeholder:text-slate-600 focus:border-indigo-400/70 focus:ring-4 focus:ring-indigo-500/10"
                     />
-                    <p className="mt-2 text-xs leading-relaxed text-slate-500">Keep an emoji here and Olio will try the website favicon first.</p>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">Keep an emoji here and Olio will try the website favicon first. Image links can be entered with or without https://.</p>
                   </div>
 
                   {collection === 'personal' && collectionFolders.length > 0 && (
