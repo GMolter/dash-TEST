@@ -64,6 +64,7 @@ function readQuicklinkCache(userId: string): { links: DashboardQuicklink[]; fold
 
 export function useFreeformDashboard() {
   const { user } = useAuth();
+  const userId = user?.id;
   const [layouts, setLayouts] = useState<DashboardLayoutItem[]>([]);
   const [quicklinks, setQuicklinks] = useState<DashboardQuicklink[]>([]);
   const [folders, setFolders] = useState<DashboardQuicklinkFolder[]>([]);
@@ -72,14 +73,13 @@ export function useFreeformDashboard() {
   const layoutRevision = useRef(0);
 
   useLayoutEffect(() => {
-    if (!user) {
+    if (!userId) {
       setLayouts([]);
       setQuicklinks([]);
       setFolders([]);
       setLoading(false);
       return;
     }
-    const userId = user.id;
     const cachedLayouts = readLayoutCache(userId);
     const cachedQuicklinks = readQuicklinkCache(userId);
     setLayouts(cachedLayouts);
@@ -126,7 +126,8 @@ export function useFreeformDashboard() {
     };
     window.addEventListener('storage', onStorage);
     return () => { cancelled = true; window.removeEventListener('storage', onStorage); };
-  }, [user]);
+  // Refreshing a token must not restart the queries that requested the token.
+  }, [userId]);
 
   const saveLayouts = useCallback(async (nextLayouts: DashboardLayoutItem[]) => {
     if (!user) return false;

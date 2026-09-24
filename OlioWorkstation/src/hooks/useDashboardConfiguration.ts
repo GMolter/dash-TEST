@@ -78,7 +78,8 @@ function emitChange() {
 
 export function useDashboardConfiguration() {
   const { user } = useAuth();
-  const initial = useMemo(() => user ? readConfigurationCache(user.id) : null, [user?.id]);
+  const userId = user?.id;
+  const initial = useMemo(() => userId ? readConfigurationCache(userId) : null, [userId]);
   const requestId = useRef(0);
   const activeUser = useRef(user?.id);
   activeUser.current = user?.id;
@@ -90,34 +91,36 @@ export function useDashboardConfiguration() {
 
   const refresh = useCallback(async () => {
     const request = ++requestId.current;
-    if (!user) {
+    if (!userId) {
       setInstallations([]);
       setStoredModules([]);
       setLoading(false);
       return;
     }
 
-    const cached = readConfigurationCache(user.id);
+    const cached = readConfigurationCache(userId);
     setInstallations(cached?.installations ?? []);
     setStoredModules(cached?.modules ?? []);
     setLoading(!cached);
     const [installationsResult, modulesResult] = await Promise.all([
-      supabase.from('user_plugin_installations').select('*').eq('user_id', user.id),
-      supabase.from('user_dashboard_modules').select('*').eq('user_id', user.id),
+      supabase.from('user_plugin_installations').select('*').eq('user_id', userId),
+      supabase.from('user_dashboard_modules').select('*').eq('user_id', userId),
     ]);
 
-    if (request !== requestId.current || activeUser.current !== user.id) return;
+    if (request !== requestId.current || activeUser.current !== userId) return;
     const firstError = installationsResult.error || modulesResult.error;
     if (firstError) {
       setError(`Dashboard configuration is unavailable. Apply the latest Supabase migration. ${firstError.message}`);
     } else {
-      writeConfigurationCache(user.id, { installations: installationsResult.data || [], modules: modulesResult.data || [] });
+      writeConfigurationCache(userId, { installations: installationsResult.data || [], modules: modulesResult.data || [] });
       setError(null);
       setInstallations((installationsResult.data || []) as PluginInstallation[]);
       setStoredModules((modulesResult.data || []) as StoredDashboardModule[]);
     }
     setLoading(false);
-  }, [user]);
+  // Token refresh replaces the User object without changing the account.
+  // Depending on that object restarts reads that may themselves refresh tokens.
+  }, [userId]);
 
   useLayoutEffect(() => {
     void refresh();
@@ -128,7 +131,7 @@ export function useDashboardConfiguration() {
     // Admin changes happen in another session, so local events alone are insufficient.
     const refreshInterval = window.setInterval(onVisible, 30_000);
     window.addEventListener(DASHBOARD_CONFIGURATION_CHANGED_EVENT, onChange);
-    const onStorage = (event: StorageEvent) => { if (user && event.key === configurationKey(user.id)) { const cached = readConfigurationCache(user.id); if (cached) { setInstallations(cached.installations); setStoredModules(cached.modules); setLoading(false); } } };
+    const onStorage = (event: StorageEvent) => { if (userId && event.key === configurationKey(userId)) { const cached = readConfigurationCache(userId); if (cached) { setInstallations(cached.installations); setStoredModules(cached.modules); setLoading(false); } } };
     window.addEventListener('storage', onStorage);
     return () => {
       ++requestId.current;
@@ -138,7 +141,7 @@ export function useDashboardConfiguration() {
       window.removeEventListener('storage', onStorage);
       window.removeEventListener(DASHBOARD_CONFIGURATION_CHANGED_EVENT, onChange);
     };
-  }, [refresh]);
+  }, [refresh, userId]);
 
   const installedPluginIds = useMemo(
     () => new Set(installations.map((installation) => installation.plugin_id)),

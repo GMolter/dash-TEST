@@ -8,6 +8,7 @@ import { readConfigurationCache, useDashboardConfiguration } from './useDashboar
 import { useFreeformDashboard } from './useFreeformDashboard';
 
 beforeEach(() => {
+  vi.clearAllMocks();
   localStorage.clear();
   state.user = { id: 'user-1' };
   state.from.mockImplementation(() => {
@@ -17,6 +18,22 @@ beforeEach(() => {
 });
 
 describe('dashboard warm starts', () => {
+  it('does not restart dashboard requests when token refresh replaces the same user object', () => {
+    const { rerender } = renderHook(() => ({
+      configuration: useDashboardConfiguration(),
+      dashboard: useFreeformDashboard(),
+    }));
+    expect(state.from).toHaveBeenCalledTimes(5);
+    // A refresh can arrive before the dashboard requests that triggered it finish.
+    for (let refresh = 0; refresh < 3; refresh++) {
+      state.user = { id: 'user-1' };
+      rerender();
+    }
+    expect(state.from).toHaveBeenCalledTimes(5);
+    state.user = { id: 'user-2' };
+    rerender();
+    expect(state.from).toHaveBeenCalledTimes(10);
+  });
   it('restores disabled modules without waiting for the network', () => {
     localStorage.setItem('olio-dashboard-configuration-v1:user-1', JSON.stringify({ installations: [], modules: [
       { user_id: 'user-1', module_id: 'shortcuts', enabled: false, order_index: 2, column_span: 4 },
