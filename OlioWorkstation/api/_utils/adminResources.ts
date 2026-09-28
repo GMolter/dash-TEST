@@ -235,7 +235,7 @@ export const ADMIN_RESOURCES: Record<string, AdminResource> = {
   },
   "app-settings": {
     key: "app-settings", label: "App settings", group: "platform", table: "app_settings", primaryKey: "id", searchFields: [], defaultSort: "updated_at", sortFields: ["updated_at", "id"],
-    fields: [f("id", "ID"), f("banner_enabled", "Banner enabled", "boolean", { editable: true }), f("banner_text", "Banner text", "textarea", { editable: true }), f("help_docs", "Legacy help docs", "textarea", { editable: true }), f("updated_at", "Updated", "datetime")],
+    fields: [f("id", "ID"), f("banner_enabled", "Banner enabled", "boolean", { editable: true }), f("banner_text", "Banner text", "textarea", { editable: true }), f("banner_starts_at", "Banner starts", "datetime", { editable: true }), f("banner_ends_at", "Banner ends", "datetime", { editable: true }), f("help_docs", "Legacy help docs", "textarea", { editable: true }), f("updated_at", "Updated", "datetime")],
   },
   "admin-access-requests": {
     key: "admin-access-requests", label: "Pending reviews", group: "reviews", table: "admin_access_requests", primaryKey: "id", readOnly: true, guided: "admin-review",

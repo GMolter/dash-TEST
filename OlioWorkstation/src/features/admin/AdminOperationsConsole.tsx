@@ -1,9 +1,10 @@
+import { AdminBannerPage } from "./AdminBannerPage";
 import { NotFound } from "../../pages/NotFound";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity, BookOpenText, Building2, Database, FolderKanban, Gauge,
   LayoutDashboard, Menu, Plug, RefreshCw, Shield, ShieldAlert,
-  ShieldCheck, Users, Wrench, X, ChevronDown, ArrowRight,
+  ShieldCheck, Users, Wrench, X, ChevronDown, ArrowRight, Megaphone,
 } from "lucide-react";
 import { loadAdminOverview, loadAdminResource, loadAdminUserAccount, revealAdminField } from "./api";
 import { AdminOperationDialog } from "./AdminOperationDialog";
@@ -19,6 +20,7 @@ type AccessState = "checking" | "error" | "denied" | "ready";
 type PendingOperation = { operation: Omit<AdminOperation, "reason">; title: string } | null;
 
 const NAVIGATION = [
+  { key: "banner", label: "Banner", icon: Megaphone },
   { key: "overview", label: "Overview", icon: Gauge },
   { key: "people", label: "People", icon: Users },
   { key: "organizations", label: "Organizations", icon: Building2 },
@@ -63,6 +65,7 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
 export function AdminOperationsConsole() {
   const initial = readLocation();
   const [organizationId, setOrganizationId] = useState(initial.organization);
+  const [bannerRefresh, setBannerRefresh] = useState(0);
   const [organizationRefresh, setOrganizationRefresh] = useState(0);
   const [access, setAccess] = useState<AccessState>("checking");
   const [accessError, setAccessError] = useState<string | null>(null);
@@ -78,7 +81,7 @@ export function AdminOperationsConsole() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(["projects", "content", "utilities", "integrations", "platform"].includes(initial.section));
+  const [moreOpen, setMoreOpen] = useState(["banner", "projects", "content", "utilities", "integrations", "platform"].includes(initial.section));
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -149,7 +152,7 @@ export function AdminOperationsConsole() {
   useEffect(() => { void refreshAccount(); }, [refreshAccount]);
 
   const refreshResource = useCallback(async () => {
-    if (access !== "ready" || organizationId || section === "overview" || !resource || accountLinks || (accountUserId && !accountOverview)) return;
+    if (access !== "ready" || organizationId || section === "overview" || section === "banner" || !resource || accountLinks || (accountUserId && !accountOverview)) return;
     setLoading(true);
     setError(null);
     try {
@@ -173,7 +176,7 @@ export function AdminOperationsConsole() {
   useEffect(() => {
     const query = new URLSearchParams();
     query.set("section", section);
-    if (section !== "overview" && resource) query.set("resource", resource);
+    if (section !== "overview" && section !== "banner" && resource) query.set("resource", resource);
     if (accountUserId) query.set("account", accountUserId);
     if (organizationId) query.set("organization", organizationId);
     if (row?._admin_id) query.set("record", row._admin_id);
@@ -355,7 +358,7 @@ export function AdminOperationsConsole() {
             })}
             <div className="pt-4">
               <button aria-expanded={moreOpen} aria-controls="admin-more-navigation" onClick={() => setMoreOpen(!moreOpen)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white">More tools<ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} /></button>
-              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{NAVIGATION.filter((item) => ["projects", "content", "utilities", "integrations", "platform"].includes(item.key)).map((item) => {
+              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{NAVIGATION.filter((item) => ["banner", "projects", "content", "utilities", "integrations", "platform"].includes(item.key)).map((item) => {
                 const Icon = item.icon;
                 return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-500 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" />{item.label}</button>;
               })}</div>}
@@ -374,13 +377,13 @@ export function AdminOperationsConsole() {
               <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-200 lg:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
               <div><h1 className="text-2xl font-semibold">{accountUserId ? "Account management" : NAVIGATION.find((item) => item.key === section)?.label || "Overview"}</h1></div>
             </div>
-            <button onClick={() => { if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
+            <button onClick={() => { if (section === "banner") { setBannerRefresh(v => v + 1); } else if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
           </header>
 
           {toast && <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100"><span>{toast}</span><button onClick={() => setToast(null)}><X className="h-4 w-4" /></button></div>}
           {error && <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-          {organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : accountUserId ? (
+          {section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : accountUserId ? (
             <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
               {accountLinks && accountOverview ? <AdminAccountQuicklinks key={accountUserId} user={accountOverview.user} onComplete={() => { void refreshAccount(); void loadAdminOverview().then(setOverview).catch(() => undefined); }} onOpenReference={openReference} /> : resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}

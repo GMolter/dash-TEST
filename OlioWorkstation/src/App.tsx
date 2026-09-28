@@ -1,3 +1,5 @@
+import { BannerMessage } from "./components/BannerMessage";
+import { bannerStatus, type BannerState } from "./lib/banner";
 import { lazy, useState, useEffect } from 'react';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { Quicklinks } from './components/Quicklinks';
@@ -69,8 +71,7 @@ type View =
   | { type: 'project-dashboard'; id: string }
   | { type: 'launcher-authorization'; requestId: string; displayCode: string };
 
-type BannerState = { enabled: boolean; text: string };
-const BANNER_CACHE_KEY = 'olio-public-banner-v1';
+const BANNER_CACHE_KEY = 'olio-public-banner-v2';
 function readBannerCache(): BannerState {
   try {
     const cached = window.localStorage.getItem(BANNER_CACHE_KEY);
@@ -79,6 +80,8 @@ function readBannerCache(): BannerState {
     return {
       enabled: parsed.enabled === true,
       text: typeof parsed.text === 'string' ? parsed.text : '',
+      startsAt: typeof parsed.startsAt === 'string' ? parsed.startsAt : null,
+      endsAt: typeof parsed.endsAt === 'string' ? parsed.endsAt : null,
     };
   } catch {
     return { enabled: false, text: '' };
@@ -174,6 +177,8 @@ function App() {
         const nextBanner = {
           enabled: !!j.bannerEnabled,
           text: j.bannerText || '',
+          startsAt: j.bannerStartsAt || null,
+          endsAt: j.bannerEndsAt || null,
         };
         setBanner(nextBanner);
         writeBannerCache(nextBanner);
@@ -189,10 +194,14 @@ function App() {
       if (document.visibilityState === 'visible') loadBanner();
     };
     document.addEventListener('visibilitychange', onVis);
+    const poll = window.setInterval(loadBanner, 30000);
+    window.addEventListener('olio-banner-updated', loadBanner);
 
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVis);
+      window.clearInterval(poll);
+      window.removeEventListener('olio-banner-updated', loadBanner);
     };
   }, []);
 
@@ -373,13 +382,13 @@ function App() {
         <div className="mx-auto mt-4 h-px w-14 bg-gradient-to-r from-transparent via-violet-400 to-transparent shadow-[0_0_14px_rgba(139,92,246,0.9)]" />
       </section>
 
-      {banner.enabled && banner.text?.trim() && (
+      {bannerStatus(banner, currentTime.getTime()) === 'Live' && (
         <div className="mx-auto mt-9 max-w-4xl rounded-3xl border border-amber-300/20 bg-amber-400/[0.09] px-5 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_65px_rgba(2,6,23,0.3)] backdrop-blur-xl sm:px-6">
           <div className="flex items-start gap-4">
             <div className="flex h-10 w-10 flex-none items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-400/10">
               <AlertTriangle className="h-5 w-5 text-amber-200" />
             </div>
-            <div className="pt-2 text-sm leading-relaxed text-amber-100 sm:text-base">{banner.text}</div>
+            <div className="pt-2 text-sm leading-relaxed text-amber-100 sm:text-base"><BannerMessage text={banner.text} /></div>
           </div>
         </div>
       )}

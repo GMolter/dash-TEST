@@ -31,6 +31,7 @@ function normalizeSupabaseUrl(raw: string | undefined | null) {
 
 export default async function handler(_req: any, res: any) {
   try {
+    res.setHeader("Cache-Control", "no-store");
     const rawCandidates = [
       process.env.SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -57,7 +58,7 @@ export default async function handler(_req: any, res: any) {
 
     const { data, error } = await supabase
       .from("app_settings")
-      .select("banner_enabled,banner_text,updated_at")
+      .select("banner_enabled,banner_text,banner_starts_at,banner_ends_at,updated_at")
       .eq("id", "global")
       .maybeSingle();
 
@@ -82,6 +83,8 @@ export default async function handler(_req: any, res: any) {
     return res.status(200).json({
       bannerEnabled: !!data?.banner_enabled,
       bannerText: data?.banner_text || "",
+      bannerStartsAt: data?.banner_starts_at || null,
+      bannerEndsAt: data?.banner_ends_at || null,
       updatedAt: data?.updated_at || null,
     });
   } catch (err: any) {
