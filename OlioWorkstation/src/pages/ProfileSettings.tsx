@@ -1,3 +1,4 @@
+import { DashboardPhotoSettings } from '../components/DashboardPhoto';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -137,6 +138,7 @@ export function ProfileSettings({
             </button>
           </div>
         </div>
+        <DashboardPhotoSettings />
 
         <div className="border-t border-slate-700 pt-6">
           <h3 className="text-lg font-semibold text-white mb-4">Account Information</h3>

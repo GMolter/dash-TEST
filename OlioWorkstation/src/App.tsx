@@ -1,3 +1,5 @@
+import { DashboardPhoto } from './components/DashboardPhoto';
+import { TargetedAlerts } from './components/TargetedAlerts';
 import { BannerMessage } from "./components/BannerMessage";
 import { bannerStatus, type BannerState } from "./lib/banner";
 import { lazy, useState, useEffect } from 'react';
@@ -393,6 +395,7 @@ function App() {
         </div>
       )}
 
+      <TargetedAlerts />
       <DashboardCanvas
         editing={dashboardEditing}
         onEditingChange={(editing) => {
@@ -588,6 +591,7 @@ function App() {
   return (
     <div className="min-h-screen text-white relative">
       <AnimatedBackground theme={appBackgroundTheme} preset={appBackgroundPreset} />
+      <DashboardPhoto />
       {floatingNavigation}
       <div className="relative z-10 min-h-screen flex flex-col">
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">

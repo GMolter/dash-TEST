@@ -1,3 +1,4 @@
+import { AdminTargetedAlerts } from './AdminTargetedAlerts';
 import { useEffect, useRef, useState } from "react";
 import { CalendarClock, Eye, Link2, Megaphone, Save } from "lucide-react";
 import { BannerMessage } from "../../components/BannerMessage";
@@ -64,7 +65,7 @@ export function AdminBannerPage({ refreshVersion = 0 }: { refreshVersion?: numbe
 
   return <div className="mx-auto max-w-6xl">
     <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-      <div><p className="text-sm text-slate-400">Keep everyone informed about maintenance, updates, and announcements.</p><p className="mt-1 text-xs text-slate-500">One banner appears on the Olio dashboard. Changes go live after saving.</p></div>
+      <div><p className="text-sm text-slate-400">Keep everyone informed about maintenance, updates, and announcements.</p><p className="mt-1 text-xs text-slate-500">The global banner appears for everyone on the Olio dashboard. Changes go live after saving.</p></div>
       <button disabled={!!validation || !!operation} onClick={() => setOperation({ resource: "app-settings", kind: "update", ids: ["global"], values: { banner_enabled: enabled, banner_text: text, banner_starts_at: start ? new Date(start).toISOString() : null, banner_ends_at: end ? new Date(end).toISOString() : null } })} className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-400 disabled:opacity-40"><Save className="h-4 w-4" />Save banner</button>
     </div>
     {saved && <p role="status" className="mb-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm text-emerald-200">Banner saved. Dashboard updates within 30 seconds.</p>}
@@ -92,6 +93,7 @@ export function AdminBannerPage({ refreshVersion = 0 }: { refreshVersion?: numbe
         <p className="mt-4 text-xs leading-5 text-slate-400">Preview includes unsaved changes. {status === "Hidden" ? "Enable the banner to display it on the dashboard." : status === "Scheduled" ? "The banner will appear automatically at the start time." : status === "Ended" ? "This schedule has ended. Update the end time to show it again." : "The banner will be visible once saved."}</p>
       </section>
     </div>
+    <AdminTargetedAlerts />
     <AdminOperationDialog operation={operation} title="Save dashboard banner" onCancel={() => setOperation(null)} onComplete={() => { setOperation(null); setSaved(true); window.dispatchEvent(new Event("olio-banner-updated")); }} />
   </div>;
 }

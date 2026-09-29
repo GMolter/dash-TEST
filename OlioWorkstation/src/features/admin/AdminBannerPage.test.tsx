@@ -6,6 +6,7 @@ import { loadAdminResource } from "./api";
 import type { AdminListResponse } from "./types";
 
 vi.mock("./api", () => ({ loadAdminResource: vi.fn() }));
+vi.mock("./AdminTargetedAlerts", () => ({ AdminTargetedAlerts: () => null }));
 vi.mock("./AdminOperationDialog", () => ({ AdminOperationDialog: ({ operation }: { operation: unknown }) => operation ? <output data-testid="operation">{JSON.stringify(operation)}</output> : null }));
 beforeEach(() => {
   vi.clearAllMocks();
