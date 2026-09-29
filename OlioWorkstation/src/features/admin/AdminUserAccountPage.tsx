@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Ban, KeyRound, Layers3, Save, Tras
 import type { AdminReference, AdminRow, AdminUserAccountOverview } from "./types";
 import { AdminDisplayValue, adminFieldLabel, formatLastActive } from "./adminFormat";
 import { ReferenceInput } from "./AdminRecordDrawer";
+import { AdminTargetedAlerts } from './AdminTargetedAlerts';
 
 type Props = {
   overview: AdminUserAccountOverview | null;
@@ -37,6 +38,8 @@ const GROUP_LABELS: Record<string, string> = {
 export function AdminUserAccountPage({ overview, loading, error, selectedResource, onBack, onAccountOperation, onOpenReference, onSelectResource, children }: Props) {
   const [showEmpty, setShowEmpty] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [bannerUserId, setBannerUserId] = useState<string | null>(null);
+  const [bannerSentTo, setBannerSentTo] = useState<string | null>(null);
   const [form, setForm] = useState<AccountForm>(EMPTY_FORM);
   const [temporaryPassword, setTemporaryPassword] = useState("");
   const [organizationInputVersion, setOrganizationInputVersion] = useState(0);
@@ -104,9 +107,12 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
             </div>
           </div>
         </div>
-        <button disabled={overview.canManage === false} onClick={() => setEditing((value) => !value)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button>
+        <div className="flex flex-wrap gap-2"><button onClick={() => { setBannerUserId(bannerUserId === user._admin_id ? null : user._admin_id); setBannerSentTo(null); }} className="rounded-xl border border-violet-400/30 bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-100">{bannerUserId === user._admin_id ? "Close banner composer" : "Send banner"}</button><button disabled={overview.canManage === false} onClick={() => setEditing((value) => !value)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button></div>
       </div>
     </section>
+
+    {bannerSentTo === user._admin_id && <p role="status" className="text-sm text-emerald-300">Banner saved for {name}. It will appear within 30 seconds or at the scheduled start.</p>}
+    {bannerUserId === user._admin_id && <AdminTargetedAlerts key={user._admin_id} recipient={{ id: user._admin_id, label: name + ' (' + email + ')' }} onSent={() => { setBannerUserId(null); setBannerSentTo(user._admin_id); }} />}
 
     {editing && overview.canManage !== false && <section className="rounded-2xl border border-blue-400/20 bg-slate-950/55 p-5 shadow-xl shadow-blue-950/10 backdrop-blur-xl">
       <div className="flex flex-wrap items-start justify-between gap-3">

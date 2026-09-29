@@ -2,8 +2,26 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AdminUserAccountPage } from "./AdminUserAccountPage";
+import type { AdminUserAccountOverview } from './types';
+
+vi.mock('./AdminTargetedAlerts', () => ({ AdminTargetedAlerts: ({ recipient, onSent }: { recipient: { id: string; label: string }; onSent: () => void }) => <div data-testid="banner-recipient">{recipient.id}: {recipient.label}<button onClick={onSent}>Complete banner</button></div> }));
 
 describe("AdminUserAccountPage", () => {
+  it('opens a banner composer for the viewed user and clears it when switching accounts', async () => {
+    const actor = userEvent.setup();
+    const overview: AdminUserAccountOverview = { user: { _admin_id: 'user-a', display_name: 'Avery', email: 'avery@example.com' }, userFields: [], userActions: [], resources: [], canManage: true, totalRecords: 1 };
+    const props = { overview, loading: false, error: null, selectedResource: '', onBack: vi.fn(), onAccountOperation: vi.fn(), onOpenReference: vi.fn(), onSelectResource: vi.fn() };
+    const { rerender } = render(<AdminUserAccountPage {...props} />);
+    await actor.click(screen.getByRole('button', { name: 'Send banner' }));
+    expect(screen.getByTestId('banner-recipient')).toHaveTextContent('user-a: Avery (avery@example.com)');
+    await actor.click(screen.getByText('Complete banner'));
+    expect(screen.getByRole('status')).toHaveTextContent('Banner saved for Avery');
+    await actor.click(screen.getByRole('button', { name: 'Send banner' }));
+    rerender(<AdminUserAccountPage {...props} overview={{ ...overview, user: { _admin_id: 'user-b', display_name: 'Blair', email: 'blair@example.com' } }} />);
+    expect(screen.queryByTestId('banner-recipient')).toBeNull();
+    await actor.click(screen.getByRole('button', { name: 'Send banner' }));
+    expect(screen.getByTestId('banner-recipient')).toHaveTextContent('user-b: Blair');
+  });
   it("shows the complete account summary and opens related data by name", async () => {
     const user = userEvent.setup();
     const onSelectResource = vi.fn();

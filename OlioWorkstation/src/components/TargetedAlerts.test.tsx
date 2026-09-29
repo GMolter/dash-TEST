@@ -7,11 +7,13 @@ vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock('../lib/supabase', () => ({ supabase: { from: () => ({ select: () => ({ order: mocks.order }) }) } }));
 beforeEach(() => {
   mocks.user = { id: 'user-1' };
-  mocks.order.mockReset().mockResolvedValue({ data: [{ id: 'alert-1', message: 'Private notice' }], error: null });
+  mocks.order.mockReset().mockResolvedValue({ data: [{ id: 'alert-1', message: 'Private notice', title: 'Team update', color: '#2563eb' }], error: null });
 });
 it('renders authorized alerts and removes them when the server withdraws access', async () => {
   render(<TargetedAlerts />);
   expect(await screen.findByText('Private notice')).toBeInTheDocument();
+  expect(screen.getByText('Team update').parentElement).toHaveStyle({ backgroundColor: '#2563eb', color: '#ffffff' });
+  expect(screen.queryByText('Admin alert')).toBeNull();
   mocks.order.mockResolvedValue({ data: [], error: null });
   act(() => window.dispatchEvent(new Event('olio-banner-updated')));
   await waitFor(() => expect(screen.queryByText('Private notice')).toBeNull());

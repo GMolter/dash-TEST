@@ -1,14 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-
-const bucket = 'dashboard-backgrounds';
-const changed = 'olio-dashboard-photo-changed';
-
-function validateBackgroundFile(file: File) {
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Choose a JPEG, PNG, or WebP image.');
-  if (file.size > 5 * 1024 * 1024) throw new Error('Choose an image smaller than 5 MB.');
-}
+import { cachePhoto, readCachedPhoto, PHOTO_BUCKET, PHOTO_CHANGED, PHOTO_CACHE_SIGNAL, type CachedPhoto } from '../lib/dashboardPhoto';
 
 export function DashboardPhoto() {
   const { user } = useAuth();
@@ -18,48 +11,42 @@ export function DashboardPhoto() {
     if (!userId) return;
     let cancelled = false;
     let version = 0;
-    const load = async () => {
-      const request = ++version;
-      const { data } = await supabase.storage.from(bucket).createSignedUrl(`${userId}/background`, 3600);
-      if (!cancelled && request === version) setPhoto(data ? { userId, url: data.signedUrl } : null);
+    let objectUrl: string | null = null;
+    const display = (blob: Blob | null) => {
+      const previous = objectUrl;
+      objectUrl = blob ? URL.createObjectURL(blob) : null;
+      setPhoto(objectUrl ? { userId, url: objectUrl } : null);
+      if (previous) URL.revokeObjectURL(previous);
     };
+    const load = async (force = false) => {
+      const request = ++version;
+      const cached = await readCachedPhoto(userId);
+      if (cancelled || request !== version) return;
+      if (cached) display(cached.blob);
+      if (!force && cached && Date.now() - cached.savedAt < 5 * 60 * 1000) return;
+      try {
+        const { data, error } = await supabase.storage.from(PHOTO_BUCKET).download(`${userId}/background`);
+        if (cancelled || request !== version) return;
+        if (error) {
+          if (('statusCode' in error && String(error.statusCode) === '404') || error.message.toLowerCase() === 'object not found') { display(null); await cachePhoto(userId, null); }
+          return;
+        }
+        display(data);
+        await cachePhoto(userId, data);
+      } catch { /* Keep cached photos available during network outages. */ }
+    };
+    const updated = (event: Event) => {
+      const value = (event as CustomEvent<CachedPhoto>).detail;
+      if (value?.userId !== userId) return;
+      ++version; display(value.blob);
+    };
+    const storage = (event: StorageEvent) => { if (event.key === PHOTO_CACHE_SIGNAL + userId) void load(); };
     void load();
-    const timer = window.setInterval(load, 30 * 60 * 1000);
-    window.addEventListener(changed, load);
-    return () => { cancelled = true; clearInterval(timer); window.removeEventListener(changed, load); };
+    const timer = window.setInterval(() => void load(true), 5 * 60 * 1000);
+    window.addEventListener(PHOTO_CHANGED, updated);
+    window.addEventListener('storage', storage);
+    return () => { cancelled = true; clearInterval(timer); window.removeEventListener(PHOTO_CHANGED, updated); window.removeEventListener('storage', storage); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [userId]);
-  if (!photo || photo.userId !== user?.id) return null;
+  if (!photo || photo.userId !== userId) return null;
   return <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 bg-slate-950"><img src={photo.url} alt="" className="h-full w-full object-cover" onError={() => setPhoto(null)} /><div className="absolute inset-0 bg-slate-950/55" /></div>;
-}
-
-export function DashboardPhotoSettings() {
-  const { user } = useAuth();
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  async function save(file?: File) {
-    if (!user || busy) return;
-    setBusy(true); setError(''); setMessage('');
-    try {
-      if (file) {
-        validateBackgroundFile(file);
-        const bitmap = await createImageBitmap(file).catch(() => { throw new Error('This image could not be opened. Choose another image.'); });
-        bitmap.close();
-      }
-      const path = `${user.id}/background`;
-      const result = file
-        ? await supabase.storage.from(bucket).upload(path, file, { upsert: true, contentType: file.type, cacheControl: '0' })
-        : await supabase.storage.from(bucket).remove([path]);
-      if (result.error) throw result.error;
-      window.dispatchEvent(new Event(changed));
-      setMessage(file ? 'Dashboard photo saved.' : 'Built-in background restored.');
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save the background. Please try again.'); }
-    finally { setBusy(false); }
-  }
-  return <div className="mt-4 space-y-3 rounded-lg bg-slate-900/50 p-4">
-    <label className="block text-sm font-medium">Upload a dashboard photo<input aria-label="Dashboard photo" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || !user} className="mt-2 block w-full text-sm" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void save(file); }} /></label>
-    <p className="text-xs text-slate-400">JPEG, PNG, or WebP, up to 5 MB. Saved privately to your account. Photos fill the screen and may be cropped.</p>
-    <button disabled={busy || !user} onClick={() => void save()} className="text-sm text-blue-300 disabled:opacity-50">Use built-in background</button>
-    {busy && <p role="status">Saving background…</p>}{message && <p role="status" className="text-sm text-emerald-300">{message}</p>}{error && <p role="alert" className="text-sm text-red-300">{error}</p>}
-  </div>;
 }

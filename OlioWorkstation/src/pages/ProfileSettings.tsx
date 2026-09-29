@@ -1,4 +1,4 @@
-import { DashboardPhotoSettings } from '../components/DashboardPhoto';
+import { DashboardPhotoSettings } from '../components/DashboardPhotoSettings';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -37,6 +37,7 @@ export function ProfileSettings({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [backgroundTab, setBackgroundTab] = useState<'themes' | 'photo'>('themes');
   const [signingOut, setSigningOut] = useState(false);
   const [previewTheme, setPreviewTheme] = useState<AppBackgroundTheme>(appBackgroundTheme);
   const [previewPreset, setPreviewPreset] = useState<AppBackgroundPreset>(appBackgroundPreset);
@@ -138,7 +139,6 @@ export function ProfileSettings({
             </button>
           </div>
         </div>
-        <DashboardPhotoSettings />
 
         <div className="border-t border-slate-700 pt-6">
           <h3 className="text-lg font-semibold text-white mb-4">Account Information</h3>
@@ -273,6 +273,12 @@ export function ProfileSettings({
               </button>
             </div>
 
+            <div className="inline-flex gap-1 rounded-xl border border-white/10 bg-slate-950/60 p-1" role="group" aria-label="Background type">
+              <button aria-pressed={backgroundTab === 'themes'} onClick={() => setBackgroundTab('themes')} className={`rounded-lg px-5 py-2.5 text-sm font-medium transition ${backgroundTab === 'themes' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`}>Built-in themes</button>
+              <button aria-pressed={backgroundTab === 'photo'} onClick={() => setBackgroundTab('photo')} className={`rounded-lg px-5 py-2.5 text-sm font-medium transition ${backgroundTab === 'photo' ? 'bg-violet-500/20 text-violet-200 shadow' : 'text-slate-400 hover:text-white'}`}>Your photo</button>
+            </div>
+            <div hidden={backgroundTab !== 'photo'}><DashboardPhotoSettings /></div>
+            {backgroundTab === 'themes' && <>
             <div className="grid grid-cols-1 lg:grid-cols-[1.2fr,1fr] gap-6 min-h-[360px]">
               <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4">
                 <div className="relative h-full min-h-[320px] rounded-lg border border-slate-600/70 overflow-hidden">
@@ -420,6 +426,7 @@ export function ProfileSettings({
                 );
               })}
             </div>
+            </>}
           </div>
         </div>
         </div>,

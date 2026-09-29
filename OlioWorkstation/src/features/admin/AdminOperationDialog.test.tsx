@@ -11,6 +11,7 @@ vi.mock("./api", () => ({
 
 describe("AdminOperationDialog", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(prepareAdminOperation).mockResolvedValue({
       operationToken: "signed-token",
       expiresAt: "2026-09-08T12:05:00.000Z",
@@ -18,6 +19,34 @@ describe("AdminOperationDialog", () => {
       preview: { action: "delete", resource: "Projects", count: 1, targets: [], changes: [], impact: { cards: 3 } },
     });
     vi.mocked(executeAdminOperation).mockResolvedValue({ result: { deleted: true } });
+  });
+
+  it('reviews and executes with Enter while preserving typed confirmation and Shift+Enter', async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    render(<AdminOperationDialog operation={{ resource: 'projects', kind: 'delete', ids: ['project-a'] }} title="Delete Project" onCancel={vi.fn()} onComplete={onComplete} />);
+    const reason = screen.getByLabelText('Reason for this action');
+    await user.type(reason, 'Cleanup');
+    await user.keyboard('{Shift>}{Enter}{/Shift}');
+    expect(reason).toHaveValue('Cleanup\n');
+    expect(prepareAdminOperation).not.toHaveBeenCalled();
+    await user.keyboard('{Enter}');
+    await screen.findByText('Related records that may be affected');
+    await user.type(screen.getByRole('textbox'), 'wrong{Enter}');
+    expect(executeAdminOperation).not.toHaveBeenCalled();
+    await user.clear(screen.getByRole('textbox'));
+    await user.type(screen.getByRole('textbox'), 'DELETE 1 projects{Enter}');
+    expect(executeAdminOperation).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledWith({ deleted: true });
+  });
+
+  it('does not submit again while a review is pending', async () => {
+    vi.mocked(prepareAdminOperation).mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    render(<AdminOperationDialog operation={{ resource: 'projects', kind: 'delete', ids: ['project-a'] }} title="Delete Project" onCancel={vi.fn()} onComplete={vi.fn()} />);
+    await user.type(screen.getByLabelText('Reason for this action'), 'Cleanup{Enter}{Enter}');
+    expect(prepareAdminOperation).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Review operation' })).toBeDisabled();
   });
 
   it("submits the chosen ban duration with the reason", async () => {

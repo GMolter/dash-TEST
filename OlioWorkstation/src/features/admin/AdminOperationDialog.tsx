@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck, X } from "lucide-react";
 import { executeAdminOperation, prepareAdminOperation } from "./api";
 import type { AdminOperation, PreparedOperation } from "./types";
@@ -18,6 +18,7 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
   const [prepared, setPrepared] = useState<PreparedOperation | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
+  const submitting = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,10 +35,12 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
   };
 
   async function review() {
+    if (submitting.current) return;
     if (reason.trim().length < 3) {
       setError("Enter a reason of at least 3 characters.");
       return;
     }
+    submitting.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -46,12 +49,14 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Could not prepare this operation.");
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
 
   async function execute() {
-    if (!prepared || confirmation !== prepared.confirmation) return;
+    if (submitting.current || !prepared || confirmation !== prepared.confirmation) return;
+    submitting.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -60,13 +65,18 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Operation failed.");
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="admin-operation-title">
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl shadow-blue-950/50">
+      <form onSubmit={event => { event.preventDefault(); if (!busy) void (prepared ? execute() : review()); }} onKeyDown={event => {
+        if (event.key !== 'Enter') return;
+        if (event.repeat || event.nativeEvent.isComposing) { event.preventDefault(); return; }
+        if (event.target instanceof HTMLTextAreaElement && !event.shiftKey) { event.preventDefault(); event.currentTarget.requestSubmit(); }
+      }} className="w-full max-w-xl overflow-hidden rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl shadow-blue-950/50">
         <div className="flex items-start justify-between border-b border-white/10 px-5 py-4">
           <div className="flex gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/25 bg-amber-400/10">
@@ -77,7 +87,7 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
               <p className="mt-1 text-sm text-slate-400">Every admin action is confirmed and permanently audited.</p>
             </div>
           </div>
-          <button onClick={onCancel} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close"><X className="h-4 w-4" /></button>
+          <button type="button" disabled={busy} onClick={onCancel} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
 
         <div className="space-y-4 p-5">
@@ -85,17 +95,17 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
             <>
               {operation.kind === "remove-organization" && <p className="rounded-xl border border-red-400/20 bg-red-400/5 p-3 text-sm text-red-100">This removes the account from its organization and ends access to shared resources. The account itself will remain active.</p>}
               {operation.kind === "ban" && <label className="block text-sm text-slate-200">Ban duration
-                <select value={banDuration} onChange={(event) => setBanDuration(event.target.value)} className="mt-2 block w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white">{BAN_DURATIONS.map((duration) => <option key={duration.value} value={duration.value}>{duration.label}</option>)}</select>
+                <select disabled={busy} value={banDuration} onChange={(event) => setBanDuration(event.target.value)} className="mt-2 block w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white">{BAN_DURATIONS.map((duration) => <option key={duration.value} value={duration.value}>{duration.label}</option>)}</select>
                 <span className="mt-2 block text-xs text-slate-400">The account will be blocked for this duration. The reason below will be shown to the user.</span>
               </label>}
               <label className="block">
                 <span className="text-sm font-medium text-slate-200">Reason for this action</span>
-                <textarea autoFocus value={reason} onChange={(event) => setReason(event.target.value)} rows={3} maxLength={500}
+                <textarea autoFocus disabled={busy} value={reason} onChange={(event) => setReason(event.target.value)} rows={3} maxLength={500}
                   className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-blue-400/50"
                   placeholder="Explain why this administrative action is necessary." />
               </label>
               <div className="rounded-xl border border-blue-400/15 bg-blue-400/5 px-3 py-2 text-xs text-slate-400">
-                The reason, actor, targets, changed field names, and result will be written to the audit trail. Sensitive values are never copied there.
+                Enter reviews the operation; Shift+Enter adds a new line. The reason, actor, targets, changed field names, and result will be written to the audit trail. Sensitive values are never copied there.
               </div>
             </>
           ) : (
@@ -122,7 +132,7 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
               )}
               <label className="block">
                 <span className="text-sm text-slate-300">Type <code className="rounded bg-slate-800 px-1.5 py-0.5 text-blue-200">{prepared.confirmation}</code> to authorize</span>
-                <input autoFocus value={confirmation} onChange={(event) => setConfirmation(event.target.value)}
+                <input autoFocus disabled={busy} value={confirmation} onChange={(event) => setConfirmation(event.target.value)}
                   className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-blue-400/50" />
               </label>
             </>
@@ -132,18 +142,18 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-white/10 bg-black/15 px-5 py-4">
-          <button onClick={onCancel} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5">Cancel</button>
+          <button type="button" disabled={busy} onClick={onCancel} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5">Cancel</button>
           {!prepared ? (
-            <button onClick={review} disabled={busy || reason.trim().length < 3} className="inline-flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2 text-sm font-medium text-blue-100 disabled:opacity-40">
+            <button type="submit" disabled={busy || reason.trim().length < 3} className="inline-flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2 text-sm font-medium text-blue-100 disabled:opacity-40">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />} Review operation
             </button>
           ) : (
-            <button onClick={execute} disabled={busy || confirmation !== prepared.confirmation} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-100 disabled:opacity-40">
+            <button type="submit" disabled={busy || confirmation !== prepared.confirmation} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-100 disabled:opacity-40">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Execute
             </button>
           )}
         </div>
-      </div>
+      </form>
     </div>
   );
 }

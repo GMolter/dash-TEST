@@ -235,7 +235,7 @@ export const ADMIN_RESOURCES: Record<string, AdminResource> = {
   },
   "dashboard-alerts": {
     key: "dashboard-alerts", label: "Targeted alerts", group: "platform", table: "dashboard_alerts", primaryKey: "id", searchFields: ["message"], defaultSort: "created_at", sortFields: ["created_at"],
-    fields: [f("id", "ID"), f("message", "Message", "textarea", { editable: true, create: true, required: true }), f("enabled", "Enabled", "boolean", { editable: true, create: true }), f("user_ids", "User recipients", "json", { editable: true, create: true }), f("org_ids", "Organization recipients", "json", { editable: true, create: true }), f("starts_at", "Starts", "datetime", { editable: true, create: true }), f("ends_at", "Ends", "datetime", { editable: true, create: true }), f("created_at", "Created", "datetime")],
+    fields: [f("id", "ID"), f("title", "Banner title", "text", { editable: true, create: true }), f("color", "Banner color (hex)", "text", { editable: true, create: true }), f("message", "Message", "textarea", { editable: true, create: true, required: true }), f("enabled", "Enabled", "boolean", { editable: true, create: true }), f("user_ids", "User recipients", "json", { editable: true, create: true }), f("org_ids", "Organization recipients", "json", { editable: true, create: true }), f("starts_at", "Starts", "datetime", { editable: true, create: true }), f("ends_at", "Ends", "datetime", { editable: true, create: true }), f("created_at", "Created", "datetime")],
   },
   "app-settings": {
     key: "app-settings", label: "App settings", group: "platform", table: "app_settings", primaryKey: "id", searchFields: [], defaultSort: "updated_at", sortFields: ["updated_at", "id"],
