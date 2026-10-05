@@ -299,7 +299,9 @@ export const ADMIN_ACCOUNT_SCOPES: Record<string, AdminAccountScope> = {
   "audit-log": "actor",
 };
 
-function resourceActionsForCatalog(resource: AdminResource) {
+export function resourceActionsForCatalog(resource: AdminResource) {
+  // Secrets expose metadata only, but authorized administrators can delete them.
+  if (resource.key === "secrets") return ["delete"];
   if (resource.key === "app-settings") return ["update"];
   if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "ban", "unban", "reset-password", "request-delete", "remove-organization"];
   if (resource.guided === "launcher-device") return ["revoke"];

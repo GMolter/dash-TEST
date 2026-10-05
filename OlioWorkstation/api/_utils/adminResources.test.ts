@@ -81,5 +81,5 @@ describe("admin resource registry", () => {
 it("keeps private secret contents and links out of every admin projection", () => {
   expect(selectedColumns(ADMIN_RESOURCES.secrets, true)).not.toContain("content");
   expect(selectedColumns(ADMIN_RESOURCES.secrets, true)).not.toContain("secret_code");
-  expect(ADMIN_RESOURCE_LIST.find(resource => resource.key === "secrets")?.actions).toEqual([]);
+  expect(ADMIN_RESOURCE_LIST.find(resource => resource.key === "secrets")?.actions).toEqual(["delete"]);
 });

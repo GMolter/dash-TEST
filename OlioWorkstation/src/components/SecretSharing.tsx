@@ -20,12 +20,17 @@ export function SecretSharing() {
   const [content, setContent] = useState('');
   const [expiryHours, setExpiryHours] = useState(24);
   const [copied, setCopied] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadSecrets();
+    const timer = window.setInterval(loadSecrets, 60_000);
+    return () => window.clearInterval(timer);
   }, [user?.id]);
 
   const loadSecrets = async () => {
+    if (!user) return;
     const { data, error } = await supabase
       .from('secrets')
       .select('id, secret_code, viewed, expires_at, created_at')
@@ -34,6 +39,25 @@ export function SecretSharing() {
 
     if (!error && data) {
       setSecrets(data);
+    }
+  };
+
+  const deleteSecret = async (secret: Secret) => {
+    if (!user || deleting) return;
+    setDeleting(true);
+    setError('');
+    try {
+      const { error } = await supabase.from('secrets').delete()
+        .eq('id', secret.id).eq('user_id', user.id);
+      if (error) throw error;
+      setSecrets(current => current.filter(item => item.id !== secret.id));
+      setCreatedLink(current => current === secret.secret_code ? '' : current);
+      setCopied(current => current === secret.secret_code ? null : current);
+      setDeleteTarget(null);
+    } catch {
+      setError('Could not delete the secret. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -90,7 +114,7 @@ export function SecretSharing() {
         </h2>
       </div>
 
-      <p className="mb-3 text-sm text-slate-400">Private to you. Only someone with the link can reveal it once. Previewing your own secret does not consume it.</p>
+      <p className="mb-3 text-sm text-slate-400">Private to you. Only someone with the link can reveal it once. Previewing your own secret does not consume it. You can delete it at any time. Expired secrets are automatically removed within a minute.</p>
       {error && <p role="alert" className="mb-3 text-red-300">{error}</p>}
       {createdLink && <div role="status" className="mb-4 rounded-lg bg-green-900/20 p-4">
         <p className="text-green-300">Secret created. Copy this link to share it.</p>
@@ -168,6 +192,13 @@ export function SecretSharing() {
                     <Clock className="w-3 h-3" />
                     {isExpired(secret.expires_at) ? 'Expired' : `Expires ${new Date(secret.expires_at).toLocaleString()}`}
                   </span>
+                </div>
+                <div className="mt-3 flex items-center gap-3 text-sm">
+                  {deleteTarget === secret.id ? <>
+                    <span className="text-slate-300">Permanently delete this secret and its link?</span>
+                    <button disabled={deleting} onClick={() => deleteSecret(secret)} className="rounded bg-red-600 px-3 py-1 text-white disabled:opacity-50">{deleting ? 'Deleting…' : 'Confirm delete'}</button>
+                    <button disabled={deleting} onClick={() => setDeleteTarget(null)} className="text-slate-300">Cancel</button>
+                  </> : <button disabled={deleting} onClick={() => setDeleteTarget(secret.id)} className="text-red-300 hover:text-red-200">Delete secret</button>}
                 </div>
               </div>
             </div>

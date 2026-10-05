@@ -72,6 +72,34 @@ await db.exec("insert into storage.objects values ('dashboard-backgrounds','4444
 assert.equal((await db.query("update storage.objects set name=name where name='44444444-4444-4444-8444-444444444444/background' returning name")).rows.length, 1);
 await as('authenticated', me);
 assert.equal((await db.query("select * from storage.objects where name='44444444-4444-4444-8444-444444444444/background'")).rows.length, 0);
+
+// Self-deletion remains protected by RLS, including for consumed secrets.
+await as('authenticated', other);
+assert.equal((await db.query("delete from secrets where secret_code='secret' returning id")).rows.length, 0);
+await as('anon');
+assert.equal((await db.query("delete from secrets where secret_code='secret' returning id")).rows.length, 0);
+await as('authenticated', me);
+assert.equal((await db.query("delete from secrets where secret_code='secret' returning id")).rows.length, 1);
+await db.exec("insert into secrets(secret_code,content,expires_at) values ('expired','old',now()-interval '1 hour'), ('active','keep',now()+interval '1 hour')");
+
+// PGlite has no background worker extension. Capture the real migration's
+// schedule, then execute that exact command to verify the cleanup predicate.
+await db.exec(`reset role;
+create schema cron;
+create table cron.job(jobname text primary key, schedule text, command text);
+create function cron.schedule(text,text,text) returns bigint language sql as $$
+  insert into cron.job values ($1,$2,$3) on conflict(jobname) do update set schedule=$2,command=$3 returning 1::bigint
+$$;`);
+const cleanupMigration = readFileSync(new URL('../supabase/migrations/20261004123000_expired_secret_cleanup.sql', import.meta.url), 'utf8')
+  .replace('create extension if not exists pg_cron with schema pg_catalog;', '');
+await db.exec(cleanupMigration);
+assert.equal(await scalar("select count(*) from secrets where secret_code='expired'"), 0);
+assert.equal(await scalar("select content from secrets where secret_code='active'"), 'keep');
+assert.equal(await scalar("select schedule from cron.job where jobname='delete-expired-secrets'"), '* * * * *');
+await db.exec("insert into secrets(secret_code,content,expires_at) values ('later-expired','old',now()-interval '1 second')");
+await db.exec(await scalar("select command from cron.job where jobname='delete-expired-secrets'"));
+assert.equal(await scalar("select count(*) from secrets where secret_code='later-expired'"), 0);
+assert.equal(await scalar("select content from secrets where secret_code='active'"), 'keep');
 await db.close();
 
 console.log('Utility SQL privacy checks passed');

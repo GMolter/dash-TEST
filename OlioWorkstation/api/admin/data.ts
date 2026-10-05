@@ -9,6 +9,7 @@ import { attachAppActivity } from "../_utils/appActivity.js";
 import { validateOrganizationValues, organizationWriteValues, validateOrganizationMemberAction } from "../_utils/adminOrganization.js";
 import {
   ADMIN_RESOURCE_LIST,
+  resourceActionsForCatalog as resourceActions,
   ADMIN_RESOURCES,
   ADMIN_ACCOUNT_SCOPES,
   editableColumns,
@@ -186,19 +187,6 @@ function applyId(query: any, resource: AdminResource, id: string) {
   let next = query;
   keys.forEach((key, index) => { next = next.eq(key, values[index]); });
   return next;
-}
-
-function resourceActions(resource: AdminResource) {
-  if (resource.key === "app-settings") return ["update"];
-  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "ban", "unban", "reset-password", "request-delete", "remove-organization"];
-  if (resource.guided === "launcher-device") return ["revoke"];
-  if (resource.guided === "launcher-pairing") return ["cancel"];
-  if (resource.guided === "admin-review") return ["approve-admin", "reject-admin"];
-  if (resource.readOnly) return sensitiveColumns(resource).length ? ["reveal"] : [];
-  const actions = ["create", "update", "delete"];
-  if (sensitiveColumns(resource).length) actions.push("reveal");
-  if (resource.key === "organizations") actions.push("transfer-owner", "regenerate-code", "set-member", "remove-member");
-  return actions;
 }
 
 function assertOperation(resource: AdminResource, operation: AdminOperation) {

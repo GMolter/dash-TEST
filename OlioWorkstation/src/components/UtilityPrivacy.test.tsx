@@ -5,14 +5,21 @@ import { URLShortener } from './URLShortener';
 import { SecretSharing } from './SecretSharing';
 import { SecretView } from '../pages/SecretView';
 
-const mocks = vi.hoisted(() => ({ insert: vi.fn(), rpc: vi.fn(), copy: vi.fn() }));
+const mocks = vi.hoisted(() => ({ insert: vi.fn(), rpc: vi.fn(), copy: vi.fn(), list: vi.fn(), remove: vi.fn(), deleteFilter: vi.fn() }));
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
 vi.mock('../hooks/useOrg', () => ({ useOrg: () => ({ organization: { id: 'org' } }) }));
 vi.mock('../lib/supabase', () => ({ supabase: {
-  from: () => { const query = { select: () => query, eq: () => query, order: async () => ({ data: [] }), maybeSingle: async () => ({ data: { id: 'own-secret' } }), insert: mocks.insert }; return query; },
+  from: () => {
+    const deletion = {
+      eq: (key: string, value: string) => { mocks.deleteFilter(key, value); return deletion; },
+      then: (resolve: (value: unknown) => unknown) => Promise.resolve(mocks.remove()).then(resolve),
+    };
+    const query = { select: () => query, eq: () => query, order: mocks.list, maybeSingle: async () => ({ data: { id: 'own-secret' } }), insert: mocks.insert, delete: () => deletion };
+    return query;
+  },
   rpc: mocks.rpc,
 } }));
-beforeEach(() => { mocks.insert.mockResolvedValue({ error: null }); mocks.rpc.mockResolvedValue({ data: 'private message' }); });
+beforeEach(() => { mocks.list.mockResolvedValue({ data: [] }); mocks.remove.mockResolvedValue({ error: null }); mocks.insert.mockResolvedValue({ error: null }); mocks.rpc.mockResolvedValue({ data: 'private message' }); });
 
 it('defaults short links to personal and explicitly supports org and public', async () => {
   const user = userEvent.setup();
@@ -46,4 +53,28 @@ it('requires an explicit reveal and identifies an owner preview', async () => {
   await waitFor(() => expect(screen.getByText('private message')).toBeInTheDocument());
   expect(mocks.rpc).toHaveBeenCalledOnce();
   expect(screen.getByText(/Your preview does not consume/)).toBeInTheDocument();
+});
+
+it('lets the creator cancel or confirm deleting a secret', async () => {
+  mocks.list.mockResolvedValue({ data: [{ id: 'secret-id', secret_code: 'my-code', viewed: false, expires_at: '2099-01-01', created_at: '2026-01-01' }] });
+  const user = userEvent.setup();
+  render(<SecretSharing />);
+  await user.click(await screen.findByText('Delete secret'));
+  await user.click(screen.getByText('Cancel'));
+  expect(mocks.remove).not.toHaveBeenCalled();
+  await user.click(screen.getByText('Delete secret'));
+  await user.click(screen.getByText('Confirm delete'));
+  await waitFor(() => expect(screen.queryByText('Delete secret')).not.toBeInTheDocument());
+  expect(mocks.deleteFilter).toHaveBeenCalledWith('id', 'secret-id');
+  expect(mocks.deleteFilter).toHaveBeenCalledWith('user_id', 'me');
+});
+it('keeps the secret visible when deletion fails', async () => {
+  mocks.list.mockResolvedValue({ data: [{ id: 'secret-id', secret_code: 'my-code', viewed: true, expires_at: '2099-01-01', created_at: '2026-01-01' }] });
+  mocks.remove.mockResolvedValue({ error: new Error('Offline') });
+  const user = userEvent.setup();
+  render(<SecretSharing />);
+  await user.click(await screen.findByText('Delete secret'));
+  await user.click(screen.getByText('Confirm delete'));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not delete');
+  expect(screen.getByText(/my-code/)).toBeInTheDocument();
 });
