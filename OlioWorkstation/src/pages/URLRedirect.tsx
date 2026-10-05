@@ -8,30 +8,14 @@ interface Props {
 
 export function URLRedirect({ shortCode }: Props) {
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const redirect = async () => {
-      const { data, error } = await supabase
-        .from('short_urls')
-        .select('target_url, clicks')
-        .eq('short_code', shortCode)
-        .maybeSingle();
-
-      if (error || !data) {
-        setError(true);
-        setLoading(false);
-        return;
-      }
-
-      // Update click count
-      await supabase
-        .from('short_urls')
-        .update({ clicks: data.clicks + 1 })
-        .eq('short_code', shortCode);
+      const { data, error } = await supabase.rpc('resolve_short_url', { p_code: shortCode });
+      if (error || !data) { setError(true); return; }
 
       // Ensure URL has a protocol
-      let targetUrl = data.target_url;
+      let targetUrl = data;
       if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
         targetUrl = 'https://' + targetUrl;
       }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link2, Copy, ExternalLink, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 import { useOrg } from '../hooks/useOrg';
 
 interface ShortUrl {
@@ -8,11 +9,15 @@ interface ShortUrl {
   short_code: string;
   target_url: string;
   clicks: number;
+  visibility: 'personal' | 'shared' | 'public';
+  user_id: string;
   created_at: string;
 }
 
 export function URLShortener() {
   const { organization } = useOrg();
+  const { user } = useAuth();
+  const [visibility, setVisibility] = useState<'personal' | 'shared' | 'public'>('personal');
   const [urls, setUrls] = useState<ShortUrl[]>([]);
   const [targetUrl, setTargetUrl] = useState('');
   const [customCode, setCustomCode] = useState('');
@@ -23,7 +28,7 @@ export function URLShortener() {
 
   useEffect(() => {
     loadUrls();
-  }, []);
+  }, [user?.id, organization?.id]);
 
   const loadUrls = async () => {
     const { data, error } = await supabase
@@ -50,14 +55,16 @@ export function URLShortener() {
   };
 
   const createShortUrl = async () => {
-    if (!targetUrl || !organization) return;
+    if (!targetUrl || !user || (visibility === 'shared' && !organization)) return;
 
     const shortCode = (customCode || generateShortCode()).trim();
 
     const { error } = await supabase.from('short_urls').insert({
       short_code: shortCode,
       target_url: targetUrl.trim(),
-      org_id: organization.id,
+      org_id: visibility === 'shared' ? organization?.id : null,
+      user_id: user.id,
+      visibility,
     });
 
     if (error) {
@@ -126,6 +133,13 @@ export function URLShortener() {
           onChange={(e) => setCustomCode(e.target.value)}
           className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        <label className="block text-sm text-slate-300">Who can open this link?
+          <select aria-label="Link visibility" value={visibility} onChange={(e) => setVisibility(e.target.value as typeof visibility)} className="ml-3 rounded bg-slate-700 p-2">
+            <option value="personal">Personal (only me)</option>
+            <option value="shared" disabled={!organization}>Shared (organization)</option>
+            <option value="public">Public (anyone)</option>
+          </select>
+        </label>
         <button
           onClick={createShortUrl}
           className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
@@ -167,8 +181,13 @@ export function URLShortener() {
                   </button>
                 </div>
 
+                {url.user_id === user?.id && <select aria-label={`Visibility for ${url.short_code}`} value={url.visibility} className="mb-2 rounded bg-slate-700 p-1 text-sm text-white" onChange={async e => {
+                  const visibility = e.target.value;
+                  const { error } = await supabase.from('short_urls').update({ visibility, org_id: visibility === 'shared' ? organization?.id : null }).eq('id', url.id);
+                  if (error) alert('Could not change link visibility.'); else loadUrls();
+                }}><option value="personal">Personal</option><option value="shared" disabled={!organization}>Shared (organization)</option><option value="public">Public</option></select>}
                 <p className="text-slate-400 text-sm truncate">{url.target_url}</p>
-                <p className="text-slate-500 text-xs mt-1">{url.clicks} clicks</p>
+                <p className="text-slate-500 text-xs mt-1">{url.visibility} · {url.clicks} clicks</p>
               </div>
 
               <div className="flex gap-2">
@@ -184,6 +203,7 @@ export function URLShortener() {
                 </a>
 
                 <button
+                  disabled={url.user_id !== user?.id}
                   onClick={() => confirmDelete(url)}
                   className="p-2 bg-red-600 hover:bg-red-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Delete"

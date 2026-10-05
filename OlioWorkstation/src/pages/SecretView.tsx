@@ -11,40 +11,19 @@ export function SecretView({ secretCode }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadSecret = async () => {
-      const { data, error } = await supabase
-        .from('secrets')
-        .select('*')
-        .eq('secret_code', secretCode)
-        .maybeSingle();
-
-      if (error || !data) {
-        setError('Secret not found');
-        setLoading(false);
-        return;
-      }
-
-      if (data.viewed) {
-        setError('This secret has already been viewed and destroyed');
-        setLoading(false);
-        return;
-      }
-
-      if (new Date(data.expires_at) < new Date()) {
-        setError('This secret has expired');
-        setLoading(false);
-        return;
-      }
-
-      setContent(data.content);
-      setLoading(false);
-
-      await supabase.from('secrets').update({ viewed: true }).eq('secret_code', secretCode);
-    };
-
-    loadSecret();
-  }, [secretCode]);
+  const [revealed, setRevealed] = useState(false);
+  const [ownerPreview, setOwnerPreview] = useState(false);
+  useEffect(() => { setContent(''); setError(''); setRevealed(false); setLoading(false); }, [secretCode]);
+  const reveal = async () => {
+    setLoading(true);
+    const { data: own } = await supabase.from('secrets').select('id').eq('secret_code', secretCode).maybeSingle();
+    const { data, error } = await supabase.rpc('reveal_secret', { p_code: secretCode });
+    setOwnerPreview(!!own);
+    if (error || data === null) setError('This secret is unavailable, expired, or already viewed.');
+    else { setContent(data); setRevealed(true); }
+    setLoading(false);
+  };
+  if (!loading && !error && !revealed) return <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6"><div className="rounded-lg bg-slate-800 p-8 text-white"><h1 className="text-2xl font-bold">Private secret</h1><p className="my-4">Reveal only when you are ready. Recipients can open this secret once.</p><button onClick={reveal} className="rounded bg-blue-600 px-4 py-2">Reveal secret</button></div></div>;
 
   if (loading) {
     return (
@@ -81,7 +60,7 @@ export function SecretView({ secretCode }: Props) {
         </div>
         <div className="mt-6 p-4 bg-yellow-900/20 border border-yellow-700 rounded-lg">
           <p className="text-yellow-400 text-sm">
-            This secret has been destroyed and can no longer be viewed by anyone.
+            {ownerPreview ? 'Your preview does not consume the recipient’s one-time link.' : 'This secret has been destroyed and can no longer be viewed.'}
           </p>
         </div>
       </div>

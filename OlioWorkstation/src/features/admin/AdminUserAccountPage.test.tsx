@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { AdminUserAccountPage } from "./AdminUserAccountPage";
 import type { AdminUserAccountOverview } from './types';
 
+vi.mock('../../components/DashboardPhotoSettings', () => ({ DashboardPhotoSettings: () => <div>Background editor</div> }));
+
 vi.mock('./AdminTargetedAlerts', () => ({ AdminTargetedAlerts: ({ recipient, onSent }: { recipient: { id: string; label: string }; onSent: () => void }) => <div data-testid="banner-recipient">{recipient.id}: {recipient.label}<button onClick={onSent}>Complete banner</button></div> }));
 
 describe("AdminUserAccountPage", () => {

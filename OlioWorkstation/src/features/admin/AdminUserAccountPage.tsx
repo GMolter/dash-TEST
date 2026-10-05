@@ -1,3 +1,4 @@
+import { DashboardPhotoSettings } from '../../components/DashboardPhotoSettings';
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Ban, KeyRound, Layers3, Save, Trash2, UserCheck, UserRoundCog, X } from "lucide-react";
 import type { AdminReference, AdminRow, AdminUserAccountOverview } from "./types";
@@ -90,6 +91,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
   return <div className="space-y-5">
     <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"><ArrowLeft className="h-4 w-4" /> Back to all people</button>
 
+    {overview.canManage && <details className="rounded-2xl border border-white/10 bg-slate-950/45 p-5"><summary className="cursor-pointer text-white">Custom background — view or edit</summary><div className="mt-4"><DashboardPhotoSettings key={user._admin_id} accountUserId={user._admin_id} /></div></details>}
     <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-5 shadow-xl backdrop-blur-xl">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">

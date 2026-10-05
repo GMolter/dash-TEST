@@ -45,7 +45,7 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
   "project-activity": "Read-only history of activity within projects.",
   pastes: "Saved pastes and their protected content.",
   "quick-pastes": "Short reusable paste entries and protected content.",
-  secrets: "Secret records; protected values stay masked until revealed.",
+  secrets: "Private secret status only; contents and recipient links are never exposed here.",
   quicklinks: "Saved links available from the dashboard.",
   "quicklink-folders": "Folders used to organize saved links.",
   triggers: "Configured automation triggers.",
@@ -98,7 +98,7 @@ export function AdminOperationsConsole() {
   const resources = overview?.resources || [];
   const sectionResources = useMemo(() => resources.filter((item) => item.group === section), [resources, section]);
   const selectedResource = sectionResources.find((item) => item.key === resource);
-  const ownerAccountLocked = data?.resource === "users" && row?.app_owner === true && !overview?.isOwner;
+  const ownerAccountLocked = (row?._admin_protected === true || (data?.resource === "users" && row?.app_owner === true));
   const accountLinks = Boolean(accountUserId) && ["quicklinks", "quicklink-folders"].includes(resource);
   const accountDefaults = useMemo(() => accountOverview ? {
     user_id: accountUserId, owner_id: accountUserId, org_id: accountOverview.user.org_id || "",
@@ -419,7 +419,7 @@ export function AdminOperationsConsole() {
       </div>
 
       {data && !organizationId && !accountLinks && (creating || (row && data.resource !== "users")) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} initialValues={accountDefaults} accountUserId={accountUserId || undefined} initialLabels={accountOverview ? { user_id: String(accountOverview.user.display_name || accountOverview.user.email), owner_id: String(accountOverview.user.display_name || accountOverview.user.email), org_id: accountOverview.user._admin_refs?.org_id?.label || "" } : undefined} revealed={revealed}
-        lockedMessage={ownerAccountLocked ? "This is an application-owner account. Only another application owner can change its profile, access, password, or lifecycle." : undefined}
+        lockedMessage={ownerAccountLocked ? "This is an application-owner account. Its details are redacted and cannot be changed in the admin panel." : undefined}
         onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => { void revealField(field); }} onOpenReference={openReference}
         onOpenAccount={!accountUserId && data.resource === "users" ? openAccount : undefined}
         onOperation={(kind, values) => requestOperation(kind, values)} />}

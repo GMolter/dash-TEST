@@ -42,7 +42,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
 
   function toggleAll() {
     if (allSelected) onSelection(new Set());
-    else onSelection(new Set(rows.map((row) => row._admin_id)));
+    else onSelection(new Set(rows.filter(row => !row._admin_protected).map((row) => row._admin_id)));
   }
 
   function toggleOne(id: string) {
@@ -153,7 +153,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
               <tr><td colSpan={columns.length + (selectable ? 1 : 0)} className="h-56 text-center"><Database className="mx-auto h-7 w-7 text-slate-600" /><div className="mt-2 text-sm text-slate-500">No records found.</div></td></tr>
             ) : rows.map((row) => (
               <tr key={row._admin_id} className="cursor-pointer text-slate-300 transition hover:bg-blue-400/[0.055]">
-                {selectable && <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={selected.has(row._admin_id)} onChange={() => toggleOne(row._admin_id)} aria-label={`Select ${row._admin_id}`} className="accent-blue-500" /></td>}
+                {selectable && <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}><input type="checkbox" disabled={!!row._admin_protected} checked={selected.has(row._admin_id)} onChange={() => toggleOne(row._admin_id)} aria-label={`Select ${row._admin_id}`} className="accent-blue-500" /></td>}
                 {columns.map((field) => {
                   const reference = row._admin_refs?.[field.name];
                   return <td key={field.name} onClick={() => onOpen(row)} className={field.name === "last_session_at" ? "whitespace-nowrap px-3 py-3" : "max-w-[260px] truncate px-3 py-3"}>

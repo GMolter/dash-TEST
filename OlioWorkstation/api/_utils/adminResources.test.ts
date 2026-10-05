@@ -18,7 +18,7 @@ describe("admin resource registry", () => {
   });
 
   it("omits sensitive plaintext from list projections", () => {
-    for (const key of ["secrets", "pastes", "quick-pastes", "project-files", "triggers", "short-urls", "organizations"]) {
+    for (const key of ["pastes", "quick-pastes", "project-files", "triggers", "short-urls", "organizations"]) {
       const resource = ADMIN_RESOURCES[key];
       const sensitive = sensitiveColumns(resource);
       expect(sensitive.length).toBeGreaterThan(0);
@@ -76,4 +76,10 @@ describe("admin resource registry", () => {
     expect(ADMIN_ACCOUNT_SCOPES).not.toHaveProperty("triggers");
     for (const key of Object.keys(ADMIN_ACCOUNT_SCOPES)) expect(ADMIN_RESOURCES).toHaveProperty(key);
   });
+});
+
+it("keeps private secret contents and links out of every admin projection", () => {
+  expect(selectedColumns(ADMIN_RESOURCES.secrets, true)).not.toContain("content");
+  expect(selectedColumns(ADMIN_RESOURCES.secrets, true)).not.toContain("secret_code");
+  expect(ADMIN_RESOURCE_LIST.find(resource => resource.key === "secrets")?.actions).toEqual([]);
 });

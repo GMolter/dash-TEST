@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Shield, Copy, Eye, Clock } from 'lucide-react';
+import { Shield, Eye, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useOrg } from '../hooks/useOrg';
+import { useAuth } from '../hooks/useAuth';
 
 interface Secret {
   id: string;
@@ -12,7 +12,10 @@ interface Secret {
 }
 
 export function SecretSharing() {
-  const { organization } = useOrg();
+  const { user } = useAuth();
+  const [error, setError] = useState('');
+  const [createdLink, setCreatedLink] = useState('');
+  const [saving, setSaving] = useState(false);
   const [secrets, setSecrets] = useState<Secret[]>([]);
   const [content, setContent] = useState('');
   const [expiryHours, setExpiryHours] = useState(24);
@@ -20,12 +23,13 @@ export function SecretSharing() {
 
   useEffect(() => {
     loadSecrets();
-  }, []);
+  }, [user?.id]);
 
   const loadSecrets = async () => {
     const { data, error } = await supabase
       .from('secrets')
       .select('id, secret_code, viewed, expires_at, created_at')
+      .eq('user_id', user?.id)
       .order('created_at', { ascending: false });
 
     if (!error && data) {
@@ -34,11 +38,13 @@ export function SecretSharing() {
   };
 
   const generateSecretCode = () => {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    return Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const createSecret = async () => {
-    if (!content.trim() || !organization) return;
+    if (!content.trim() || !user || saving) return;
+    setSaving(true);
+    setError('');
 
     const secretCode = generateSecretCode();
     const expiresAt = new Date();
@@ -48,19 +54,23 @@ export function SecretSharing() {
       secret_code: secretCode,
       content: content,
       expires_at: expiresAt.toISOString(),
-      org_id: organization.id,
+      org_id: null,
+      user_id: user.id,
     });
 
+    setSaving(false);
+    if (error) setError('Could not create the secret. Please try again.');
     if (!error) {
+      setCreatedLink(secretCode);
       setContent('');
       loadSecrets();
     }
   };
 
-  const copyToClipboard = (secretCode: string) => {
+  const copyToClipboard = async (secretCode: string) => {
     // Share route (keeps the path; App also supports legacy /secret/:code)
     const secretUrl = `${window.location.origin}/s/${secretCode}`;
-    navigator.clipboard.writeText(secretUrl);
+    try { await navigator.clipboard.writeText(secretUrl); } catch { setError('Copy failed. Select the link and copy it manually.'); return; }
     setCopied(secretCode);
     setTimeout(() => setCopied(null), 2000);
   };
@@ -80,6 +90,13 @@ export function SecretSharing() {
         </h2>
       </div>
 
+      <p className="mb-3 text-sm text-slate-400">Private to you. Only someone with the link can reveal it once. Previewing your own secret does not consume it.</p>
+      {error && <p role="alert" className="mb-3 text-red-300">{error}</p>}
+      {createdLink && <div role="status" className="mb-4 rounded-lg bg-green-900/20 p-4">
+        <p className="text-green-300">Secret created. Copy this link to share it.</p>
+        <input aria-label="New secret link" readOnly value={getSecretUrl(createdLink)} onFocus={e => e.target.select()} className="my-2 w-full bg-slate-900 p-2 text-white" />
+        <button onClick={() => copyToClipboard(createdLink)} className="rounded bg-blue-600 px-4 py-2 text-white">{copied === createdLink ? 'Copied!' : 'Copy link'}</button>
+      </div>}
       <div className="mb-4 space-y-2 p-4 bg-slate-900/50 rounded-lg">
         <textarea
           placeholder="Enter your secret message..."
@@ -104,6 +121,7 @@ export function SecretSharing() {
           </select>
         </div>
         <button
+          disabled={saving || !content.trim()}
           onClick={createSecret}
           className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
         >
@@ -122,24 +140,25 @@ export function SecretSharing() {
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <a
-                    href={getSecretUrl(secret.secret_code)}
+                  <span
                     className="text-blue-400 hover:text-blue-300 font-mono text-sm truncate block"
                   >
                     {getSecretUrl(secret.secret_code)}
-                  </a>
+                  </span>
                   <button
                     onClick={() => copyToClipboard(secret.secret_code)}
+                    aria-label="Copy secret link"
                     className="p-1 hover:bg-slate-700 rounded transition-colors flex-shrink-0"
                     disabled={secret.viewed || isExpired(secret.expires_at)}
                   >
                     {copied === secret.secret_code ? (
                       <span className="text-green-400 text-xs">Copied!</span>
                     ) : (
-                      <Copy className="w-4 h-4 text-slate-400" />
+                      <span className="text-blue-300">Copy link</span>
                     )}
                   </button>
                 </div>
+                {!secret.viewed && !isExpired(secret.expires_at) && <a href={getSecretUrl(secret.secret_code)} className="mb-2 block text-sm text-slate-400">Preview my secret</a>}
                 <div className="flex items-center gap-3 text-xs text-slate-500">
                   <span className="flex items-center gap-1">
                     <Eye className="w-3 h-3" />

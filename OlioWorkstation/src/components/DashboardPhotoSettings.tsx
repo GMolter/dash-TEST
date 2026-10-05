@@ -6,8 +6,9 @@ import { publishPhoto, photoCrop, PHOTO_BUCKET } from '../lib/dashboardPhoto';
 
 const control = 'w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-violet-400';
 
-export function DashboardPhotoSettings() {
+export function DashboardPhotoSettings({ accountUserId }: { accountUserId?: string } = {}) {
   const { user } = useAuth();
+  const userId = accountUserId || user?.id;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -51,8 +52,21 @@ export function DashboardPhotoSettings() {
     } catch (cause) { if (request === selection.current) setError(cause instanceof Error ? cause.message : 'Unable to open this image.'); }
   }
 
+  useEffect(() => {
+    if (!accountUserId) return;
+    let cancelled = false;
+    void supabase.storage.from(PHOTO_BUCKET).download(accountUserId + '/background').then(async ({ data, error }) => {
+      if (cancelled) return;
+      if (error) { setMessage('No accessible custom background. You can upload a replacement.'); return; }
+      const bitmap = await createImageBitmap(data);
+      if (cancelled) { bitmap.close(); return; }
+      setSource({ bitmap, name: 'Current background' });
+    }).catch(() => { if (!cancelled) setError('Could not load the background.'); });
+    return () => { cancelled = true; };
+  }, [accountUserId]);
+
   async function save(remove = false) {
-    if (!user || busy || (!remove && !source)) return;
+    if (!userId || busy || (!remove && !source)) return;
     setBusy(true); setError(''); setMessage('');
     try {
       let blob: Blob | null = null;
@@ -67,12 +81,12 @@ export function DashboardPhotoSettings() {
         blob = await new Promise<Blob>((resolve, reject) => output.toBlob(value => value ? resolve(value) : reject(new Error('Unable to prepare this image.')), 'image/jpeg', 0.9));
         if (blob.size > 5 * 1024 * 1024) throw new Error('This crop is too large. Choose a smaller output size.');
       }
-      const path = `${user.id}/background`;
+      const path = `${userId}/background`;
       const result = blob
         ? await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '0' })
         : await supabase.storage.from(PHOTO_BUCKET).remove([path]);
       if (result.error) throw result.error;
-      await publishPhoto(user.id, blob);
+      await publishPhoto(userId!, blob);
       setMessage(blob ? 'Photo applied. Your background is ready in new tabs, too.' : 'Built-in background restored.');
       if (remove) setSource(null);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save the background. Please try again.'); }

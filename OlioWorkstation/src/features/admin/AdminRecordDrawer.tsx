@@ -67,7 +67,7 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, initi
       <div key={field.name} className={field.type === "textarea" || field.type === "json" ? "sm:col-span-2" : ""}>
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <label className="text-xs font-medium text-slate-400">{adminFieldLabel(field)}{field.required && <span className="text-red-300"> *</span>}</label>
-          {field.sensitive && !creating && revealedValue === undefined && (
+          {field.sensitive && !creating && !row?._admin_protected && revealedValue === undefined && (
             <button onClick={() => onReveal(field.name)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-amber-200 hover:bg-amber-400/10"><Eye className="h-3.5 w-3.5" /> Reveal</button>
           )}
         </div>
