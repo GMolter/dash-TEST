@@ -1,6 +1,7 @@
 import type { AdminResource } from "./adminResources.js";
 
-export async function protectedOwnerRows(service: any, resource: AdminResource, rows: Record<string, any>[]) {
+export async function protectedOwnerRows(service: any, resource: AdminResource, rows: Record<string, any>[], actorIsOwner = false) {
+  if (actorIsOwner) return rows.map(() => false);
   const ownerFields = resource.key === "users" ? ["id"] : ["user_id", "owner_id", "created_by", "actor_id", "target_user_id"];
   const userIds = [...new Set(rows.flatMap(row => ownerFields.map(key => row[key])).filter(Boolean))];
   const protectedIds = new Set<string>();

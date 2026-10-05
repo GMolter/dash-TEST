@@ -98,7 +98,7 @@ export function AdminOperationsConsole() {
   const resources = overview?.resources || [];
   const sectionResources = useMemo(() => resources.filter((item) => item.group === section), [resources, section]);
   const selectedResource = sectionResources.find((item) => item.key === resource);
-  const ownerAccountLocked = (row?._admin_protected === true || (data?.resource === "users" && row?.app_owner === true));
+  const ownerAccountLocked = row?._admin_protected === true || (data?.resource === "users" && row?.app_owner === true && !overview?.isOwner);
   const accountLinks = Boolean(accountUserId) && ["quicklinks", "quicklink-folders"].includes(resource);
   const accountDefaults = useMemo(() => accountOverview ? {
     user_id: accountUserId, owner_id: accountUserId, org_id: accountOverview.user.org_id || "",
@@ -419,7 +419,7 @@ export function AdminOperationsConsole() {
       </div>
 
       {data && !organizationId && !accountLinks && (creating || (row && data.resource !== "users")) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} initialValues={accountDefaults} accountUserId={accountUserId || undefined} initialLabels={accountOverview ? { user_id: String(accountOverview.user.display_name || accountOverview.user.email), owner_id: String(accountOverview.user.display_name || accountOverview.user.email), org_id: accountOverview.user._admin_refs?.org_id?.label || "" } : undefined} revealed={revealed}
-        lockedMessage={ownerAccountLocked ? "This is an application-owner account. Its details are redacted and cannot be changed in the admin panel." : undefined}
+        lockedMessage={ownerAccountLocked ? "This is an application-owner account. Only an application owner can view or change its records." : undefined}
         onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => { void revealField(field); }} onOpenReference={openReference}
         onOpenAccount={!accountUserId && data.resource === "users" ? openAccount : undefined}
         onOperation={(kind, values) => requestOperation(kind, values)} />}

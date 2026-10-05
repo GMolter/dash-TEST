@@ -98,3 +98,19 @@ describe("AdminUserAccountPage", () => {
     expect(screen.getByRole("button", { name: "Review changes" })).toBeDisabled();
   });
 });
+
+it.each([true, false])('owner record editing follows verified canManage=%s', (canManage) => {
+  const overview: AdminUserAccountOverview = {
+    user: { _admin_id: 'owner', app_owner: true, display_name: 'App owner', email: 'owner@example.com' },
+    userFields: [], userActions: ['update'], resources: [], canManage, totalRecords: 1,
+  };
+  render(<AdminUserAccountPage overview={overview} loading={false} error={null} selectedResource="" onBack={vi.fn()} onAccountOperation={vi.fn()} onOpenReference={vi.fn()} onSelectResource={vi.fn()} />);
+  const edit = screen.getByRole('button', { name: 'Edit account and access' });
+  if (canManage) {
+    expect(edit).toBeEnabled();
+    expect(screen.getByText('Background editor')).toBeInTheDocument();
+  } else {
+    expect(edit).toBeDisabled();
+    expect(screen.queryByText('Background editor')).not.toBeInTheDocument();
+  }
+});

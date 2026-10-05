@@ -57,6 +57,7 @@ grant usage on schema storage to authenticated;
 grant all on storage.objects to authenticated;
 `);
 await db.exec(readFileSync(new URL('../supabase/migrations/20261004121000_admin_background_access.sql', import.meta.url), 'utf8'));
+await db.exec(readFileSync(new URL('../supabase/migrations/20261004122000_owner_record_access.sql', import.meta.url), 'utf8'));
 await as('authenticated', me);
 assert.equal(await scalar(`select can_admin_background('${other}/background')`), false);
 assert.equal(await scalar("select can_admin_background('33333333-3333-4333-8333-333333333333/background')"), true);
@@ -64,6 +65,13 @@ await db.exec("insert into storage.objects values ('dashboard-backgrounds','3333
 await assert.rejects(db.exec(`insert into storage.objects values ('dashboard-backgrounds','${other}/background')`));
 await as('authenticated', '33333333-3333-4333-8333-333333333333');
 assert.equal(await scalar(`select can_admin_background('${me}/background')`), false);
+await db.exec(`reset role; insert into profiles values ('44444444-4444-4444-8444-444444444444',true,true);`);
+await as('authenticated', other);
+assert.equal(await scalar("select can_admin_background('44444444-4444-4444-8444-444444444444/background')"), true);
+await db.exec("insert into storage.objects values ('dashboard-backgrounds','44444444-4444-4444-8444-444444444444/background')");
+assert.equal((await db.query("update storage.objects set name=name where name='44444444-4444-4444-8444-444444444444/background' returning name")).rows.length, 1);
+await as('authenticated', me);
+assert.equal((await db.query("select * from storage.objects where name='44444444-4444-4444-8444-444444444444/background'")).rows.length, 0);
 await db.close();
 
 console.log('Utility SQL privacy checks passed');

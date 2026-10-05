@@ -135,8 +135,8 @@ function referenceLabel(targetKey: string, row: Record<string, unknown>, labelFi
   return `Unnamed ${label.replace(/s$/, "").toLowerCase()}`;
 }
 
-async function addReferences(service: any, resource: AdminResource, rows: Record<string, any>[]) {
-  const protectedRows = await protectedOwnerRows(service, resource, rows);
+async function addReferences(service: any, resource: AdminResource, rows: Record<string, any>[], actorIsOwner = false) {
+  const protectedRows = await protectedOwnerRows(service, resource, rows, actorIsOwner);
   rows = rows.map((row, index) => protectedRows[index] ? {
     _admin_id: row._admin_id, _admin_protected: true,
     ...(resource.key === "users" ? { id: row.id, app_owner: true, display_name: "Protected app owner", email: "[REDACTED]" } : { title: "[REDACTED]" }),
@@ -159,7 +159,7 @@ async function addReferences(service: any, resource: AdminResource, rows: Record
     const byId = new Map<string, { id: string; label: string; resource: string }>();
     for (const item of data || []) {
       const id = String(item[targetResource.primaryKey]);
-      byId.set(id, { id, label: item.app_owner ? "Protected app owner" : referenceLabel(target.resource, item, target.labelFields), resource: target.resource });
+      byId.set(id, { id, label: item.app_owner && !actorIsOwner ? "Protected app owner" : referenceLabel(target.resource, item, target.labelFields), resource: target.resource });
     }
     lookups.set(field, byId);
   }));
@@ -374,16 +374,16 @@ async function overview(service: any, actorIsOwner: boolean) {
   return {
     isOwner: actorIsOwner,
     metrics: { users, organizations, projects, content: pastes + quickPastes + secrets, devices, pendingPairings: pairings, pendingAdminReviews, audits },
-    recentAudit: await addReferences(service, ADMIN_RESOURCES["audit-log"], (recent || []).map((row: any) => addAdminId(ADMIN_RESOURCES["audit-log"], row))),
+    recentAudit: await addReferences(service, ADMIN_RESOURCES["audit-log"], (recent || []).map((row: any) => addAdminId(ADMIN_RESOURCES["audit-log"], row)), actorIsOwner),
     resources: ADMIN_RESOURCE_LIST.filter((resource) => actorIsOwner || resource.group !== "reviews"),
   };
 }
 
-async function userAccountContext(service: any, userId: string): Promise<AccountContext> {
+async function userAccountContext(service: any, userId: string, actorIsOwner = false): Promise<AccountContext> {
   const { data: profile, error } = await service.from("profiles").select("id,org_id,app_owner").eq("id", userId).maybeSingle();
   if (error) throw error;
   if (!profile) throw new Error("TARGET_NOT_FOUND");
-  if (profile.app_owner) throw new Error("OWNER_ACCOUNT_PROTECTED");
+  if (profile.app_owner && !actorIsOwner) throw new Error("OWNER_ACCOUNT_PROTECTED");
   const organizationId = profile.org_id ? String(profile.org_id) : null;
   const projectIds: string[] = [];
   for (let offset = 0; ; offset += 1000) {
@@ -425,13 +425,13 @@ function applyAccountScope(query: any, scope: AdminAccountScope, context: Accoun
 
 async function userAccountOverview(service: any, userId: string, actorIsOwner: boolean) {
   const [profile] = await fetchRows(service, ADMIN_RESOURCES.users, [userId], false);
-  if ((profile as Record<string, any>).app_owner) {
+  if ((profile as Record<string, any>).app_owner && !actorIsOwner) {
     const [user] = await addReferences(service, ADMIN_RESOURCES.users, [profile]);
     return { user, canManage: false, userFields: ADMIN_RESOURCES.users.fields, userActions: [], resources: [], totalRecords: 1 };
   }
-  const context = await userAccountContext(service, userId);
+  const context = await userAccountContext(service, userId, actorIsOwner);
   const users = ADMIN_RESOURCES.users;
-  const [user] = await addReferences(service, users, await fetchRows(service, users, [userId], false));
+  const [user] = await addReferences(service, users, await fetchRows(service, users, [userId], false), actorIsOwner);
   const resources = await Promise.all(Object.entries(ADMIN_ACCOUNT_SCOPES)
     .filter(([key]) => key !== "users")
     .map(async ([key, scope]) => {
@@ -447,7 +447,7 @@ async function userAccountOverview(service: any, userId: string, actorIsOwner: b
     }));
   return {
     user,
-    canManage: user.app_owner !== true,
+    canManage: actorIsOwner || user.app_owner !== true,
     userFields: users.fields,
     userActions: resourceActions(users),
     resources,
@@ -484,7 +484,7 @@ async function guardUserOperation(service: any, actorId: string, actorIsOwner: b
     if (organization?.owner_id === id || target.role === "owner") throw new Error("OWNER_MUST_TRANSFER_ORGANIZATION_FIRST");
   }
   if (target.app_owner && operation.kind === "request-delete") throw new Error("OWNER_ACCOUNT_PROTECTED");
-  if (target.app_owner) throw new Error("OWNER_ACCOUNT_PROTECTED");
+  if (target.app_owner && !actorIsOwner) throw new Error("OWNER_ACCOUNT_PROTECTED");
   if (operation.kind === "request-delete" || operation.kind === "delete") {
     // A failed legacy setup may leave an owned organization even when the
     // profile's org_id is null. The organization row is authoritative.
@@ -734,7 +734,7 @@ export default async function handler(req: any, res: any) {
       if (accountUserId && !SAFE_USER_ID.test(accountUserId)) return res.status(400).json({ error: "Invalid account scope." });
       const accountScope = accountUserId ? ADMIN_ACCOUNT_SCOPES[resource.key] : undefined;
       if (accountUserId && !accountScope) return res.status(400).json({ error: "This data view is not available in account management." });
-      const accountContext = accountUserId ? await userAccountContext(service, accountUserId) : null;
+      const accountContext = accountUserId ? await userAccountContext(service, accountUserId, access.appOwner) : null;
       const actions = accountContext && ["self", "actor", "owner"].includes(accountScope!) ? resourceActions(resource).filter((action) => action !== "create") : resourceActions(resource);
 
       const requestedRecord = queryValue(req, "record");
@@ -756,7 +756,7 @@ export default async function handler(req: any, res: any) {
         } else {
           requestedRows = await fetchRows(service, resource, [requestedRecord], false);
         }
-        const rows = await addReferences(service, resource, requestedRows);
+        const rows = await addReferences(service, resource, requestedRows, access.appOwner);
         return res.status(200).json({ rows, total: rows.length, resource: resource.key, label: resource.label, fields: resource.fields, actions, redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page: 1, pageSize, sort, direction: ascending ? "asc" : "desc" });
       }
 
@@ -774,7 +774,7 @@ export default async function handler(req: any, res: any) {
           if (error) throw error;
           return { rows: (data || []).map((row: any) => addAdminId(resource, row)), total: count || 0 };
         })();
-      const rows = await addReferences(service, resource, listed.rows);
+      const rows = await addReferences(service, resource, listed.rows, access.appOwner);
       return res.status(200).json({ ...listed, rows, resource: resource.key, label: resource.label, fields: resource.fields, actions, redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page, pageSize, sort, direction: ascending ? "asc" : "desc" });
     }
 
@@ -787,7 +787,7 @@ export default async function handler(req: any, res: any) {
     if (!resource) return res.status(404).json({ error: "Unknown admin resource" });
     if (resource.guided === "admin-review" && !access.appOwner) return res.status(403).json({ error: "Only an application owner can review account requests." });
 
-    if (resource.key === "organizations") {
+    if (resource.key === "organizations" && !access.appOwner) {
       const memberId = operation.values?.member_id || operation.values?.owner_id;
       if (memberId) {
         const { data: member, error } = await service.from("profiles").select("app_owner").eq("id", memberId).maybeSingle();
@@ -801,7 +801,7 @@ export default async function handler(req: any, res: any) {
       }
     }
     const protectionRows = operation.kind === "create" ? [] : await fetchRows(service, resource, normalizeIds(operation.ids), false);
-    if ((await protectedOwnerRows(service, resource, [...protectionRows, operation.values || {}])).some(Boolean)) throw new Error("OWNER_ACCOUNT_PROTECTED");
+    if ((await protectedOwnerRows(service, resource, [...protectionRows, operation.values || {}], access.appOwner)).some(Boolean)) throw new Error("OWNER_ACCOUNT_PROTECTED");
     if (phase === "reveal") {
       const ids = normalizeIds(operation.ids);
       const requested = Array.isArray(operation.revealFields) ? [...new Set(operation.revealFields.map(String))] : [];

@@ -15,7 +15,7 @@ const service = {
   },
 };
 
-it('protects owners regardless of the administrator making the request', async () => {
+it('protects owners from administrators who are not app owners', async () => {
   expect(await protectedOwnerRows(service, ADMIN_RESOURCES.users, [{ id: 'owner' }, { id: 'member' }])).toEqual([true, false]);
 });
 it('protects owner content and reassignment to an owner', async () => {
@@ -27,4 +27,15 @@ it('protects child records of an owner’s project', async () => {
 it('fails closed if the protection lookup fails', async () => {
   const broken = { from() { const query = { select: () => query, eq: () => query, in: async () => ({ error: new Error('unavailable') }) }; return query; } };
   await expect(protectedOwnerRows(broken, ADMIN_RESOURCES.users, [{ id: 'owner' }])).rejects.toThrow('unavailable');
+});
+
+it('allows verified app owners to access owner profiles, content, and project records', async () => {
+  const noLookup = { from() { throw new Error('An owner does not need a protection lookup'); } };
+  for (const [resource, row] of [
+    [ADMIN_RESOURCES.users, { id: 'owner', app_owner: true }],
+    [ADMIN_RESOURCES.pastes, { user_id: 'owner' }],
+    [ADMIN_RESOURCES['project-files'], { project_id: 'owner-project' }],
+  ] as const) {
+    expect(await protectedOwnerRows(noLookup, resource, [row], true)).toEqual([false]);
+  }
 });
