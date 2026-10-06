@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Ban, Eye, KeyRound, Pencil, RotateCcw, Save, ShieldCheck, ShieldOff, Trash2, UserCheck, UserRoundCog, X, XCircle } from "lucide-react";
 import type { AdminField, AdminReference, AdminRow } from "./types";
 import { AdminDisplayValue, adminFieldLabel } from "./adminFormat";
 import { loadAdminResource } from "./api";
 
 type Props = {
+  embedded?: boolean;
   label: string;
   fields: AdminField[];
   actions: string[];
@@ -22,16 +23,16 @@ type Props = {
   onOperation: (kind: string, values?: Record<string, unknown>) => void;
 };
 
-export function AdminRecordDrawer({ label, fields, actions, row, creating, initialValues, initialLabels, accountUserId, revealed, onClose, onReveal, onOpenReference, onOpenAccount, lockedMessage, onOperation }: Props) {
+export function AdminRecordDrawer({ embedded = false, label, fields, actions, row, creating, initialValues, initialLabels, accountUserId, revealed, onClose, onReveal, onOpenReference, onOpenAccount, lockedMessage, onOperation }: Props) {
+  const heading = useRef<HTMLHeadingElement>(null);
   const [editing, setEditing] = useState(creating);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [temporaryPassword, setTemporaryPassword] = useState("");
+  useEffect(() => { if (embedded) heading.current?.focus(); }, [embedded, row?._admin_id, creating]);
 
   const visibleFields = useMemo(() => fields.filter((field) => creating ? field.create : !["id", "temporary_password"].includes(field.name)), [creating, fields]);
 
-  useEffect(() => {
-    setEditing(creating);
-    setTemporaryPassword("");
+  const initialForm = useMemo(() => {
     const next: Record<string, unknown> = {};
     for (const field of fields) {
       const value = creating ? initialValues?.[field.name] ?? defaultValue(field) : row?.[field.name];
@@ -39,8 +40,14 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, initi
         ? JSON.stringify(value, null, 2)
         : value ?? (field.type === "boolean" ? false : "");
     }
-    setValues(next);
+    return next;
   }, [creating, fields, row, initialValues]);
+
+  useEffect(() => {
+    setEditing(creating);
+    setTemporaryPassword('');
+    setValues(initialForm);
+  }, [creating, initialForm]);
 
   useEffect(() => {
     if (Object.keys(revealed).length) setValues((current) => ({ ...current, ...revealed }));
@@ -64,7 +71,7 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, initi
     const revealedValue = revealed[field.name];
     const reference = row?._admin_refs?.[field.name];
     return (
-      <div key={field.name} className={field.type === "textarea" || field.type === "json" ? "sm:col-span-2" : ""}>
+      <div key={field.name} className={!embedded && (field.type === "textarea" || field.type === "json") ? "sm:col-span-2" : ""}>
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <label className="text-xs font-medium text-slate-400">{adminFieldLabel(field)}{field.required && <span className="text-red-300"> *</span>}</label>
           {field.sensitive && !creating && !row?._admin_protected && revealedValue === undefined && (
@@ -77,7 +84,7 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, initi
           referenceResource(field.name) ? <ReferenceInput key={`${row?._admin_id || "new"}:${field.name}`} field={field} value={values[field.name]} initialLabel={reference?.label || initialLabels?.[field.name]} accountUserId={["project_id", "folder_id", "column_id", "parent_id"].includes(field.name) ? accountUserId : undefined} onChange={(value) => setValues((current) => ({ ...current, [field.name]: value }))} />
             : <FieldInput field={field} value={values[field.name]} onChange={(value) => setValues((current) => ({ ...current, [field.name]: value }))} />
         ) : (
-          <div className="min-h-10 break-words rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2 text-sm text-slate-200">
+          <div className={embedded ? "min-h-8 break-words border-b border-white/10 pb-3 text-sm leading-6 text-slate-200" : "min-h-10 break-words rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-sm text-slate-200"}>
             {reference ? <button onClick={() => onOpenReference(reference)} className="inline-flex items-center gap-1.5 font-medium text-blue-200 hover:text-blue-100 hover:underline"><span>{reference.label}</span><ArrowUpRight className="h-3.5 w-3.5" /></button> : <AdminDisplayValue value={revealedValue ?? row?.[field.name]} field={field} />}
           </div>
         )}
@@ -86,13 +93,13 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, initi
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/55 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`${creating ? "Create" : "View"} ${label}`}>
-      <button className="min-w-0 flex-1 cursor-default" onClick={onClose} aria-label="Close record panel" />
-      <aside className="flex h-full w-full max-w-2xl flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50">
-        <header className="flex items-start justify-between border-b border-white/10 px-5 py-4">
-          <div>
+    <div className={embedded ? 'overflow-hidden rounded-2xl border border-blue-400/25 bg-slate-950/50' : "fixed inset-0 z-50 flex justify-end bg-slate-950/55 backdrop-blur-sm"} role={embedded ? 'region' : 'dialog'} aria-modal={embedded ? undefined : true} aria-label={`${creating ? "Create" : "View"} ${label}`}>
+      {!embedded && <button className="min-w-0 flex-1 cursor-default" onClick={onClose} aria-label="Close record panel" />}
+      <aside className={embedded ? 'flex w-full min-w-0 flex-col' : "flex h-full w-full max-w-2xl flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50"}>
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+          <div className="min-w-0">
             <div className="text-xs uppercase tracking-[0.18em] text-blue-300">{label}</div>
-            <h2 className="mt-1 text-xl font-semibold text-white">{creating ? `Create ${singular(label)}` : recordTitle(row!)}</h2>
+            <h2 ref={heading} tabIndex={-1} className="mt-1 break-words text-xl font-semibold text-white outline-none">{creating ? `Create ${singular(label)}` : recordTitle(row!)}</h2>
             {!creating && <p className="mt-1 max-w-lg truncate text-xs text-slate-500">Record ID · {row?._admin_id}</p>}
           </div>
           <div className="flex items-center gap-2">
@@ -106,7 +113,7 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, initi
             <button onClick={() => onOpenAccount(row!)} className="flex w-full items-center justify-between rounded-2xl border border-blue-400/25 bg-blue-500/10 px-4 py-3 text-left text-blue-100 hover:bg-blue-500/15"><span className="flex items-center gap-3"><UserRoundCog className="h-5 w-5" /><span><span className="block text-sm font-medium">Open account management</span><span className="mt-0.5 block text-xs text-slate-400">See this user’s profile, projects, content, utilities, integrations, devices, and activity.</span></span></span><ArrowUpRight className="h-4 w-4 shrink-0" /></button>
           )}
           {lockedMessage && <div className="rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3 text-sm leading-6 text-amber-100"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /><span>{lockedMessage}</span></div></div>}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={embedded ? 'grid gap-4' : "grid gap-4 sm:grid-cols-2"}>
             {primaryFields.map(renderField)}
           </div>
 
@@ -133,7 +140,7 @@ export function AdminRecordDrawer({ label, fields, actions, row, creating, initi
 
         {(creating || editing) && (
           <footer className="flex items-center justify-between gap-3 border-t border-white/10 bg-black/15 px-5 py-4">
-            <button onClick={() => creating ? onClose() : setEditing(false)} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
+            <button onClick={() => { if (creating) onClose(); else { setValues({ ...initialForm, ...revealed }); setEditing(false); } }} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
             <button disabled={!creating && Object.keys(changed).length === 0} onClick={() => onOperation(creating ? "create" : "update", changed)} className="inline-flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2 text-sm font-medium text-blue-100 disabled:opacity-40"><Save className="h-4 w-4" /> Review {creating ? "creation" : "changes"}</button>
           </footer>
         )}
@@ -175,9 +182,9 @@ function ActionButton({ icon: Icon, label, onClick, destructive = false }: { ico
 
 function FieldInput({ field, value, onChange }: { field: AdminField; value: unknown; onChange: (value: unknown) => void }) {
   const classes = "w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-blue-400/50";
-  if (field.type === "boolean") return <label className="flex min-h-10 items-center gap-3 rounded-xl border border-white/10 bg-slate-900/80 px-3 text-sm text-slate-200"><input type="checkbox" checked={value === true} onChange={(event) => onChange(event.target.checked)} className="accent-blue-500" /> Enabled</label>;
-  if (field.type === "select") return <select value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} className={classes}><option value="">Select…</option>{field.options?.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
-  if (field.type === "textarea" || field.type === "json") return <textarea rows={field.type === "json" ? 7 : 5} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} className={`${classes} ${field.type === "json" ? "font-mono" : ""}`} />;
+  if (field.type === "boolean") return <label className="flex min-h-10 items-center gap-3 rounded-xl border border-white/10 bg-slate-900/80 px-3 text-sm text-slate-200"><input aria-label={field.label} type="checkbox" checked={value === true} onChange={(event) => onChange(event.target.checked)} className="accent-blue-500" /> Enabled</label>;
+  if (field.type === "select") return <select aria-label={field.label} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} className={classes}><option value="">Select…</option>{field.options?.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
+  if (field.type === "textarea" || field.type === "json") return <textarea aria-label={field.label} rows={field.type === "json" ? 7 : 5} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} className={`${classes} ${field.type === "json" ? "font-mono" : ""}`} />;
   const type = field.name.includes("password") ? "password" : field.type === "number" ? "number" : field.type === "datetime" ? "datetime-local" : field.type;
   return <input aria-label={field.label} type={type} value={formatInputValue(value, field.type)} onChange={(event) => onChange(field.type === "datetime" && event.target.value ? new Date(event.target.value).toISOString() : event.target.value)} className={classes} />;
 }

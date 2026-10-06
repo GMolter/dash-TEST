@@ -1,10 +1,10 @@
 import { AdminBannerPage } from "./AdminBannerPage";
 import { NotFound } from "../../pages/NotFound";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity, BookOpenText, Building2, Database, FolderKanban, Gauge,
+  Activity, BookOpenText, Building2, Database, Gauge,
   LayoutDashboard, Menu, Plug, RefreshCw, Shield, ShieldAlert,
-  ShieldCheck, Users, Wrench, X, ChevronDown, ArrowRight, Megaphone,
+  ShieldCheck, Users, X, ChevronDown, ArrowRight, Megaphone,
 } from "lucide-react";
 import { loadAdminOverview, loadAdminResource, loadAdminUserAccount, revealAdminField } from "./api";
 import { AdminOperationDialog } from "./AdminOperationDialog";
@@ -13,6 +13,8 @@ import { AdminResourceTable } from "./AdminResourceTable";
 import { AdminOrganizationPage } from "./AdminOrganizationPage";
 import { AdminUserAccountPage } from "./AdminUserAccountPage";
 import { AdminAccountQuicklinks } from "./AdminAccountQuicklinks";
+import { AdminWorkspaceBrowser } from './AdminWorkspaceBrowser';
+import { adminSection, defaultAdminResource, resourceInSection } from './adminNavigation';
 import type { AdminListResponse, AdminOperation, AdminOverview, AdminReference, AdminRow, AdminUserAccountOverview } from "./types";
 import { formatAdminValue, humanizeAdminText } from "./adminFormat";
 
@@ -24,13 +26,11 @@ const NAVIGATION = [
   { key: "people", label: "People", icon: Users },
   { key: "organizations", label: "Organizations", icon: Building2 },
   { key: "banner", label: "Banners", icon: Megaphone },
-  { key: "projects", label: "Projects", icon: FolderKanban },
-  { key: "content", label: "Content", icon: Database },
-  { key: "utilities", label: "Utilities", icon: Wrench },
+  { key: "workspace", label: "Workspace data", icon: Database },
   { key: "integrations", label: "Integrations", icon: Plug },
-  { key: "platform", label: "Platform", icon: LayoutDashboard },
+  { key: "platform", label: "Help Center", icon: BookOpenText },
   { key: "reviews", label: "Pending reviews", icon: ShieldCheck, ownerOnly: true },
-  { key: "audit", label: "Audit", icon: Activity },
+  { key: "audit", label: "Activity", icon: Activity },
 ] as const;
 
 const RESOURCE_DESCRIPTIONS: Record<string, string> = {
@@ -81,7 +81,7 @@ export function AdminOperationsConsole() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(["projects", "content", "utilities", "integrations", "platform"].includes(initial.section));
+  const [moreOpen, setMoreOpen] = useState(["workspace", "integrations", "platform", "audit"].includes(initial.section));
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -95,8 +95,10 @@ export function AdminOperationsConsole() {
   const [pending, setPending] = useState<PendingOperation>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const resources = overview?.resources || [];
-  const sectionResources = useMemo(() => resources.filter((item) => item.group === section), [resources, section]);
+  const resourceRequest = useRef(0);
+  const resources = useMemo(() => overview?.resources || [], [overview?.resources]);
+  const sectionResources = useMemo(() => resources.filter((item) => resourceInSection(item.group, section)), [resources, section]);
+  const workspaceMode = section === 'workspace' && !accountUserId && !organizationId;
   const selectedResource = sectionResources.find((item) => item.key === resource);
   const ownerAccountLocked = row?._admin_protected === true || (data?.resource === "users" && row?.app_owner === true && !overview?.isOwner);
   const accountLinks = Boolean(accountUserId) && ["quicklinks", "quicklink-folders"].includes(resource);
@@ -117,8 +119,8 @@ export function AdminOperationsConsole() {
         setFilters({});
         return;
       }
-      if (!accountUserId && section !== "overview" && !next.resources.some((item) => item.key === resource)) {
-        const first = next.resources.find((item) => item.group === section);
+      if (!accountUserId && section !== "overview" && section !== "banner" && !next.resources.some((item) => item.key === resource && resourceInSection(item.group, section))) {
+        const first = next.resources.find((item) => resourceInSection(item.group, section));
         setResource(first?.key || "users");
       }
     } catch (nextError) {
@@ -152,11 +154,13 @@ export function AdminOperationsConsole() {
   useEffect(() => { void refreshAccount(); }, [refreshAccount]);
 
   const refreshResource = useCallback(async () => {
-    if (access !== "ready" || organizationId || section === "overview" || section === "banner" || !resource || accountLinks || (accountUserId && !accountOverview)) return;
+    const request = ++resourceRequest.current;
+    if (access !== "ready" || organizationId || section === "overview" || section === "banner" || !resource || accountLinks || (accountUserId && !accountOverview)) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
       const next = await loadAdminResource({ resource, page, pageSize: 25, search, sort, direction, filters, recordId: requestedRecord || undefined, accountUserId: accountUserId || undefined });
+      if (request !== resourceRequest.current) return;
       setData(next);
       if (requestedRecord && next.rows[0]) {
         setRow(next.rows[0]);
@@ -164,11 +168,12 @@ export function AdminOperationsConsole() {
       }
       if (!sort) { setSort(next.sort); setDirection(next.direction); }
     } catch (nextError) {
+      if (request !== resourceRequest.current) return;
       const status = (nextError as Error & { status?: number }).status;
       if (status === 401 || status === 404) setAccess("denied");
       else if (status === 403) setAccess("denied");
       else setError(nextError instanceof Error ? nextError.message : "Could not load records.");
-    } finally { setLoading(false); }
+    } finally { if (request === resourceRequest.current) setLoading(false); }
   }, [access, organizationId, accountLinks, accountOverview, accountUserId, direction, filters, page, requestedRecord, resource, search, section, sort]);
 
   useEffect(() => { void refreshResource(); }, [refreshResource]);
@@ -184,6 +189,9 @@ export function AdminOperationsConsole() {
   }, [accountUserId, organizationId, resource, row, section]);
 
   function selectSection(nextSection: string) {
+    nextSection = adminSection(nextSection);
+    setData(null);
+    if (['workspace', 'integrations', 'platform', 'audit'].includes(nextSection)) setMoreOpen(true);
     setOrganizationId("");
     setAccountUserId("");
     setAccountOverview(null);
@@ -202,12 +210,15 @@ export function AdminOperationsConsole() {
     setRevealed({});
     setRequestedRecord("");
     if (nextSection !== "overview") {
-      const first = resources.find((item) => item.group === nextSection);
+      const first = resources.find((item) => item.key === defaultAdminResource(nextSection) && resourceInSection(item.group, nextSection)) || resources.find((item) => resourceInSection(item.group, nextSection));
       setResource(first?.key || "users");
     }
   }
 
   function selectResource(nextResource: string) {
+    setData(null);
+    setSearchInput('');
+    setSearch('');
     setOrganizationId("");
     setResource(nextResource);
     setPage(1);
@@ -266,7 +277,9 @@ export function AdminOperationsConsole() {
     setAccountUserId("");
     setAccountOverview(null);
     setAccountError(null);
-    setSection(target.group);
+    setSection(adminSection(target.group));
+    setData(null);
+    setMoreOpen(true);
     setResource(reference.resource);
     setRequestedRecord(reference.id);
     setPage(1);
@@ -336,6 +349,12 @@ export function AdminOperationsConsole() {
     void loadAdminOverview().then(setOverview).catch(() => undefined);
   }
 
+  const recordPanel = data && data.resource === resource && !organizationId && !accountLinks && (creating || (row && data.resource !== "users")) ? <AdminRecordDrawer embedded={workspaceMode} label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} initialValues={accountDefaults} accountUserId={accountUserId || undefined} initialLabels={accountOverview ? { user_id: String(accountOverview.user.display_name || accountOverview.user.email), owner_id: String(accountOverview.user.display_name || accountOverview.user.email), org_id: accountOverview.user._admin_refs?.org_id?.label || "" } : undefined} revealed={revealed}
+        lockedMessage={ownerAccountLocked ? "This is an application-owner account. Only an application owner can view or change its records." : undefined}
+        onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => { void revealField(field); }} onOpenReference={openReference}
+        onOpenAccount={!accountUserId && data.resource === "users" ? openAccount : undefined}
+        onOperation={(kind, values) => requestOperation(kind, values)} /> : null;
+
   if (access === "checking") return <div className="min-h-screen bg-slate-950" />;
   if (access === "denied") return <NotFound />;
   if (access === "error") return <FullPageStatus icon={ShieldAlert} title="Unable to load admin" detail={accessError || "Please try again."} action={<button onClick={() => void bootstrap()}>Retry</button>} />;
@@ -352,13 +371,13 @@ export function AdminOperationsConsole() {
             <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 lg:hidden" aria-label="Close navigation"><X className="h-5 w-5" /></button>
           </div>
           <nav aria-label="Admin navigation" className="mt-7 flex-1 space-y-1 overflow-y-auto"><p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Manage</p>
-            {NAVIGATION.filter((item) => ["overview", "people", "organizations", "banner", "reviews", "audit"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
+            {NAVIGATION.filter((item) => ["overview", "people", "organizations", "banner", "reviews"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
               const Icon = item.icon;
               return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" /><span className="flex-1">{item.key === "audit" ? "Activity" : item.label}</span>{item.key === "reviews" && !!overview?.metrics.pendingAdminReviews && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">{overview.metrics.pendingAdminReviews}</span>}</button>;
             })}
             <div className="pt-4">
               <button aria-expanded={moreOpen} aria-controls="admin-more-navigation" onClick={() => setMoreOpen(!moreOpen)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white">Workspace tools<ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} /></button>
-              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{NAVIGATION.filter((item) => ["projects", "content", "utilities", "integrations", "platform"].includes(item.key)).map((item) => {
+              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{NAVIGATION.filter((item) => ["workspace", "integrations", "platform", "audit"].includes(item.key)).map((item) => {
                 const Icon = item.icon;
                 return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-500 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" />{item.label}</button>;
               })}</div>}
@@ -391,6 +410,14 @@ export function AdminOperationsConsole() {
                 onPage={setPage} onSort={(field) => { setPage(1); setSort(field); setDirection((current) => sort === field && current === "asc" ? "desc" : "asc"); }}
                 onBulkDelete={() => requestOperation("delete", undefined, [...selected])} onBulkUpdate={(field, value) => requestOperation("update", { [field]: value }, [...selected])} />}
             </AdminUserAccountPage>
+          ) : workspaceMode ? (
+            <AdminWorkspaceBrowser resources={sectionResources} resource={resource} description={RESOURCE_DESCRIPTIONS[resource]} onSelect={selectResource} inspector={recordPanel}>
+              <AdminResourceTable key={resource} layout="cards" activeId={row?._admin_id} data={data?.resource === resource ? data : null} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
+                onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
+                onOpen={(nextRow) => { setRow(nextRow); setCreating(false); setRevealed({}); }} onOpenReference={openReference} onCreate={() => { setCreating(true); setRow(null); setRevealed({}); }}
+                onPage={(next) => { setPage(next); setRow(null); setSelected(new Set()); setRevealed({}); }} onSort={(field) => { setPage(1); setSort(field); setDirection((current) => sort === field && current === "asc" ? "desc" : "asc"); }}
+                onBulkDelete={() => requestOperation("delete", undefined, [...selected])} onBulkUpdate={(field, value) => requestOperation("update", { [field]: value }, [...selected])} />
+            </AdminWorkspaceBrowser>
           ) : (
             <>
               <section className="mb-4 flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4 backdrop-blur-xl sm:flex-row sm:items-end sm:justify-between">
@@ -418,11 +445,7 @@ export function AdminOperationsConsole() {
         </main>
       </div>
 
-      {data && !organizationId && !accountLinks && (creating || (row && data.resource !== "users")) && <AdminRecordDrawer label={data.label} fields={data.fields} actions={ownerAccountLocked ? [] : data.actions} row={row} creating={creating} initialValues={accountDefaults} accountUserId={accountUserId || undefined} initialLabels={accountOverview ? { user_id: String(accountOverview.user.display_name || accountOverview.user.email), owner_id: String(accountOverview.user.display_name || accountOverview.user.email), org_id: accountOverview.user._admin_refs?.org_id?.label || "" } : undefined} revealed={revealed}
-        lockedMessage={ownerAccountLocked ? "This is an application-owner account. Only an application owner can view or change its records." : undefined}
-        onClose={() => { setRow(null); setCreating(false); setRevealed({}); }} onReveal={(field) => { void revealField(field); }} onOpenReference={openReference}
-        onOpenAccount={!accountUserId && data.resource === "users" ? openAccount : undefined}
-        onOperation={(kind, values) => requestOperation(kind, values)} />}
+      {!workspaceMode && recordPanel}
       <AdminOperationDialog operation={pending?.operation || null} title={pending?.title || "Confirm admin operation"} onCancel={() => setPending(null)} onComplete={operationComplete} />
     </div>
   );
@@ -467,7 +490,8 @@ function readLocation() {
   const account = query.get("account") || (query.get("resource") === "users" ? query.get("record") : "") || "";
   const requestedResource = query.get("resource") || "";
   const organization = query.get("organization") || (requestedResource === "organizations" ? query.get("record") : "") || "";
-  return { organization, section: organization ? "organizations" : account ? "people" : query.get("section") || "overview", resource: account ? (requestedResource === "users" ? "" : requestedResource) : requestedResource || "users", record: account || organization ? "" : query.get("record") || "", account };
+  const requestedSection = query.get("section") || "overview";
+  return { organization, section: organization ? "organizations" : account ? "people" : adminSection(requestedSection), resource: account ? (requestedResource === "users" ? "" : requestedResource) : requestedResource || defaultAdminResource(requestedSection), record: account || organization ? "" : query.get("record") || "", account };
 }
 
 function navigate(path: string) {

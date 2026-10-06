@@ -5,6 +5,8 @@ import type { AdminField, AdminListResponse, AdminReference, AdminRow } from "./
 import { adminFieldLabel, formatAdminValue, formatLastActive, humanizeAdminText } from "./adminFormat";
 
 type Props = {
+  layout?: 'table' | 'cards';
+  activeId?: string;
   data: AdminListResponse | null;
   loading: boolean;
   search: string;
@@ -22,7 +24,7 @@ type Props = {
   onBulkUpdate: (field: string, value: unknown) => void;
 };
 
-export function AdminResourceTable({ data, loading, search, filters, selected, onSearch, onFilters, onSelection, onOpen, onOpenReference, onCreate, onPage, onSort, onBulkDelete, onBulkUpdate }: Props) {
+export function AdminResourceTable({ layout = 'table', activeId, data, loading, search, filters, selected, onSearch, onFilters, onSelection, onOpen, onOpenReference, onCreate, onPage, onSort, onBulkDelete, onBulkUpdate }: Props) {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkField, setBulkField] = useState("");
   const [bulkValue, setBulkValue] = useState("");
@@ -32,7 +34,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
   const rows = data?.rows || [];
   const suggestionsId = useId();
   const activeFilterField = data?.fields.find((field) => field.name === filterField);
-  useEffect(() => { setFilterField(""); setFilterValue(""); setFilterOpen(false); }, [data?.resource]);
+  useEffect(() => { setFilterField(""); setFilterValue(""); setFilterOpen(false); setBulkOpen(false); setBulkField(''); setBulkValue(''); }, [data?.resource]);
   const columns = useMemo(() => chooseColumns(data?.fields || [], rows, data?.resource), [data?.fields, rows, data?.resource]);
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row._admin_id));
   const editableFields = data?.fields.filter((field) => field.editable && !field.sensitive && ["text", "number", "boolean", "select"].includes(field.type)) || [];
@@ -73,7 +75,7 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
         <div className="relative min-w-[220px] flex-1 sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-          <input value={search} onChange={(event) => onSearch(event.target.value)} placeholder={`Search ${data?.label || "records"}…`}
+          <input aria-label="Search records" value={search} onChange={(event) => onSearch(event.target.value)} placeholder={`Search ${data?.label || "records"}…`}
             className="w-full rounded-xl border border-white/10 bg-slate-900/70 py-2 pl-9 pr-9 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-400/50" />
           {search && <button onClick={() => onSearch("")} className="absolute right-2 top-2 rounded p-1 text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>}
         </div>
@@ -133,7 +135,20 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
       )}
 
       {data?.resource === "users" && rows.some((row) => row._admin_activity_status === "unavailable") && <div role="alert" className="border-b border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Activity tracking is not installed in the database. Apply the app activity migration, then reopen the app and refresh this list.</div>}
-      <div className="overflow-x-auto">
+      {layout === 'cards' ? <div>
+        {!!rows.length && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+          {selectable && <label className="flex items-center gap-2 text-xs text-slate-400"><input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all visible records" />Select page</label>}
+          {!!data?.sortFields.length && <div className="flex items-center gap-2"><select aria-label="Sort records" value={data.sort} onChange={event => onSort(event.target.value)} className="max-w-40 rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-slate-300">{data.sortFields.map(name => <option key={name} value={name}>{data.fields.find(field => field.name === name)?.label || humanizeAdminText(name)}</option>)}</select><button aria-label={data.direction === 'asc' ? 'Sort descending' : 'Sort ascending'} onClick={() => onSort(data.sort)} className="rounded-lg p-2 text-slate-400 hover:bg-white/5">{data.direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}</button></div>}
+        </div>}
+        {loading ? <p role="status" className="flex items-center justify-center gap-2 p-8 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading records…</p> : !rows.length ? <div className="p-8 text-center"><Database className="mx-auto h-6 w-6 text-slate-500" /><h3 className="mt-3 text-sm font-medium text-slate-200">{search || Object.keys(filters).length ? 'No matching records' : 'No records yet'}</h3><p className="mt-2 text-xs leading-5 text-slate-400">{search || Object.keys(filters).length ? 'Try another search or clear your filters.' : `Records in ${data?.label || 'this collection'} will appear here.`}</p>{(search || Object.keys(filters).length > 0) && <button onClick={() => { onSearch(''); onFilters({}); }} className="mt-4 text-sm text-blue-300">Clear search and filters</button>}</div> : <ul className="divide-y divide-white/10">{rows.map(row => {
+          const titleField = columns.find(field => ['title', 'name', 'display_name', 'slug', 'code'].includes(field.name));
+          const title = row._admin_protected ? 'Protected record' : String((titleField && row[titleField.name]) || data?.label || 'Record');
+          return <li key={row._admin_id} className={`p-4 ${activeId === row._admin_id ? 'bg-blue-400/10 ring-1 ring-inset ring-blue-400/30' : 'hover:bg-white/[0.025]'}`}>
+            <div className="flex items-start gap-3">{selectable && <input className="mt-1 accent-blue-500" type="checkbox" disabled={!!row._admin_protected} checked={selected.has(row._admin_id)} onChange={() => toggleOne(row._admin_id)} aria-label={`Select ${row._admin_id}`} />}<button onClick={() => onOpen(row)} aria-pressed={activeId === row._admin_id} className="min-w-0 flex-1 text-left"><span className="block break-words text-sm font-semibold text-slate-100">{title}</span><span className="mt-1 block text-xs text-blue-300">View details →</span></button></div>
+            {!row._admin_protected && <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-3">{columns.filter(field => field !== titleField).map(field => <div key={field.name} className="min-w-0 space-y-1 text-xs"><dt className="text-slate-500">{adminFieldLabel(field)}</dt><dd className="min-w-0 break-words text-slate-300">{row._admin_refs?.[field.name] ? <button onClick={() => onOpenReference(row._admin_refs![field.name])} className="text-left text-blue-200 hover:underline">{row._admin_refs[field.name].label}</button> : tableValue(row[field.name], field)}</dd></div>)}</dl>}
+          </li>;
+        })}</ul>}
+      </div> : <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-left text-sm">
           <thead className="bg-slate-900/55 text-xs tracking-wide text-slate-500">
             <tr>
@@ -164,15 +179,15 @@ export function AdminResourceTable({ data, loading, search, filters, selected, o
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
 
-      <footer className="flex items-center justify-between border-t border-white/10 px-4 py-3">
+      {(layout === 'table' || pageCount > 1) && <footer className="flex items-center justify-between border-t border-white/10 px-4 py-3">
         <div className="text-xs text-slate-500">Page {data?.page || 1} of {pageCount}</div>
         <div className="flex gap-2">
           <button disabled={!data || data.page <= 1 || loading} onClick={() => onPage((data?.page || 1) - 1)} className="rounded-lg border border-white/10 p-2 text-slate-300 disabled:opacity-30" aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></button>
           <button disabled={!data || data.page >= pageCount || loading} onClick={() => onPage((data?.page || 1) + 1)} className="rounded-lg border border-white/10 p-2 text-slate-300 disabled:opacity-30" aria-label="Next page"><ChevronRight className="h-4 w-4" /></button>
         </div>
-      </footer>
+      </footer>}
     </section>
   );
 }
