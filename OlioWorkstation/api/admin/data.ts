@@ -757,6 +757,13 @@ export default async function handler(req: any, res: any) {
           if (accountContext && accountScope) query = applyAccountScope(query, accountScope, accountContext);
           if (search && resource.searchFields.length) query = query.or(resource.searchFields.map((field) => `${field}.ilike.%${search}%`).join(","));
           for (const [name, value] of Object.entries(filters)) query = value === null ? query.is(name, null) : query.eq(name, value);
+          if (resource.key === "dashboard-alerts" && ["live", "scheduled"].includes(queryValue(req, "bannerView"))) {
+            const now = new Date().toISOString();
+            query = query.eq("enabled", true).or(`ends_at.is.null,ends_at.gt.${now}`);
+            query = queryValue(req, "bannerView") === "scheduled"
+              ? query.gt("starts_at", now)
+              : query.or(`starts_at.is.null,starts_at.lte.${now}`);
+          }
           query = query.order(sort, { ascending }).range((page - 1) * pageSize, page * pageSize - 1);
           const { data, error, count } = await query;
           if (error) throw error;

@@ -20,10 +20,10 @@ type AccessState = "checking" | "error" | "denied" | "ready";
 type PendingOperation = { operation: Omit<AdminOperation, "reason">; title: string } | null;
 
 const NAVIGATION = [
-  { key: "banner", label: "Banner", icon: Megaphone },
   { key: "overview", label: "Overview", icon: Gauge },
   { key: "people", label: "People", icon: Users },
   { key: "organizations", label: "Organizations", icon: Building2 },
+  { key: "banner", label: "Banners", icon: Megaphone },
   { key: "projects", label: "Projects", icon: FolderKanban },
   { key: "content", label: "Content", icon: Database },
   { key: "utilities", label: "Utilities", icon: Wrench },
@@ -81,7 +81,7 @@ export function AdminOperationsConsole() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(["banner", "projects", "content", "utilities", "integrations", "platform"].includes(initial.section));
+  const [moreOpen, setMoreOpen] = useState(["projects", "content", "utilities", "integrations", "platform"].includes(initial.section));
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -341,24 +341,24 @@ export function AdminOperationsConsole() {
   if (access === "error") return <FullPageStatus icon={ShieldAlert} title="Unable to load admin" detail={accessError || "Please try again."} action={<button onClick={() => void bootstrap()}>Retry</button>} />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
+    <div className="min-h-screen bg-[#0b1120] text-white">
       <div className="flex min-h-screen">
-        <aside className={`fixed inset-y-0 left-0 z-40 h-screen flex w-60 shrink-0 flex-col border-r border-white/10 bg-slate-950/90 p-4 shadow-2xl backdrop-blur-xl transition-transform lg:sticky lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <aside className={`fixed inset-y-0 left-0 z-40 h-screen flex w-64 shrink-0 flex-col border-r border-white/10 bg-slate-950/70 p-4 transition-transform lg:sticky lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
           <div className="flex items-center justify-between px-2 py-3">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-400/25 bg-blue-500/15"><Shield className="h-5 w-5 text-blue-300" /></div>
-              <div className="font-semibold text-blue-100">Olio Admin</div>
+              <div><div className="font-semibold text-white">Olio</div><div className="mt-0.5 text-xs text-slate-400">Admin workspace</div></div>
             </div>
             <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 lg:hidden" aria-label="Close navigation"><X className="h-5 w-5" /></button>
           </div>
-          <nav aria-label="Admin navigation" className="mt-5 flex-1 space-y-1 overflow-y-auto">
-            {NAVIGATION.filter((item) => ["overview", "people", "organizations", "reviews", "audit"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
+          <nav aria-label="Admin navigation" className="mt-7 flex-1 space-y-1 overflow-y-auto"><p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Manage</p>
+            {NAVIGATION.filter((item) => ["overview", "people", "organizations", "banner", "reviews", "audit"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
               const Icon = item.icon;
               return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" /><span className="flex-1">{item.key === "audit" ? "Activity" : item.label}</span>{item.key === "reviews" && !!overview?.metrics.pendingAdminReviews && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">{overview.metrics.pendingAdminReviews}</span>}</button>;
             })}
             <div className="pt-4">
-              <button aria-expanded={moreOpen} aria-controls="admin-more-navigation" onClick={() => setMoreOpen(!moreOpen)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white">More tools<ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} /></button>
-              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{NAVIGATION.filter((item) => ["banner", "projects", "content", "utilities", "integrations", "platform"].includes(item.key)).map((item) => {
+              <button aria-expanded={moreOpen} aria-controls="admin-more-navigation" onClick={() => setMoreOpen(!moreOpen)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white">Workspace tools<ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} /></button>
+              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{NAVIGATION.filter((item) => ["projects", "content", "utilities", "integrations", "platform"].includes(item.key)).map((item) => {
                 const Icon = item.icon;
                 return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-500 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" />{item.label}</button>;
               })}</div>}
@@ -372,7 +372,7 @@ export function AdminOperationsConsole() {
         {mobileOpen && <button className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation backdrop" />}
 
         <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-          <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
             <div className="flex items-center gap-3">
               <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-200 lg:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
               <div><h1 className="text-2xl font-semibold">{accountUserId ? "Account management" : NAVIGATION.find((item) => item.key === section)?.label || "Overview"}</h1></div>
@@ -433,7 +433,9 @@ function Overview({ overview, onNavigate }: { overview: AdminOverview | null; on
   const pendingReviews = overview?.isOwner ? overview.metrics.pendingAdminReviews || 0 : 0;
   const pendingPairings = overview?.metrics.pendingPairings || 0;
   const activity = overview?.recentAudit.slice(0, 4) || [];
-  return <div className="max-w-5xl space-y-8">
+  return <div className="mx-auto max-w-6xl space-y-8">
+    <section><p className="text-xs font-medium uppercase tracking-widest text-blue-300">Admin workspace</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">What needs your attention?</h2><p className="mt-3 text-sm text-slate-400">Manage people, keep teams informed, and keep Olio running smoothly.</p></section>
+    <div className="grid gap-3 sm:grid-cols-3">{[{ key: 'people', title: 'Manage people', detail: 'Accounts, access, and personal settings', icon: Users }, { key: 'organizations', title: 'Manage organizations', detail: 'Membership, owners, and shared work', icon: Building2 }, { key: 'banner', title: 'Manage banners', detail: 'Active messages and scheduled updates', icon: Megaphone }].map(item => <button key={item.key} onClick={() => onNavigate(item.key)} className="group rounded-2xl border border-white/10 bg-slate-900/50 p-5 text-left hover:border-blue-400/30 hover:bg-blue-400/5"><item.icon className="mb-5 h-5 w-5 text-blue-300" /><div className="flex items-center justify-between gap-2"><span className="font-medium">{item.title}</span><ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-blue-300" /></div><p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p></button>)}</div>
     <div className="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 bg-slate-950/25 py-5">{counts.map(([key, label, section]) => <button key={key} onClick={() => onNavigate(section)} className="px-3 text-left sm:px-6 hover:text-blue-200"><div className="text-2xl font-semibold">{overview?.metrics[key]?.toLocaleString() ?? "—"}</div><div className="mt-1 text-xs text-slate-400 sm:text-sm">{label}</div></button>)}</div>
     {(pendingReviews > 0 || pendingPairings > 0) && <section className="space-y-2">
       <h2 className="text-sm font-medium text-slate-400">Needs attention</h2>

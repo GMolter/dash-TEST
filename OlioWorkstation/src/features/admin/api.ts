@@ -29,6 +29,7 @@ export async function loadAdminResource(input: {
   filters?: Record<string, unknown>;
   recordId?: string;
   accountUserId?: string;
+  bannerView?: 'live' | 'scheduled';
 }): Promise<AdminListResponse> {
   const params = new URLSearchParams({
     resource: input.resource,
@@ -41,6 +42,7 @@ export async function loadAdminResource(input: {
   if (input.filters && Object.keys(input.filters).length) params.set("filters", JSON.stringify(input.filters));
   if (input.recordId) params.set("record", input.recordId);
   if (input.accountUserId) params.set("accountUserId", input.accountUserId);
+  if (input.bannerView) params.set("bannerView", input.bannerView);
   return adminFetch(`/api/admin/data?${params.toString()}`);
 }
 

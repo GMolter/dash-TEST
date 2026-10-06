@@ -1,6 +1,6 @@
 import { DashboardPhotoSettings } from '../../components/DashboardPhotoSettings';
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Ban, KeyRound, Layers3, Save, Trash2, UserCheck, UserRoundCog, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Ban, KeyRound, Layers3, Paintbrush, Save, Trash2, UserCheck, UserRoundCog, X } from "lucide-react";
 import type { AdminReference, AdminRow, AdminUserAccountOverview } from "./types";
 import { AdminDisplayValue, adminFieldLabel, formatLastActive } from "./adminFormat";
 import { ReferenceInput } from "./AdminRecordDrawer";
@@ -38,7 +38,8 @@ const GROUP_LABELS: Record<string, string> = {
 
 export function AdminUserAccountPage({ overview, loading, error, selectedResource, onBack, onAccountOperation, onOpenReference, onSelectResource, children }: Props) {
   const [showEmpty, setShowEmpty] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState('overview');
+  const editing = tab === 'access';
   const [bannerUserId, setBannerUserId] = useState<string | null>(null);
   const [bannerSentTo, setBannerSentTo] = useState<string | null>(null);
   const [form, setForm] = useState<AccountForm>(EMPTY_FORM);
@@ -70,10 +71,15 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
       organizationId: user.org_id ? String(user.org_id) : null,
       role: String(user.role || "member"),
     });
-    setEditing(false);
     setTemporaryPassword("");
     setOrganizationInputVersion((value) => value + 1);
   }, [overview?.user]);
+
+  useEffect(() => {
+    setTab(selectedResource ? 'data' : 'overview');
+    setBannerUserId(null);
+    setBannerSentTo(null);
+  }, [overview?.user._admin_id, selectedResource]);
 
   if (loading && !overview) return <div className="rounded-2xl border border-white/10 bg-slate-950/45 px-5 py-20 text-center text-sm text-slate-400">Loading the complete account record…</div>;
   if (error || !overview) return <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-5 text-sm text-red-100">{error || "This account could not be loaded."}<button onClick={onBack} className="mt-4 block text-blue-200 hover:underline">Return to People</button></div>;
@@ -88,11 +94,10 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
 
 
 
-  return <div className="space-y-5">
+  return <div className="mx-auto max-w-6xl space-y-6">
     <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"><ArrowLeft className="h-4 w-4" /> Back to all people</button>
 
-    {overview.canManage && <details className="rounded-2xl border border-white/10 bg-slate-950/45 p-5"><summary className="cursor-pointer text-white">Custom background — view or edit</summary><div className="mt-4"><DashboardPhotoSettings key={user._admin_id} accountUserId={user._admin_id} /></div></details>}
-    <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-5 shadow-xl backdrop-blur-xl">
+    <section className="rounded-2xl border border-white/10 bg-gradient-to-r from-blue-500/[0.08] to-slate-900/50 p-5 sm:p-7">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-blue-400/25 bg-blue-500/15 text-lg font-semibold text-blue-100">{initials || "?"}</div>
@@ -109,9 +114,15 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2"><button onClick={() => { setBannerUserId(bannerUserId === user._admin_id ? null : user._admin_id); setBannerSentTo(null); }} className="rounded-xl border border-violet-400/30 bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-100">{bannerUserId === user._admin_id ? "Close banner composer" : "Send banner"}</button><button disabled={overview.canManage === false} onClick={() => setEditing((value) => !value)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button></div>
+        <div className="flex flex-wrap gap-2"><button onClick={() => { setBannerUserId(bannerUserId === user._admin_id ? null : user._admin_id); setBannerSentTo(null); setTab("overview"); }} className="rounded-xl border border-violet-400/30 bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-100">{bannerUserId === user._admin_id ? "Close banner composer" : "Send banner"}</button><button disabled={overview.canManage === false} onClick={() => { setTab(editing ? "overview" : "access"); setBannerUserId(null); }} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button></div>
       </div>
     </section>
+
+    <nav aria-label="Account sections" className="grid grid-cols-2 gap-1 border-b border-white/10 sm:flex">
+      {[['overview', 'Overview'], ['access', 'Account & access'], ['data', 'Account data'], ...(overview.canManage ? [['appearance', 'Appearance']] : [])].map(([key, label]) => <button key={key} aria-current={tab === key ? 'page' : undefined} disabled={key === 'access' && overview.canManage === false} onClick={() => { setTab(key); setBannerUserId(null); }} className={`shrink-0 border-b-2 px-4 py-3 text-sm transition disabled:opacity-40 ${tab === key ? 'border-blue-400 text-blue-200' : 'border-transparent text-slate-400 hover:text-white'}`}>{label}</button>)}
+    </nav>
+
+    {tab === 'appearance' && overview.canManage && <section className="rounded-2xl border border-white/10 bg-slate-900/40 p-5 sm:p-6"><div className="mb-6 flex items-start gap-3"><Paintbrush className="mt-1 h-5 w-5 text-violet-300" /><div><h3 className="font-semibold">Dashboard appearance</h3><p className="mt-1 text-sm text-slate-400">View or change the custom background for {name}.</p></div></div><DashboardPhotoSettings key={user._admin_id} accountUserId={user._admin_id} /></section>}
 
     {bannerSentTo === user._admin_id && <p role="status" className="text-sm text-emerald-300">Banner saved for {name}. It will appear within 30 seconds or at the scheduled start.</p>}
     {bannerUserId === user._admin_id && <AdminTargetedAlerts key={user._admin_id} recipient={{ id: user._admin_id, label: name + ' (' + email + ')' }} onSent={() => { setBannerUserId(null); setBannerSentTo(user._admin_id); }} />}
@@ -145,9 +156,9 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
       </div>
     </section>}
 
-    {selectedResource ? <>
+    {tab === 'data' && selectedResource ? <>
       <section className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4 sm:flex-row sm:items-end sm:justify-between">
-        <div><button onClick={() => onSelectResource("")} className="text-xs text-blue-300 hover:text-blue-200">← Account overview</button><h3 className="mt-1 text-lg font-semibold text-white">{selected?.label || "Account data"}</h3><p className="mt-1 text-sm text-slate-400">Only records owned by {name}, or contained in their projects, are shown.</p></div>
+        <div><button onClick={() => { onSelectResource(""); setTab("overview"); }} className="text-xs text-blue-300 hover:text-blue-200">← Account overview</button><h3 className="mt-1 text-lg font-semibold text-white">{selected?.label || "Account data"}</h3><p className="mt-1 text-sm text-slate-400">Only records owned by {name}, or contained in their projects, are shown.</p></div>
         <label className="text-xs text-slate-400">Account data
           <select value={normalizedResource} onChange={(event) => onSelectResource(event.target.value)} className="mt-1 block min-w-60 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white">
             {resources.map((item) => <option key={item.key} value={item.key}>{item.label} ({item.total ?? "unavailable"})</option>)}
@@ -155,7 +166,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
         </label>
       </section>
       {children}
-    </> : <>
+    </> : tab === 'overview' ? <>
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border border-white/10 bg-slate-950/35 p-5">
           <h3 className="font-medium text-white">Membership & access</h3>
@@ -174,11 +185,13 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
           <details className="mt-5 border-t border-white/10 pt-4"><summary className="cursor-pointer text-xs text-slate-500">Technical details</summary><p className="mt-3 break-all text-xs text-slate-400">User ID: {user._admin_id}</p></details>
         </section>
       </div>
+      <button onClick={() => setTab('data')} className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-slate-900/40 p-5 text-left hover:border-blue-400/30"><div className="flex items-center gap-3"><Layers3 className="h-5 w-5 text-blue-300" /><div><h3 className="font-medium">Browse account data</h3><p className="mt-1 text-sm text-slate-400">{Math.max(0, overview.totalRecords - 1).toLocaleString()} records across projects, content, and tools</p></div></div><ArrowRight className="h-4 w-4 text-slate-400" /></button>
+    </> : tab === 'data' ? <>
       <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-5 backdrop-blur-xl">
         <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><Layers3 className="h-4 w-4 text-violet-300" /><div><h3 className="font-semibold text-white">Account data</h3><p className="mt-1 text-xs text-slate-500">{Math.max(0, overview.totalRecords - 1).toLocaleString()} records</p></div></div><button onClick={() => setShowEmpty((value) => !value)} className="text-xs text-slate-400 hover:text-white">{showEmpty ? "Hide empty categories" : "Show empty categories"}</button></div>
         <div className="mt-5 space-y-5">{grouped.map(([group, items]) => <div key={group}><div className="mb-2 text-xs font-medium text-slate-500">{GROUP_LABELS[group] || group}</div><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{items.map((item) => <button key={item.key} disabled={item.total === null} onClick={() => onSelectResource(item.key)} className="group flex items-center justify-between rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left hover:border-blue-400/20 hover:bg-blue-500/[0.06] disabled:cursor-not-allowed disabled:opacity-50"><div><div className="text-sm font-medium text-slate-200 group-hover:text-white">{item.label}</div><div className="mt-0.5 text-xs text-slate-500">{item.total === null ? "Unavailable" : `${item.total.toLocaleString()} record${item.total === 1 ? "" : "s"}`}</div></div><ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-blue-300" /></button>)}</div></div>)}</div>
       </section>
-    </>}
+    </> : null}
   </div>;
 }
 

@@ -16,6 +16,7 @@ beforeEach(() => {
 it("inserts links and saves the schedule as UTC through the audited operation", async () => {
   const actor = userEvent.setup();
   render(<AdminBannerPage />);
+  await actor.click(await screen.findByRole("button", { name: "Edit global banner" }));
   const message = await screen.findByLabelText("Banner message");
   (message as HTMLTextAreaElement).setSelectionRange(0, 5);
   await actor.click(screen.getByRole("button", { name: "Insert link" }));
@@ -34,6 +35,7 @@ it("inserts links and saves the schedule as UTC through the audited operation", 
 it("prevents saving empty enabled messages and reports load failures", async () => {
   const actor = userEvent.setup();
   const { unmount } = render(<AdminBannerPage />);
+  await actor.click(await screen.findByRole("button", { name: "Edit global banner" }));
   await actor.clear(await screen.findByLabelText("Banner message"));
   expect(screen.getByRole("button", { name: "Save banner" })).toBeDisabled();
   await actor.click(screen.getByLabelText(/Enable banner/));

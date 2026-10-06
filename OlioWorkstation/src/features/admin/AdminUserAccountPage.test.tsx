@@ -14,7 +14,10 @@ describe("AdminUserAccountPage", () => {
     const overview: AdminUserAccountOverview = { user: { _admin_id: 'user-a', display_name: 'Avery', email: 'avery@example.com' }, userFields: [], userActions: [], resources: [], canManage: true, totalRecords: 1 };
     const props = { overview, loading: false, error: null, selectedResource: '', onBack: vi.fn(), onAccountOperation: vi.fn(), onOpenReference: vi.fn(), onSelectResource: vi.fn() };
     const { rerender } = render(<AdminUserAccountPage {...props} />);
+    await actor.click(screen.getByRole('button', { name: 'Appearance' }));
+    expect(screen.getByText('Background editor')).toBeVisible();
     await actor.click(screen.getByRole('button', { name: 'Send banner' }));
+    expect(screen.queryByText('Background editor')).not.toBeInTheDocument();
     expect(screen.getByTestId('banner-recipient')).toHaveTextContent('user-a: Avery (avery@example.com)');
     await actor.click(screen.getByText('Complete banner'));
     expect(screen.getByRole('status')).toHaveTextContent('Banner saved for Avery');
@@ -73,13 +76,16 @@ describe("AdminUserAccountPage", () => {
     expect(screen.getByText(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "long" }).format(new Date("2026-09-23T14:30:45.000Z")))).toBeVisible();
     expect(screen.getByRole("button", { name: /Example organization/ })).toBeInTheDocument();
     expect(screen.getByText("Password change required")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Account data", exact: true }));
     expect(screen.getByText("4 records")).toBeInTheDocument();
     expect(screen.queryByText("Quick Pastes")).not.toBeInTheDocument();
     expect(screen.getByText("Quick links & folders")).toBeInTheDocument();
     expect(screen.queryByText("Quick-link folders")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Overview", exact: true }));
     await user.click(screen.getByText("Membership actions"));
     await user.click(screen.getByRole("button", { name: "Review membership removal" }));
     expect(onAccountOperation).toHaveBeenCalledWith("remove-organization");
+    await user.click(screen.getByRole("button", { name: "Account data", exact: true }));
     await user.click(screen.getByRole("button", { name: /Quick links/ }));
     expect(onSelectResource).toHaveBeenCalledWith("quicklinks");
     await user.click(screen.getByRole("button", { name: /Edit account and access/ }));
@@ -99,7 +105,7 @@ describe("AdminUserAccountPage", () => {
   });
 });
 
-it.each([true, false])('owner record editing follows verified canManage=%s', (canManage) => {
+it.each([true, false])('owner record editing follows verified canManage=%s', async (canManage) => {
   const overview: AdminUserAccountOverview = {
     user: { _admin_id: 'owner', app_owner: true, display_name: 'App owner', email: 'owner@example.com' },
     userFields: [], userActions: ['update'], resources: [], canManage, totalRecords: 1,
@@ -108,7 +114,9 @@ it.each([true, false])('owner record editing follows verified canManage=%s', (ca
   const edit = screen.getByRole('button', { name: 'Edit account and access' });
   if (canManage) {
     expect(edit).toBeEnabled();
-    expect(screen.getByText('Background editor')).toBeInTheDocument();
+    expect(screen.queryByText('Background editor')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Appearance' }));
+    expect(screen.getByText('Background editor')).toBeVisible();
   } else {
     expect(edit).toBeDisabled();
     expect(screen.queryByText('Background editor')).not.toBeInTheDocument();
