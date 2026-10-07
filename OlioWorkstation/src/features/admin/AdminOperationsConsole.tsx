@@ -48,7 +48,6 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
   secrets: "Private secret status only; contents and recipient links are never exposed here.",
   quicklinks: "Saved links available from the dashboard.",
   "quicklink-folders": "Folders used to organize saved links.",
-  triggers: "Configured automation triggers.",
   "short-urls": "Shortened links and their destinations.",
   "dashboard-todos": "Dashboard task items and completion state.",
   "help-articles": "Published help and guidance shown inside Olio.",

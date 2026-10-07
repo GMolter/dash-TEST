@@ -51,7 +51,7 @@ const MAX_BULK = 50;
 const TOKEN_SECONDS = 5 * 60;
 const SAFE_ID = /^[a-zA-Z0-9_:.,@+\-]{1,300}$/;
 const SAFE_USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const AUDIT_REDACT = /(password|secret|token|credential|hash|cipher|content|webhook|url|\bcode\b)/i;
+const AUDIT_REDACT = /(password|secret|token|credential|hash|cipher|content|url|\bcode\b)/i;
 const NO_MATCH_ID = "00000000-0000-0000-0000-000000000000";
 
 type AccountContext = {
@@ -447,7 +447,7 @@ async function impactPreview(service: any, resource: AdminResource, operation: A
   const counts: Record<string, number> = {};
   const id = operation.ids?.[0];
   if (operation.kind === "delete" && id && resource.key === "organizations") {
-    for (const [label, table] of [["users", "profiles"], ["projects", "projects"], ["quick links", "quicklinks"], ["pastes", "pastes"], ["announcements", "org_announcements"], ["library entries", "org_resources"], ["history entries", "org_activity"], ["link folders", "quicklink_folders"], ["secrets", "secrets"], ["short URLs", "short_urls"], ["triggers", "triggers"]] as const) counts[label] = await countTable(service, table, ["org_id", id]);
+    for (const [label, table] of [["users", "profiles"], ["projects", "projects"], ["quick links", "quicklinks"], ["pastes", "pastes"], ["announcements", "org_announcements"], ["library entries", "org_resources"], ["history entries", "org_activity"], ["link folders", "quicklink_folders"], ["secrets", "secrets"], ["short URLs", "short_urls"]] as const) counts[label] = await countTable(service, table, ["org_id", id]);
   }
   if (operation.kind === "delete" && id && resource.key === "projects") {
     for (const [label, table] of [["cards", "project_board_cards"], ["steps", "project_planner_steps"], ["resources", "project_resources"], ["files", "project_files"]] as const) counts[label] = await countTable(service, table, ["project_id", id]);

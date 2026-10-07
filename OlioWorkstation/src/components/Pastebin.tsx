@@ -152,36 +152,37 @@ export function Pastebin() {
   };
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 border border-slate-700">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+    <div className="utility-workspace glass-panel mx-auto max-w-5xl rounded-[2rem] p-5 sm:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-7">
+        <h2 className="text-2xl font-semibold tracking-tight text-white flex items-center gap-3">
           <FileText className="w-5 h-5" />
           Pastebin
         </h2>
         <div className="flex gap-2">
           <a
             href="/p"
-            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 glass-control rounded-lg text-white text-sm font-medium transition-colors"
           >
             <Eye className="w-4 h-4" />
             View All
           </a>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-violet-500 hover:bg-violet-400 rounded-lg text-white text-sm font-medium transition-colors"
           >
             {showForm ? 'Cancel' : 'New Paste'}
           </button>
         </div>
       </div>
+      <p className="-mt-3 mb-6 max-w-2xl text-sm leading-relaxed text-slate-400">Keep text and snippets together, with control over who can read them.</p>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <button
           onClick={() => setVisibility('personal')}
           className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
             visibility === 'personal'
-              ? 'bg-blue-600/20 border-blue-500/40 text-blue-200'
-              : 'bg-slate-700/40 border-slate-700 text-slate-300 hover:bg-slate-700/60'
+              ? 'bg-violet-400/15 border-violet-300/30 text-violet-200'
+              : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.07]'
           }`}
         >
           Personal
@@ -190,8 +191,8 @@ export function Pastebin() {
           onClick={() => setVisibility('org')}
           className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
             visibility === 'org'
-              ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-200'
-              : 'bg-slate-700/40 border-slate-700 text-slate-300 hover:bg-slate-700/60'
+              ? 'bg-violet-400/15 border-violet-300/30 text-violet-200'
+              : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.07]'
           }`}
         >
           Org
@@ -200,8 +201,8 @@ export function Pastebin() {
           onClick={() => setVisibility('public')}
           className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
             visibility === 'public'
-              ? 'bg-amber-500/20 border-amber-500/40 text-amber-200'
-              : 'bg-slate-700/40 border-slate-700 text-slate-300 hover:bg-slate-700/60'
+              ? 'bg-violet-400/15 border-violet-300/30 text-violet-200'
+              : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.07]'
           }`}
         >
           Public
@@ -214,14 +215,14 @@ export function Pastebin() {
       </div>
 
       {showForm && (
-        <div className="mb-4 space-y-2 p-4 bg-slate-900/50 rounded-lg">
+        <div className="mb-4 space-y-4 p-5 sm:p-6 border border-white/10 bg-slate-950/30 rounded-2xl">
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setScopePersonal((v) => !v)}
               className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 scopePersonal
-                  ? 'bg-blue-600/20 border-blue-500/40 text-blue-200'
-                  : 'bg-slate-700/40 border-slate-700 text-slate-300 hover:bg-slate-700/60'
+                  ? 'bg-violet-400/15 border-violet-300/30 text-violet-200'
+                  : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.07]'
               }`}
             >
               Personal
@@ -233,9 +234,9 @@ export function Pastebin() {
               }}
               className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 scopeOrg
-                  ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-200'
+                  ? 'bg-violet-400/15 border-violet-300/30 text-violet-200'
                   : organization
-                    ? 'bg-slate-700/40 border-slate-700 text-slate-300 hover:bg-slate-700/60'
+                    ? 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.07]'
                     : 'bg-slate-800/60 border-slate-800 text-slate-500 cursor-not-allowed'
               }`}
               title={!organization ? 'Join an organization to use org scope' : undefined}
@@ -246,8 +247,8 @@ export function Pastebin() {
               onClick={() => setScopePublic((v) => !v)}
               className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 scopePublic
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-200'
-                  : 'bg-slate-700/40 border-slate-700 text-slate-300 hover:bg-slate-700/60'
+                  ? 'bg-violet-400/15 border-violet-300/30 text-violet-200'
+                  : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.07]'
               }`}
             >
               Public
@@ -260,22 +261,25 @@ export function Pastebin() {
           <input
             type="text"
             placeholder="Title (optional)"
-            value={title}
+            aria-label="Title (optional)"
+          value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-slate-950/60 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40"
           />
           <textarea
             placeholder="Paste your content here..."
-            value={content}
+            aria-label="Paste your content here..."
+          value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm"
+            className="w-full px-3 py-2 bg-slate-950/60 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-none font-mono text-sm"
             rows={8}
           />
           <div className="flex gap-2">
             <select
+              aria-label="Paste expiration"
               value={expiryOption}
               onChange={(e) => setExpiryOption(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-slate-950/60 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-violet-400/40"
             >
               <option value="never">Never expires</option>
               <option value="1hour">1 hour</option>
@@ -287,7 +291,7 @@ export function Pastebin() {
           <button
             onClick={createPaste}
             disabled={!hasScope || !content.trim() || (scopeOrg && !organization)}
-            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
+            className="w-full px-4 py-2 bg-violet-500 hover:bg-violet-400 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
           >
             Create Paste
           </button>
@@ -298,7 +302,7 @@ export function Pastebin() {
         {pastes.map((paste) => (
           <div
             key={paste.id}
-            className={`group bg-slate-900/50 hover:bg-slate-900/80 rounded-lg p-4 transition-colors ${
+            className={`group border border-white/10 bg-slate-950/30 hover:bg-white/[0.04] rounded-2xl p-4 transition-colors ${
               isExpired(paste.expires_at) ? 'opacity-50' : ''
             }`}
           >
@@ -308,7 +312,7 @@ export function Pastebin() {
                 <div className="flex items-center gap-2 mb-2">
                   <a
                     href={getPasteUrl(paste.paste_code)}
-                    className="text-blue-400 hover:text-blue-300 font-mono text-sm"
+                    className="text-violet-300 hover:text-violet-200 break-all font-mono text-sm"
                   >
                     {window.location.origin}{getPasteUrl(paste.paste_code)}
                   </a>
@@ -339,13 +343,13 @@ export function Pastebin() {
               <div className="flex gap-2">
                 <a
                   href={getPasteUrl(paste.paste_code)}
-                  className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                  className="p-2 glass-control rounded-lg transition-colors"
                 >
                   <ExternalLink className="w-4 h-4 text-white" />
                 </a>
                 <button
                   onClick={() => deletePaste(paste.id)}
-                  className="p-2 bg-red-600 hover:bg-red-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="p-2 border border-rose-400/20 bg-rose-400/10 hover:bg-rose-400/20 rounded-lg disabled:opacity-40 transition-colors"
                 >
                   <Trash2 className="w-4 h-4 text-white" />
                 </button>
@@ -356,7 +360,7 @@ export function Pastebin() {
       </div>
 
       {pastes.length === 0 && !showForm && (
-        <p className="text-slate-400 text-center py-8">No pastes yet. Create one to get started!</p>
+        <p className="rounded-2xl border border-dashed border-white/10 text-slate-400 text-center px-5 py-12 text-sm">No pastes yet. Create one to get started!</p>
       )}
     </div>
   );

@@ -87,6 +87,6 @@ If you have access to the application admin panel, open **Admin → Organization
 
 **People & owners** lets you add or remove members, change roles, add multiple owners, and transfer ownership. For a transfer, select the new owner, expand **Transfer ownership**, and select the owner to replace. The previous owner becomes an admin; other owners keep their roles. An organization must retain at least one owner. Remove someone from their current organization before adding them to another.
 
-Use **Announcements**, **Library**, and **History** to add, edit, or delete entries, including their authors and dates. The remaining sections manage the organization’s links, folders, projects, pastes, secrets, short URLs, and triggers. Search and filters help find records, and supported lists allow bulk changes.
+Use **Announcements**, **Library**, and **History** to add, edit, or delete entries, including their authors and dates. The remaining sections manage the organization’s links, folders, projects, pastes, secrets, and short URLs. Search and filters help find records, and supported lists allow bulk changes.
 
 Changes require a reason and confirmation. Editing organization history changes the team’s activity feed; the separate admin audit log retains the administrative change.

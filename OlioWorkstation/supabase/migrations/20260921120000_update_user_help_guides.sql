@@ -540,8 +540,4 @@ ON CONFLICT (slug) DO UPDATE SET
   title=EXCLUDED.title, summary=EXCLUDED.summary, content=EXCLUDED.content,
   sort_order=EXCLUDED.sort_order, updated_at=now();
 
--- Triggers has no reachable page in the current app; retain the old article as a draft.
-UPDATE public.help_articles SET is_published=false, updated_at=now()
-WHERE slug='triggers-and-webhooks';
-
 COMMIT;

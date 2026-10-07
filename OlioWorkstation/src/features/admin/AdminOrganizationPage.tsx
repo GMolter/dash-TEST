@@ -9,7 +9,7 @@ const VIEWS = [
   ["organizations", "Settings"], ["users", "People & owners"], ["org-announcements", "Announcements"],
   ["org-resources", "Library"], ["org-activity", "History"], ["quicklinks", "Shared links"],
   ["quicklink-folders", "Link folders"], ["projects", "Projects"], ["pastes", "Pastes"],
-  ["secrets", "Secrets"], ["short-urls", "Short URLs"], ["triggers", "Triggers"],
+  ["secrets", "Secrets"], ["short-urls", "Short URLs"],
 ];
 const button = "rounded-xl border border-white/15 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-40";
 const input = "rounded-xl border border-white/15 bg-slate-900 px-3 py-2 text-sm";

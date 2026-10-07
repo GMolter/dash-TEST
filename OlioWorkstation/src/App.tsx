@@ -358,7 +358,7 @@ function App() {
   const utilities = [
     { id: 'quicklinks', label: 'Quick Links', icon: '🔗', desc: 'Manage bookmarks' },
     { id: 'projects', label: 'Projects', icon: '📁', desc: 'Track your work' },
-    { id: 'triggers', label: 'Help Center', icon: '📚', desc: 'Browse docs and guides' },
+    { id: 'help', label: 'Help Center', icon: '📚', desc: 'Browse docs and guides' },
     { id: 'shortener', label: 'URL Shortener', icon: '✂️', desc: 'Shorten URLs' },
     { id: 'secrets', label: 'Secret Sharing', icon: '🔒', desc: 'One-time links' },
     { id: 'qr', label: 'QR Generator', icon: '📱', desc: 'Generate QR codes' },
@@ -440,7 +440,7 @@ function App() {
         onOpenTool={(toolId) => {
           if (toolId === 'projects') {
             navigateTo('/projects');
-          } else if (toolId === 'triggers') {
+          } else if (toolId === 'help') {
             navigateTo('/help');
           } else if (toolId === 'plugins') {
             navigateTo('/utilities/plugins');

@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Check, GraduationCap, MapPin, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { CalendarDays, Check, GraduationCap, MapPin, Pencil, Plus, Save, Trash2, ArrowLeft, Upload, X } from 'lucide-react';
 import { ClassDashWidget } from '../components/ClassDashWidget';
 import { MapLocationPicker } from '../components/MapLocationPicker';
 import { ExtractedClassMeeting, SyllabusImporter } from '../components/SyllabusImporter';
@@ -44,6 +44,10 @@ function normalizeTime(value: string) {
 export function ClassDashPage() {
   const { installed, settings, meetings, loading, syncing, error, saveSettings, saveMeeting, deleteMeeting } = useClassDash();
   const { installPlugin } = useDashboardConfiguration();
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'schedule' | 'import' | 'home'>('schedule');
+  const [importIndex, setImportIndex] = useState<number | null>(null);
+  const [savedImports, setSavedImports] = useState<number[]>([]);
   const [dormName, setDormName] = useState('');
   const [dormCoordinates, setDormCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [showHomeEditor, setShowHomeEditor] = useState(false);
@@ -57,6 +61,14 @@ export function ClassDashPage() {
     setDormName(settings.dorm_name);
     setDormCoordinates({ lat: settings.dorm_lat, lng: settings.dorm_lng });
   }, [settings]);
+
+  const visibleMeetings = useMemo(() => meetings
+    .filter(meeting => selectedDay === null || meeting.days.includes(selectedDay))
+    .slice().sort((a, b) => a.start_time.localeCompare(b.start_time)), [meetings, selectedDay]);
+
+  useEffect(() => {
+    if (showMeetingForm) document.getElementById('course-code')?.focus();
+  }, [showMeetingForm]);
 
   const meetingLocation = useMemo(() => (
     meetingForm.location_lat === null || meetingForm.location_lng === null
@@ -119,6 +131,8 @@ export function ClassDashPage() {
       term_end: meetingForm.term_end || null,
     });
     if (saved) {
+      if (importIndex !== null) setSavedImports(current => [...current, importIndex]);
+      setImportIndex(null);
       setSavedMessage(meetingForm.id ? 'Class updated.' : 'Class added to your schedule.');
       setMeetingForm(EMPTY_MEETING);
       setShowMeetingForm(false);
@@ -128,6 +142,7 @@ export function ClassDashPage() {
   const startEditing = (id: string) => {
     const meeting = meetings.find((candidate) => candidate.id === id);
     if (!meeting) return;
+    setImportIndex(null);
     setMeetingForm({
       id: meeting.id,
       code: meeting.code,
@@ -144,10 +159,11 @@ export function ClassDashPage() {
     });
     setShowMeetingForm(true);
     setFormError('');
-    window.setTimeout(() => document.getElementById('class-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    window.setTimeout(() => document.getElementById('meeting-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   };
 
-  const reviewImportedMeeting = (meeting: ExtractedClassMeeting) => {
+  const reviewImportedMeeting = (meeting: ExtractedClassMeeting, index: number) => {
+    setImportIndex(index);
     setMeetingForm({
       code: meeting.code,
       title: meeting.title,
@@ -164,7 +180,7 @@ export function ClassDashPage() {
     setShowMeetingForm(true);
     setFormError('');
     setSavedMessage('Imported as a draft. Check the details and place the classroom pin before saving.');
-    window.setTimeout(() => document.getElementById('class-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    window.setTimeout(() => document.getElementById('meeting-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   };
 
   if (loading) return <div className="mx-auto max-w-6xl"><div className="glass-panel h-72 animate-pulse rounded-[2rem]" /></div>;
@@ -185,13 +201,17 @@ export function ClassDashPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-7 pb-16">
-      <header>
-        <div className="text-xs font-semibold uppercase tracking-[0.28em] text-violet-200/80">Installed plugin</div>
+      <header className="flex flex-wrap items-end justify-between gap-5"><div>
+        <div className="text-xs font-semibold uppercase tracking-[0.28em] text-violet-200/80">Your campus, organized</div>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight text-white">ClassDash</h1>
-        <p className="mt-2 text-slate-400">Your schedule and map locations are private to your Olio account.</p>
-      </header>
+        <p className="mt-2 text-slate-400">A clear week. A place for every class. Always know when to leave.</p>
+      </div><div className={showMeetingForm ? 'hidden' : 'flex flex-wrap gap-2'}><button type="button" onClick={() => { setActiveTab('import'); setShowMeetingForm(false); }} className="glass-control inline-flex items-center gap-2 px-4 py-3 text-sm"><Upload className="h-4 w-4" /> Import schedule</button><button type="button" onClick={() => { setActiveTab('schedule'); setMeetingForm(EMPTY_MEETING); setImportIndex(null); setShowMeetingForm(true); setFormError(''); }} className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-400"><Plus className="h-4 w-4" /> Add class</button></div></header>
 
-      <ClassDashWidget full onOpen={() => document.getElementById('class-editor')?.scrollIntoView({ behavior: 'smooth' })} />
+      <div hidden={showMeetingForm || activeTab !== 'schedule'} className="h-60"><ClassDashWidget onOpen={() => setActiveTab(!settings ? 'home' : 'import')} /></div>
+      <nav aria-label="ClassDash sections" className="flex flex-wrap gap-2 border-b border-white/10 pb-4">
+        {(['schedule', 'import', 'home'] as const).map(tab => <button key={tab} type="button" aria-current={activeTab === tab ? 'page' : undefined} onClick={() => { setActiveTab(tab); setShowMeetingForm(false); setFormError(''); }} className={activeTab === tab ? 'rounded-xl border border-violet-300/25 bg-violet-400/15 px-5 py-3 text-sm font-semibold text-violet-100' : 'rounded-xl px-5 py-3 text-sm text-slate-400 hover:bg-white/5 hover:text-white'}>{tab === 'schedule' ? 'Weekly schedule' : tab === 'import' ? 'Import classes' : 'Home base'}</button>)}
+        <span className="ml-auto self-center text-xs text-slate-400">{meetings.length} classes · Private to you</span>
+      </nav>
 
       {(error || formError || savedMessage) && (
         <div className={`rounded-2xl border px-4 py-3 text-sm ${error || formError ? 'border-rose-400/25 bg-rose-400/10 text-rose-100' : 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100'}`} role="status">
@@ -199,8 +219,9 @@ export function ClassDashPage() {
         </div>
       )}
 
+      <div hidden={activeTab !== 'home' || showMeetingForm}>
       {settings && !showHomeEditor ? (
-        <div className="flex justify-end">
+        <div className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-2xl p-6"><div><h2 className="font-semibold text-white">{settings.dorm_name}</h2><p className="mt-1 text-sm text-slate-400">Your starting point for campus walking estimates.</p></div>
           <button type="button" onClick={() => setShowHomeEditor(true)} className="glass-control inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold"><MapPin className="h-4 w-4 text-violet-300" /> Edit Home Location</button>
         </div>
       ) : (
@@ -216,19 +237,25 @@ export function ClassDashPage() {
         </form>
       )}
 
-      <section id="class-editor" className="glass-panel scroll-mt-28 rounded-[2rem] p-6 sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      </div>
+      <div hidden={activeTab !== 'import' || showMeetingForm}><SyllabusImporter onReview={reviewImportedMeeting} savedIndices={savedImports} onReset={() => setSavedImports([])} /></div>
+      <section hidden={activeTab !== 'schedule' && !showMeetingForm} id="class-editor" className="glass-panel scroll-mt-28 rounded-[2rem] p-6 sm:p-8">
+        <div hidden={showMeetingForm}><div className="flex flex-wrap items-start justify-between gap-4">
           <div><div className="flex items-center gap-2 text-lg font-semibold text-white"><CalendarDays className="h-5 w-5 text-violet-300" /> Weekly schedule</div><p className="mt-1 text-sm text-slate-400">Add each class once and select every day it meets.</p></div>
-          <button type="button" onClick={() => { setMeetingForm(EMPTY_MEETING); setShowMeetingForm(true); setFormError(''); }} className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-400"><Plus className="h-4 w-4" /> Add class</button>
+          <button type="button" onClick={() => { setActiveTab('schedule'); setMeetingForm(EMPTY_MEETING); setImportIndex(null); setShowMeetingForm(true); setFormError(''); }} className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-400"><Plus className="h-4 w-4" /> Add class</button>
         </div>
 
-        <SyllabusImporter onReview={reviewImportedMeeting} />
 
-        {meetings.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-dashed border-white/15 px-5 py-10 text-center text-sm text-slate-400">No classes yet. Add your first class to start the countdown.</div>
+
+        <div className="mt-6 flex flex-wrap gap-2" aria-label="Filter schedule by day">
+          <button type="button" aria-pressed={selectedDay === null} onClick={() => setSelectedDay(null)} className={selectedDay === null ? 'rounded-xl bg-violet-400/15 px-4 py-2 text-sm text-violet-100' : 'rounded-xl px-4 py-2 text-sm text-slate-400 hover:bg-white/5'}>All classes</button>
+          {[1, 2, 3, 4, 5, 6, 0].map(day => <button key={day} type="button" aria-pressed={selectedDay === day} onClick={() => setSelectedDay(day)} className={selectedDay === day ? 'rounded-xl bg-violet-400/15 px-4 py-2 text-sm text-violet-100' : 'rounded-xl px-4 py-2 text-sm text-slate-400 hover:bg-white/5'}>{DAY_LABELS[day]} <span className="ml-1 text-xs opacity-60">{meetings.filter(meeting => meeting.days.includes(day)).length}</span></button>)}
+        </div>
+        {visibleMeetings.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-white/15 px-5 py-10 text-center text-sm text-slate-400">{meetings.length === 0 ? 'No classes yet. Add a class or import your schedule to get started.' : 'No classes on this day. Enjoy the breathing room.'}</div>
         ) : (
-          <div className="mt-6 space-y-3">
-            {meetings.map((meeting) => (
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {visibleMeetings.map((meeting) => (
               <article key={meeting.id} className="rounded-2xl border border-white/10 bg-slate-950/35 p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div><div className="font-semibold text-white">{meeting.code}{meeting.section && <span className="font-normal text-slate-400"> · {meeting.section}</span>}</div>{meeting.title && <div className="mt-1 text-sm text-slate-400">{meeting.title}</div>}<div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-400"><span>{meeting.days.map((day) => DAY_LABELS[day]).join(', ')}</span><span>{normalizeTime(meeting.start_time)}–{normalizeTime(meeting.end_time)}</span><span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{meeting.location_name}</span></div></div>
@@ -239,21 +266,23 @@ export function ClassDashPage() {
           </div>
         )}
 
+        </div>
         {showMeetingForm && (
-          <form onSubmit={submitMeeting} className="mt-6 rounded-[1.6rem] border border-violet-300/20 bg-violet-500/[0.06] p-5 sm:p-6">
+          <form id="meeting-details" onSubmit={submitMeeting} className="scroll-mt-28">
+            <button type="button" onClick={() => { setShowMeetingForm(false); setFormError(''); }} className="mb-5 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"><ArrowLeft className="h-4 w-4" />{importIndex !== null ? 'Back to import results' : 'Back to schedule'}</button>
             <div className="flex items-center justify-between"><h2 className="text-lg font-semibold text-white">{meetingForm.id ? 'Edit class' : 'Add a class'}</h2><button type="button" onClick={() => setShowMeetingForm(false)} className="rounded-xl p-2 text-slate-400 hover:bg-white/[0.06] hover:text-white" aria-label="Close class editor"><X className="h-5 w-5" /></button></div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="text-sm text-slate-300">Course code<input required value={meetingForm.code} onChange={(event) => setMeetingForm((current) => ({ ...current, code: event.target.value }))} placeholder="INFO-I101" className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
+            <p className="mt-2 text-sm text-slate-400">{importIndex !== null ? 'Review the imported details, choose a location, then save. Your other import results will be waiting.' : 'Update your class details, meeting times, and campus location in one place.'}</p><div className="mt-2 grid items-start gap-8 lg:grid-cols-2"><div><h3 className="mt-7 text-sm font-semibold text-violet-200">01 · Class details</h3><div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="text-sm text-slate-300">Course code<input id="course-code" required value={meetingForm.code} onChange={(event) => setMeetingForm((current) => ({ ...current, code: event.target.value }))} placeholder="INFO-I101" className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
               <label className="text-sm text-slate-300">Course name<input value={meetingForm.title} onChange={(event) => setMeetingForm((current) => ({ ...current, title: event.target.value }))} placeholder="Introduction to Informatics" className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
               <label className="text-sm text-slate-300">Section<input value={meetingForm.section} onChange={(event) => setMeetingForm((current) => ({ ...current, section: event.target.value }))} placeholder="Lecture or Lab" className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
-              <label className="text-sm text-slate-300">Starts<input required type="time" value={meetingForm.start_time} onChange={(event) => setMeetingForm((current) => ({ ...current, start_time: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
-              <label className="text-sm text-slate-300">Ends<input required type="time" value={meetingForm.end_time} onChange={(event) => setMeetingForm((current) => ({ ...current, end_time: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
-              <label className="text-sm text-slate-300">Building or location<input required value={meetingForm.location_name} onChange={(event) => setMeetingForm((current) => ({ ...current, location_name: event.target.value }))} placeholder="Luddy Hall 0117" className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
             </div>
-            <fieldset className="mt-5"><legend className="text-sm text-slate-300">Meeting days</legend><div className="mt-2 flex flex-wrap gap-2">{DAY_LABELS.map((day, index) => { const selected = meetingForm.days.includes(index); return <button key={day} type="button" onClick={() => setMeetingForm((current) => ({ ...current, days: selected ? current.days.filter((value) => value !== index) : [...current.days, index] }))} className={`rounded-xl border px-3 py-2 text-sm ${selected ? 'border-violet-300/35 bg-violet-400/15 text-violet-100' : 'border-white/10 bg-slate-950/40 text-slate-400'}`} aria-pressed={selected}>{selected && <Check className="mr-1 inline h-3.5 w-3.5" />}{day}</button>; })}</div></fieldset>
+            <h3 className="mt-7 text-sm font-semibold text-violet-200">02 · Weekly routine</h3><div className="mt-4 grid gap-4 sm:grid-cols-2">              <label className="text-sm text-slate-300">Starts<input required type="time" value={meetingForm.start_time} onChange={(event) => setMeetingForm((current) => ({ ...current, start_time: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
+              <label className="text-sm text-slate-300">Ends<input required type="time" value={meetingForm.end_time} onChange={(event) => setMeetingForm((current) => ({ ...current, end_time: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
+</div><fieldset className="mt-4"><legend className="text-sm text-slate-300">Meeting days</legend><div className="mt-2 flex flex-wrap gap-2">{DAY_LABELS.map((day, index) => { const selected = meetingForm.days.includes(index); return <button key={day} type="button" onClick={() => setMeetingForm((current) => ({ ...current, days: selected ? current.days.filter((value) => value !== index) : [...current.days, index] }))} className={`rounded-xl border px-3 py-2 text-sm ${selected ? 'border-violet-300/35 bg-violet-400/15 text-violet-100' : 'border-white/10 bg-slate-950/40 text-slate-400'}`} aria-pressed={selected}>{selected && <Check className="mr-1 inline h-3.5 w-3.5" />}{day}</button>; })}</div></fieldset>
             <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm text-slate-300">Semester starts <span className="text-slate-500">(optional)</span><input type="date" value={meetingForm.term_start} onChange={(event) => setMeetingForm((current) => ({ ...current, term_start: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label><label className="text-sm text-slate-300">Semester ends <span className="text-slate-500">(optional)</span><input type="date" value={meetingForm.term_end} onChange={(event) => setMeetingForm((current) => ({ ...current, term_end: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label></div>
-            <div className="mt-6"><MapLocationPicker key={meetingForm.id || 'new-class'} label="Place the classroom pin" value={meetingLocation} onChange={(coordinates) => setMeetingForm((current) => ({ ...current, location_lat: coordinates.lat, location_lng: coordinates.lng }))} onPlaceSelected={(place) => setMeetingForm((current) => ({ ...current, location_name: current.location_name.trim() ? current.location_name : place }))} /></div>
-            <div className="mt-6 flex justify-end"><button type="submit" disabled={syncing} className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-400 disabled:opacity-60"><Save className="h-4 w-4" /> {meetingForm.id ? 'Save changes' : 'Add to schedule'}</button></div>
+            </div><div><h3 className="mt-7 text-sm font-semibold text-violet-200">03 · Campus location</h3><p className="mt-2 text-sm text-slate-400">Search for a building or reuse a saved classroom below.</p><div className="mt-4">              <label className="text-sm text-slate-300">Building or location<input required value={meetingForm.location_name} onChange={(event) => setMeetingForm((current) => ({ ...current, location_name: event.target.value }))} placeholder="Luddy Hall 0117" className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white outline-none focus:border-violet-300/40" /></label>
+</div><div className="mt-3 flex flex-wrap gap-2">{meetings.filter((meeting, index, all) => all.findIndex(other => other.location_name === meeting.location_name) === index).map(meeting => <button type="button" key={meeting.id} onClick={() => setMeetingForm(current => ({ ...current, location_name: meeting.location_name, location_lat: meeting.location_lat, location_lng: meeting.location_lng }))} className="glass-control px-3 py-2 text-xs">{meeting.location_name}</button>)}</div><div className="mt-4"><MapLocationPicker key={meetingForm.id || 'new-class'} label="Place the classroom pin" value={meetingLocation} onChange={(coordinates) => setMeetingForm((current) => ({ ...current, location_lat: coordinates.lat, location_lng: coordinates.lng }))} onPlaceSelected={(place) => setMeetingForm((current) => ({ ...current, location_name: current.location_name.trim() ? current.location_name : place }))} /></div>
+            </div></div><div className="sticky bottom-3 z-10 mt-7 flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/95 p-4"><span className="text-xs text-slate-400">{meetingLocation ? 'Classroom location pinned' : 'Place a classroom pin to finish'}</span><button type="submit" disabled={syncing} className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-400 disabled:opacity-60"><Save className="h-4 w-4" /> {meetingForm.id ? 'Save changes' : 'Add to schedule'}</button></div>
           </form>
         )}
       </section>

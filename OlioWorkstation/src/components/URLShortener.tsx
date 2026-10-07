@@ -110,31 +110,34 @@ export function URLShortener() {
   };
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 border border-slate-700">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+    <div className="utility-workspace glass-panel mx-auto max-w-5xl rounded-[2rem] p-5 sm:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-7">
+        <h2 className="text-2xl font-semibold tracking-tight text-white flex items-center gap-3">
           <Link2 className="w-5 h-5" />
           URL Shortener
         </h2>
       </div>
 
-      <div className="mb-4 space-y-2 p-4 bg-slate-900/50 rounded-lg">
+      <p className="-mt-3 mb-6 max-w-2xl text-sm leading-relaxed text-slate-400">Make long links easy to share. Choose who can open each one.</p>
+      <div className="mb-4 space-y-4 p-5 sm:p-6 border border-white/10 bg-slate-950/30 rounded-2xl">
         <input
           type="url"
           placeholder="Enter long URL"
+          aria-label="Enter long URL"
           value={targetUrl}
           onChange={(e) => setTargetUrl(e.target.value)}
-          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 bg-slate-950/60 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40"
         />
         <input
           type="text"
           placeholder="Custom short code (optional)"
+          aria-label="Custom short code (optional)"
           value={customCode}
           onChange={(e) => setCustomCode(e.target.value)}
-          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 bg-slate-950/60 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40"
         />
         <label className="block text-sm text-slate-300">Who can open this link?
-          <select aria-label="Link visibility" value={visibility} onChange={(e) => setVisibility(e.target.value as typeof visibility)} className="ml-3 rounded bg-slate-700 p-2">
+          <select aria-label="Link visibility" value={visibility} onChange={(e) => setVisibility(e.target.value as typeof visibility)} className="ml-3 rounded-xl border border-white/10 bg-slate-950/60 p-2">
             <option value="personal">Personal (only me)</option>
             <option value="shared" disabled={!organization}>Shared (organization)</option>
             <option value="public">Public (anyone)</option>
@@ -142,7 +145,7 @@ export function URLShortener() {
         </label>
         <button
           onClick={createShortUrl}
-          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+          className="w-full px-4 py-2 bg-violet-500 hover:bg-violet-400 rounded-lg text-white font-medium transition-colors"
         >
           Shorten URL
         </button>
@@ -152,7 +155,7 @@ export function URLShortener() {
         {urls.map((url) => (
           <div
             key={url.id}
-            className="group relative bg-slate-900/50 hover:bg-slate-900/80 rounded-lg p-4 transition-colors"
+            className="group relative border border-white/10 bg-slate-950/30 hover:bg-white/[0.04] rounded-2xl p-4 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
@@ -162,7 +165,7 @@ export function URLShortener() {
                     href={`/${url.short_code}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 font-mono text-sm"
+                    className="text-violet-300 hover:text-violet-200 break-all font-mono text-sm"
                     title="Open short URL"
                   >
                     {getShortUrl(url.short_code)}
@@ -181,7 +184,7 @@ export function URLShortener() {
                   </button>
                 </div>
 
-                {url.user_id === user?.id && <select aria-label={`Visibility for ${url.short_code}`} value={url.visibility} className="mb-2 rounded bg-slate-700 p-1 text-sm text-white" onChange={async e => {
+                {url.user_id === user?.id && <select aria-label={`Visibility for ${url.short_code}`} value={url.visibility} className="mb-2 rounded-xl border border-white/10 bg-slate-950/60 p-1 text-sm text-white" onChange={async e => {
                   const visibility = e.target.value;
                   const { error } = await supabase.from('short_urls').update({ visibility, org_id: visibility === 'shared' ? organization?.id : null }).eq('id', url.id);
                   if (error) alert('Could not change link visibility.'); else loadUrls();
@@ -196,7 +199,7 @@ export function URLShortener() {
                   href={formatUrl(url.target_url)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                  className="p-2 glass-control rounded-lg transition-colors"
                   title="Open destination"
                 >
                   <ExternalLink className="w-4 h-4 text-white" />
@@ -205,7 +208,7 @@ export function URLShortener() {
                 <button
                   disabled={url.user_id !== user?.id}
                   onClick={() => confirmDelete(url)}
-                  className="p-2 bg-red-600 hover:bg-red-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="p-2 border border-rose-400/20 bg-rose-400/10 hover:bg-rose-400/20 rounded-lg disabled:opacity-40 transition-colors"
                   title="Delete"
                 >
                   <Trash2 className="w-4 h-4 text-white" />
@@ -217,7 +220,7 @@ export function URLShortener() {
       </div>
 
       {urls.length === 0 && (
-        <p className="text-slate-400 text-center py-8">
+        <p className="rounded-2xl border border-dashed border-white/10 text-slate-400 text-center px-5 py-12 text-sm">
           No shortened URLs yet. Create one to get started!
         </p>
       )}
@@ -225,7 +228,7 @@ export function URLShortener() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && urlToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 max-w-md w-full mx-4">
+          <div className="bg-slate-950 rounded-2xl p-6 border border-white/10 max-w-md w-full mx-4">
             <div className="text-center mb-6">
               <div className="text-5xl mb-4">⚠️</div>
               <h3 className="text-xl font-semibold text-white mb-2">Delete Short URL?</h3>
@@ -240,13 +243,13 @@ export function URLShortener() {
                   setShowDeleteModal(false);
                   setUrlToDelete(null);
                 }}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors"
+                className="flex-1 px-4 py-2 glass-control rounded-lg text-white font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={deleteUrl}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-medium transition-colors"
+                className="flex-1 px-4 py-2 border border-rose-400/20 bg-rose-400/10 hover:bg-rose-400/20 rounded-lg text-white font-medium transition-colors"
               >
                 Delete
               </button>

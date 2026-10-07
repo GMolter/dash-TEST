@@ -28,7 +28,6 @@ Olio Workstation is a team productivity platform that brings together:
 - **QR Code Generator** — generate scannable codes instantly
 - **Pastebin** — share code and text snippets
 - **Projects** — full project management with boards, planners, files, and resources
-- **Triggers** — webhook automation
 
 Everything is tied to your **organization**, so your team shares the same workspace.
 
@@ -118,7 +117,7 @@ If your account requires a password change, complete that screen before continui
 
 # 🏢 Organizations — Joining and Creating
 
-Every user in Olio Workstation belongs to an **organization**. Your organization is your shared workspace — it determines who you collaborate with and controls access to shared features like links, projects, secrets, and triggers.
+Every user in Olio Workstation belongs to an **organization**. Your organization is your shared workspace — it determines who you collaborate with and controls access to shared features like links, projects, and secrets.
 
 ---
 
@@ -130,7 +129,6 @@ An organization is a group that shares:
 - **Shared Quick Links** (organization-wide bookmarks)
 - **URL Shortener** links (org-scoped)
 - **Secrets** and **Pastebin** content (depending on scope settings)
-- **Triggers/Webhooks**
 
 > 💡 **Tip:** You must belong to an organization to access most features. The organization setup screen appears automatically after your first login.
 
@@ -345,7 +343,6 @@ Olio Workstation includes the following utilities:
 | **QR Code Generator** | Generate QR codes from any text or URL and download as PNG | [QR Code Generator](olio://help/qr-code-generator) |
 | **Quick Pastes** | Manage private reusable text available only to your account | [Quick Pastes](olio://help/quick-pastes) |
 | **Pastebin** | Share code and text snippets with a language label and expiry options | [Pastebin](olio://help/pastebin) |
-| **Triggers** | Create webhook triggers to connect Olio Workstation to external services | [Triggers and Webhooks](olio://help/triggers-and-webhooks) |
 
 ---
 
@@ -1832,137 +1829,6 @@ Your session is terminated and your browser credentials are cleared.
 Use dashboard edit mode for individual card positions, sizes, and visibility, and plugin controls for installation and dashboard availability. These preferences are separate from the background theme.
 
 Choose **Customize** to open **Customize App Background**. Theme and color preferences persist in the browser. See [Home Dashboard](olio://help/home-dashboard) and [Plugins and ClassDash](olio://help/plugins-and-classdash) for the layout controls.',true,17),
-('triggers-and-webhooks','Triggers and Webhooks','Set up webhook triggers to connect Olio Workstation to external services like Slack, CI pipelines, and automation tools.','## 🔎 Table of Contents
-
-1. [🧩 What are Triggers?](olio://help-anchor/what-are-triggers)
-2. [➕ Creating a Trigger](olio://help-anchor/creating-a-trigger)
-3. [🔀 HTTP Methods](olio://help-anchor/http-methods)
-4. [▶️ Testing a Trigger](olio://help-anchor/testing-a-trigger)
-5. [✏️ Editing a Trigger](olio://help-anchor/editing-a-trigger)
-6. [🗑️ Deleting a Trigger](olio://help-anchor/deleting-a-trigger)
-7. [🕐 Last Triggered Timestamp](olio://help-anchor/last-triggered-timestamp)
-8. [🔐 Security Notes](olio://help-anchor/security-notes)
-9. [💡 Delivery and troubleshooting](olio://help-anchor/delivery-and-troubleshooting)
-
----
-
-# ⚡ Triggers and Webhooks
-
-**Triggers** let you connect Olio Workstation to external services by making HTTP requests on demand. Use them to post a message to Slack, kick off a CI/CD pipeline, call an automation endpoint, or trigger any service that accepts webhooks.
-
----
-
-## 🧩 What are Triggers?
-
-A Trigger is a saved HTTP request configuration — a name, a URL, and a method. When you fire a trigger, Olio Workstation sends the request to the configured URL immediately. All triggers are shared within your organization.
-
-Common use cases:
-
-- 📣 Post a message to a **Slack** or **Teams** channel
-- 🔁 Start a **GitHub Actions** or **CircleCI** build
-- 🤖 Trigger an **n8n**, **Zapier**, or **Make** automation
-- 🔔 Hit a **notification endpoint** (PagerDuty, OpsGenie, etc.)
-
----
-
-## ➕ Creating a Trigger
-
-1. Navigate to **Utilities → Triggers** (found in the Utilities Hub)
-2. Click **+ New Trigger**
-3. Enter a **Name** — something descriptive like `Deploy to Staging` or `Notify Slack`
-4. Enter the **Webhook URL** — the full endpoint URL including any query parameters
-5. Choose the **HTTP Method** (POST or GET)
-6. Optionally add a **Description** explaining what the trigger does and when to use it
-7. Click **Save**
-
-The trigger appears in the list and is immediately ready to use.
-
----
-
-## 🔀 HTTP Methods
-
-| Method | When to Use |
-|:-------|:------------|
-| **POST** | Most webhooks — sends a JSON request body to the endpoint |
-| **GET** | Simple HTTP pings that don''t require a request body |
-
-When using POST, the trigger sends a JSON body with basic metadata:
-
-```json
-{
-  "triggered_at": "2026-09-09T10:30:00Z"
-}
-```
-
-Check your webhook service''s documentation to confirm which method it expects.
-
----
-
-## ▶️ Testing a Trigger
-
-To fire a trigger immediately:
-
-1. Find the trigger in the list
-2. Click the **Play button** (▶️) next to it
-3. Olio Workstation sends the HTTP request right away
-4. Check your external service to confirm receipt
-
-> 💡 **Tip:** Use the Test button during setup to verify your webhook URL is correct before sharing the trigger with your team.
-
-The `last_triggered_at` timestamp updates after a successful trigger response.
-
----
-
-## ✏️ Editing a Trigger
-
-1. Click the **pencil (edit) icon** next to the trigger
-2. Update any fields (name, URL, method, description)
-3. Click **Save**
-
-All changes apply immediately. Existing firing history (the timestamp) is preserved.
-
----
-
-## 🗑️ Deleting a Trigger
-
-1. Click the **trash icon** next to the trigger
-2. Confirm deletion in the dialog
-3. The trigger is permanently removed
-
-> ⚠️ **Warning:** Deletion is permanent. Any automations or bookmarks that reference this trigger''s configuration will need to be updated manually.
-
----
-
-## 🕐 Last Triggered Timestamp
-
-Every trigger displays a **Last Triggered** field showing when the trigger was last fired. This is useful for:
-
-- Confirming a trigger was actually sent
-- Debugging if a webhook delivery was missed
-- Auditing when automations ran
-
-The timestamp is in your local timezone and updates in real time after each fire.
-
----
-
-## 🔐 Security Notes
-
-> ⚠️ **Warning:** Webhook URLs often contain **API keys, tokens, or secrets** embedded directly in the URL. Because triggers are visible to all organization members, avoid using webhooks that grant broad permissions.
-
-Best practices:
-
-- Use webhook URLs with **narrow, single-purpose permissions** (e.g., a Slack webhook that only posts to one channel)
-- Rotate webhook tokens regularly
-- Do not share trigger lists or screenshots in public channels
-- Prefer **POST** over **GET** for endpoints that perform actions — GET requests may be logged in server access logs without authentication
-
----
-
-## 💡 Delivery and troubleshooting
-
-Firing a trigger sends a real request from your browser. For POST, the current payload contains **triggered_at**; GET does not include a body. The endpoint must accept the selected method and browser cross-origin requests.
-
-The last-triggered timestamp is updated after a successful response. A failed request does not confirm delivery, and retrying may repeat an action if the destination processed the earlier request. Inspect the destination before repeating a consequential trigger.',true,18),
 ('quick-pastes','Quick Pastes — Private Reusable Text','Create, organize, search, and reorder private reusable text for your signed-in account.','## 🔎 Table of Contents
 
 1. [Quick Pastes and Pastebin](olio://help-anchor/quick-pastes-and-pastebin)

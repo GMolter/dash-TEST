@@ -106,9 +106,9 @@ export function SecretSharing() {
   };
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 border border-slate-700">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+    <div className="utility-workspace glass-panel mx-auto max-w-5xl rounded-[2rem] p-5 sm:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-7">
+        <h2 className="text-2xl font-semibold tracking-tight text-white flex items-center gap-3">
           <Shield className="w-5 h-5" />
           Secret Sharing
         </h2>
@@ -119,23 +119,25 @@ export function SecretSharing() {
       {createdLink && <div role="status" className="mb-4 rounded-lg bg-green-900/20 p-4">
         <p className="text-green-300">Secret created. Copy this link to share it.</p>
         <input aria-label="New secret link" readOnly value={getSecretUrl(createdLink)} onFocus={e => e.target.select()} className="my-2 w-full bg-slate-900 p-2 text-white" />
-        <button onClick={() => copyToClipboard(createdLink)} className="rounded bg-blue-600 px-4 py-2 text-white">{copied === createdLink ? 'Copied!' : 'Copy link'}</button>
+        <button onClick={() => copyToClipboard(createdLink)} className="rounded bg-violet-500 px-4 py-2 text-white">{copied === createdLink ? 'Copied!' : 'Copy link'}</button>
       </div>}
-      <div className="mb-4 space-y-2 p-4 bg-slate-900/50 rounded-lg">
+      <div className="mb-4 space-y-4 p-5 sm:p-6 border border-white/10 bg-slate-950/30 rounded-2xl">
         <textarea
           placeholder="Enter your secret message..."
+          aria-label="Enter your secret message..."
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="w-full px-3 py-2 bg-slate-950/60 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-none"
           rows={4}
         />
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-slate-400" />
           <label className="text-slate-400 text-sm">Expires in:</label>
           <select
+            aria-label="Secret expiration"
             value={expiryHours}
             onChange={(e) => setExpiryHours(Number(e.target.value))}
-            className="px-3 py-1 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-1 bg-slate-950/60 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40"
           >
             <option value={1}>1 hour</option>
             <option value={6}>6 hours</option>
@@ -147,7 +149,7 @@ export function SecretSharing() {
         <button
           disabled={saving || !content.trim()}
           onClick={createSecret}
-          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+          className="w-full px-4 py-2 bg-violet-500 hover:bg-violet-400 rounded-lg text-white font-medium transition-colors"
         >
           Create Secret Link
         </button>
@@ -157,7 +159,7 @@ export function SecretSharing() {
         {secrets.map((secret) => (
           <div
             key={secret.id}
-            className={`bg-slate-900/50 rounded-lg p-4 ${
+            className={`border border-white/10 bg-slate-950/30 rounded-2xl p-4 ${
               secret.viewed || isExpired(secret.expires_at) ? 'opacity-50' : ''
             }`}
           >
@@ -165,7 +167,7 @@ export function SecretSharing() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
                   <span
-                    className="text-blue-400 hover:text-blue-300 font-mono text-sm truncate block"
+                    className="text-violet-300 hover:text-violet-200 break-all font-mono text-sm truncate block"
                   >
                     {getSecretUrl(secret.secret_code)}
                   </span>
@@ -207,7 +209,7 @@ export function SecretSharing() {
       </div>
 
       {secrets.length === 0 && (
-        <p className="text-slate-400 text-center py-8">No secrets yet. Create one to get started!</p>
+        <p className="rounded-2xl border border-dashed border-white/10 text-slate-400 text-center px-5 py-12 text-sm">No secrets yet. Create one to get started!</p>
       )}
     </div>
   );

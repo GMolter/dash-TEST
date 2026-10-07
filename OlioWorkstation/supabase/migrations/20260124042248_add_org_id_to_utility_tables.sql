@@ -7,7 +7,6 @@
   ## Changes
   1. Add org_id column to:
      - quicklinks
-     - triggers
      - short_urls (public links, org_id nullable)
      - secrets (public links, org_id nullable)
      - pastes (public links, org_id nullable)
@@ -25,7 +24,6 @@
 
 -- Add org_id column to utility tables
 ALTER TABLE quicklinks ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-ALTER TABLE triggers ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
 ALTER TABLE short_urls ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
 ALTER TABLE secrets ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
 ALTER TABLE pastes ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
@@ -34,7 +32,6 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES organizatio
 -- Drop existing overly permissive policies
 DROP POLICY IF EXISTS "Allow all access to quicklinks" ON quicklinks;
 DROP POLICY IF EXISTS "Allow all access to projects" ON projects;
-DROP POLICY IF EXISTS "Allow all access to triggers" ON triggers;
 DROP POLICY IF EXISTS "Allow all access to short_urls" ON short_urls;
 DROP POLICY IF EXISTS "Allow all access to secrets" ON secrets;
 DROP POLICY IF EXISTS "Allow all access to pastes" ON pastes;
@@ -58,28 +55,6 @@ CREATE POLICY "quicklinks_update_own_org"
 
 CREATE POLICY "quicklinks_delete_own_org"
   ON quicklinks FOR DELETE
-  TO authenticated
-  USING (org_id = current_user_org_id());
-
--- Triggers policies (org-scoped)
-CREATE POLICY "triggers_select_own_org"
-  ON triggers FOR SELECT
-  TO authenticated
-  USING (org_id = current_user_org_id());
-
-CREATE POLICY "triggers_insert_own_org"
-  ON triggers FOR INSERT
-  TO authenticated
-  WITH CHECK (org_id = current_user_org_id());
-
-CREATE POLICY "triggers_update_own_org"
-  ON triggers FOR UPDATE
-  TO authenticated
-  USING (org_id = current_user_org_id())
-  WITH CHECK (org_id = current_user_org_id());
-
-CREATE POLICY "triggers_delete_own_org"
-  ON triggers FOR DELETE
   TO authenticated
   USING (org_id = current_user_org_id());
 

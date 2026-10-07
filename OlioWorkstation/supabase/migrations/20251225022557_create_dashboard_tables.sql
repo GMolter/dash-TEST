@@ -2,7 +2,7 @@
   # Personal Dashboard Schema
 
   ## Overview
-  Creates all necessary tables for a personal dashboard application with 7 modules.
+  Creates all necessary tables for a personal dashboard application with 5 core tables.
 
   ## New Tables
 
@@ -24,23 +24,14 @@
   - `created_at` (timestamptz)
   - `updated_at` (timestamptz)
 
-  ### 3. triggers
-  - `id` (uuid, primary key)
-  - `name` (text) - Trigger display name
-  - `webhook_url` (text) - Webhook URL to call
-  - `method` (text) - HTTP method (GET, POST)
-  - `description` (text) - Optional description
-  - `last_triggered_at` (timestamptz) - Last execution time
-  - `created_at` (timestamptz)
-
-  ### 4. short_urls
+  ### 3. short_urls
   - `id` (uuid, primary key)
   - `short_code` (text, unique) - The short URL identifier
   - `target_url` (text) - The destination URL
   - `clicks` (integer) - Click counter
   - `created_at` (timestamptz)
 
-  ### 5. secrets
+  ### 4. secrets
   - `id` (uuid, primary key)
   - `secret_code` (text, unique) - The secret identifier
   - `content` (text) - The encrypted/stored secret
@@ -48,7 +39,7 @@
   - `expires_at` (timestamptz) - When the secret expires
   - `created_at` (timestamptz)
 
-  ### 6. pastes
+  ### 5. pastes
   - `id` (uuid, primary key)
   - `paste_code` (text, unique) - The paste identifier
   - `title` (text) - Optional paste title
@@ -92,17 +83,6 @@ CREATE TABLE IF NOT EXISTS projects (
   updated_at timestamptz DEFAULT now()
 );
 
--- Create triggers table
-CREATE TABLE IF NOT EXISTS triggers (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  webhook_url text NOT NULL,
-  method text DEFAULT 'POST',
-  description text DEFAULT '',
-  last_triggered_at timestamptz,
-  created_at timestamptz DEFAULT now()
-);
-
 -- Create short_urls table
 CREATE TABLE IF NOT EXISTS short_urls (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -137,7 +117,6 @@ CREATE TABLE IF NOT EXISTS pastes (
 -- Enable RLS on all tables
 ALTER TABLE quicklinks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE triggers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE short_urls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE secrets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pastes ENABLE ROW LEVEL SECURITY;
@@ -152,11 +131,6 @@ CREATE POLICY "Allow all access to quicklinks"
 
 CREATE POLICY "Allow all access to projects"
   ON projects FOR ALL
-  USING (true)
-  WITH CHECK (true);
-
-CREATE POLICY "Allow all access to triggers"
-  ON triggers FOR ALL
   USING (true)
   WITH CHECK (true);
 

@@ -18,7 +18,7 @@ describe("admin resource registry", () => {
   });
 
   it("omits sensitive plaintext from list projections", () => {
-    for (const key of ["pastes", "quick-pastes", "project-files", "triggers", "short-urls", "organizations"]) {
+    for (const key of ["pastes", "quick-pastes", "project-files", "short-urls", "organizations"]) {
       const resource = ADMIN_RESOURCES[key];
       const sensitive = sensitiveColumns(resource);
       expect(sensitive.length).toBeGreaterThan(0);
@@ -73,7 +73,6 @@ describe("admin resource registry", () => {
     expect(ADMIN_ACCOUNT_SCOPES["launcher-devices"]).toBe("owner");
     expect(ADMIN_ACCOUNT_SCOPES).not.toHaveProperty("app-settings");
     expect(ADMIN_ACCOUNT_SCOPES).not.toHaveProperty("secrets");
-    expect(ADMIN_ACCOUNT_SCOPES).not.toHaveProperty("triggers");
     for (const key of Object.keys(ADMIN_ACCOUNT_SCOPES)) expect(ADMIN_RESOURCES).toHaveProperty(key);
   });
 });

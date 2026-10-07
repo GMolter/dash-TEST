@@ -19,8 +19,6 @@ describe('Help Center content', () => {
       const source = article.slug === 'organization-management' ? readFileSync(resolve('supabase/migrations/20260922201000_admin_organization_help.sql'), 'utf8') : ['organizations', 'utilities-hub', 'quick-links', 'organization-management', 'profile-and-settings'].includes(article.slug) ? deletionUpdate : migration;
       expect(source).toContain(article.content.replaceAll("'", "''"));
     }
-    expect(articles.some(article => article.slug === 'triggers-and-webhooks')).toBe(false);
-    expect(migration).toContain("WHERE slug='triggers-and-webhooks'");
   });
   it('uses valid article links and section anchors in the site renderer', () => {
     const slugs = new Set(articles.map(article => article.slug));

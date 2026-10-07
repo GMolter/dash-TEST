@@ -55,6 +55,12 @@ export function MapLocationPicker({
   const mapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(720);
   const height = 280;
+  const selectedLat = value?.lat;
+  const selectedLng = value?.lng;
+
+  useEffect(() => {
+    if (selectedLat !== undefined && selectedLng !== undefined) setCenter({ lat: selectedLat, lng: selectedLng });
+  }, [selectedLat, selectedLng]);
 
   useEffect(() => {
     const map = mapRef.current;
