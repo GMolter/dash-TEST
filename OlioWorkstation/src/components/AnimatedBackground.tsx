@@ -159,6 +159,8 @@ type AnimatedBackgroundProps = {
   theme?: AppBackgroundTheme;
   preset?: AppBackgroundPreset;
   fixed?: boolean;
+  /** Render a still frame for embedded previews; redraw only when resized. */
+  animate?: boolean;
   className?: string;
 };
 
@@ -166,6 +168,7 @@ export function AnimatedBackground({
   theme = 'dynamic-waves',
   preset = 'indigo',
   fixed = true,
+  animate = true,
   className,
 }: AnimatedBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -631,7 +634,7 @@ export function AnimatedBackground({
       drawNoise(themeConfig.noiseAlpha);
       drawVignette(themeConfig.vignetteAlpha);
       time += 0.3;
-      rafRef.current = requestAnimationFrame(drawWaves);
+      if (animate) rafRef.current = requestAnimationFrame(drawWaves);
     };
 
     const drawContourDrift = () => {
@@ -734,14 +737,20 @@ export function AnimatedBackground({
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, w, h);
 
-      rafRef.current = requestAnimationFrame(drawContourDrift);
+      if (animate) rafRef.current = requestAnimationFrame(drawContourDrift);
     };
 
-    const onResize = () => resize();
+    const onResize = () => {
+      resize();
+      if (!animate) {
+        if (theme === 'contour-drift') drawContourDrift();
+        else drawWaves();
+      }
+    };
     window.addEventListener('resize', onResize);
     let observer: ResizeObserver | null = null;
     if (!fixed && typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(() => resize());
+      observer = new ResizeObserver(onResize);
       observer.observe(canvas);
     }
 
@@ -755,7 +764,7 @@ export function AnimatedBackground({
       observer?.disconnect();
       if (fixed) document.body.style.background = prevBg;
     };
-  }, [theme, preset, fixed]);
+  }, [theme, preset, fixed, animate]);
 
   return (
     <canvas

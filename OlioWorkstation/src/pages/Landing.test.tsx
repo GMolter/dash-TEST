@@ -50,26 +50,26 @@ describe('Landing product tour', () => {
     expect(scrollIntoView).toHaveBeenLastCalledWith({ behavior: 'instant', block: 'start' });
   });
 
-  it('uses the actual task panel with local sample data', () => {
+  it('uses the actual task panel with local sample data', async () => {
     render(<Landing />);
     fireEvent.click(screen.getByRole('button', { name: /My Tasks/ }));
-    expect(screen.getByText('Review the project brief')).toBeInTheDocument();
+    expect(await screen.findByText('Review the project brief')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Mark task complete' }));
     expect(screen.getByRole('button', { name: 'Mark task incomplete' })).toBeInTheDocument();
   });
 
-  it('keeps preview utility preferences out of account storage', () => {
+  it('keeps preview utility preferences out of account storage', async () => {
     localStorage.setItem('utilities_show_desc', 'true');
     render(<Landing />);
     fireEvent.click(screen.getByRole('button', { name: /^03 Utilities$/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Show Descriptions/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Show Descriptions/ }));
     fireEvent.click(screen.getByRole('button', { name: /Hide Descriptions/ }));
     expect(localStorage.getItem('utilities_show_desc')).toBe('true');
   });
-  it('adds example board cards without needing a workspace connection', () => {
+  it('adds example board cards without needing a workspace connection', async () => {
     render(<Landing />);
     fireEvent.click(screen.getByRole('button', { name: '02 Projects' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add task to To Do' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add task to To Do' }));
     fireEvent.change(screen.getByPlaceholderText('Task title...'), { target: { value: 'Review accessibility' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add', exact: true }));
     expect(screen.getByRole('button', { name: 'Open task: Review accessibility' })).toBeInTheDocument();
