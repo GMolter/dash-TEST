@@ -6,6 +6,7 @@ import { loadAdminOverview, loadAdminResource } from './api';
 import type { AdminListResponse } from './types';
 
 vi.mock('./api', () => ({ loadAdminOverview: vi.fn(), loadAdminResource: vi.fn(), loadAdminUserAccount: vi.fn(), revealAdminField: vi.fn() }));
+vi.mock('./AdminFeaturesPage', () => ({ AdminFeaturesPage: () => <div>Shared feature ideas</div> }));
 vi.mock('./AdminOperationDialog', () => ({ AdminOperationDialog: ({ operation }: { operation: unknown }) => operation ? <output data-testid="operation">{JSON.stringify(operation)}</output> : null }));
 const resources = [
   { key: 'projects', label: 'Projects', group: 'projects', actions: ['update'] },
@@ -23,6 +24,32 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/admin');
   vi.mocked(loadAdminOverview).mockResolvedValue({ isOwner: true, metrics: {}, recentAudit: [], resources });
   vi.mocked(loadAdminResource).mockImplementation(async input => list(input.resource));
+});
+
+it('keeps deployment links outside the collapsed workspace tools and opens them in new tabs', async () => {
+  render(<AdminOperationsConsole />);
+  const navigation = await screen.findByRole('navigation', { name: 'Admin navigation' });
+  expect(within(navigation).getByRole('button', { name: 'Workspace tools' })).toHaveAttribute('aria-expanded', 'false');
+  const supabase = within(navigation).getByRole('link', { name: /Supabase/ });
+  expect(supabase).toHaveAttribute('href', 'https://supabase.com/dashboard/project/zttlbebkdqlgwtomnrtr');
+  expect(supabase).toHaveAttribute('target', '_blank');
+  expect(supabase).toHaveAttribute('rel', 'noopener noreferrer');
+  const vercel = within(navigation).getByRole('link', { name: /Vercel/ });
+  expect(vercel).toHaveAttribute('href', 'https://vercel.com/gmolter8-gmailcoms-projects/dash-test-51zf/deployments');
+  expect(vercel).toHaveAttribute('target', '_blank');
+  await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace tools' }));
+  await userEvent.click(within(navigation).getByRole('button', { name: 'New features' }));
+  expect(await screen.findByText('Shared feature ideas')).toBeVisible();
+  expect(loadAdminResource).not.toHaveBeenCalled();
+  expect(window.location.search).toBe('?section=features');
+});
+
+it('opens the New features deep link with workspace tools expanded', async () => {
+  window.history.replaceState({}, '', '/admin?section=features');
+  render(<AdminOperationsConsole />);
+  expect(await screen.findByText('Shared feature ideas')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Workspace tools' })).toHaveAttribute('aria-expanded', 'true');
+  expect(loadAdminResource).not.toHaveBeenCalled();
 });
 
 it('moves Activity into Workspace tools and replaces the three navigation entries with Workspace data', async () => {

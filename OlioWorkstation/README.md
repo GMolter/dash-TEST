@@ -37,6 +37,13 @@ The Vercel project Root Directory should be configured as `OlioWorkstation`.
 
 ## Admin operations console
 
+The sidebar provides direct Supabase and Vercel deployment links outside the Workspace
+tools accordion. Workspace tools → New features is a shared admin-only ideas list with
+optional notes and Idea / In progress / Completed statuses. Apply
+`20261008230000_admin_feature_ideas.sql` before using it. Row-level policies restrict
+reads and writes to current app admins and enforce the account ban guard. This lightweight
+list saves directly; it does not use the sensitive account-operation confirmation flow.
+
 Account management → Quick links & folders supports bulk selection, Copy/Cut/Paste,
 Move to another profile or folder, common icon/scope edits, and Olio JSON import/export.
 Selecting a folder includes every contained link, even when collapsed or filtered.

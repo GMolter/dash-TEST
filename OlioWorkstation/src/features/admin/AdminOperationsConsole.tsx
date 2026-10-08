@@ -1,10 +1,11 @@
+import { AdminFeaturesPage } from "./AdminFeaturesPage";
 import { AdminBannerPage } from "./AdminBannerPage";
 import { NotFound } from "../../pages/NotFound";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, BookOpenText, Building2, Database, Gauge,
   LayoutDashboard, Menu, Plug, RefreshCw, Shield, ShieldAlert,
-  ShieldCheck, Users, X, ChevronDown, ArrowRight, Megaphone,
+  ShieldCheck, Users, X, ChevronDown, ArrowRight, Megaphone, Lightbulb, ExternalLink,
 } from "lucide-react";
 import { loadAdminOverview, loadAdminResource, loadAdminUserAccount, revealAdminField } from "./api";
 import { AdminOperationDialog } from "./AdminOperationDialog";
@@ -26,6 +27,7 @@ const NAVIGATION = [
   { key: "people", label: "People", icon: Users },
   { key: "organizations", label: "Organizations", icon: Building2 },
   { key: "banner", label: "Banners", icon: Megaphone },
+  { key: "features", label: "New features", icon: Lightbulb },
   { key: "workspace", label: "Workspace data", icon: Database },
   { key: "integrations", label: "Integrations", icon: Plug },
   { key: "platform", label: "Help Center", icon: BookOpenText },
@@ -64,6 +66,7 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
 export function AdminOperationsConsole() {
   const initial = readLocation();
   const [organizationId, setOrganizationId] = useState(initial.organization);
+  const [featureRefresh, setFeatureRefresh] = useState(0);
   const [bannerRefresh, setBannerRefresh] = useState(0);
   const [organizationRefresh, setOrganizationRefresh] = useState(0);
   const [access, setAccess] = useState<AccessState>("checking");
@@ -80,7 +83,7 @@ export function AdminOperationsConsole() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(["workspace", "integrations", "platform", "audit"].includes(initial.section));
+  const [moreOpen, setMoreOpen] = useState(["workspace", "features", "integrations", "platform", "audit"].includes(initial.section));
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -118,7 +121,7 @@ export function AdminOperationsConsole() {
         setFilters({});
         return;
       }
-      if (!accountUserId && section !== "overview" && section !== "banner" && !next.resources.some((item) => item.key === resource && resourceInSection(item.group, section))) {
+      if (!accountUserId && section !== "overview" && section !== "banner" && section !== "features" && !next.resources.some((item) => item.key === resource && resourceInSection(item.group, section))) {
         const first = next.resources.find((item) => resourceInSection(item.group, section));
         setResource(first?.key || "users");
       }
@@ -154,7 +157,7 @@ export function AdminOperationsConsole() {
 
   const refreshResource = useCallback(async () => {
     const request = ++resourceRequest.current;
-    if (access !== "ready" || organizationId || section === "overview" || section === "banner" || !resource || accountLinks || (accountUserId && !accountOverview)) { setLoading(false); return; }
+    if (access !== "ready" || organizationId || section === "overview" || section === "banner" || section === "features" || !resource || accountLinks || (accountUserId && !accountOverview)) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
@@ -180,7 +183,7 @@ export function AdminOperationsConsole() {
   useEffect(() => {
     const query = new URLSearchParams();
     query.set("section", section);
-    if (section !== "overview" && section !== "banner" && resource) query.set("resource", resource);
+    if (section !== "overview" && section !== "banner" && section !== "features" && resource) query.set("resource", resource);
     if (accountUserId) query.set("account", accountUserId);
     if (organizationId) query.set("organization", organizationId);
     if (row?._admin_id) query.set("record", row._admin_id);
@@ -190,7 +193,7 @@ export function AdminOperationsConsole() {
   function selectSection(nextSection: string) {
     nextSection = adminSection(nextSection);
     setData(null);
-    if (['workspace', 'integrations', 'platform', 'audit'].includes(nextSection)) setMoreOpen(true);
+    if (['workspace', 'features', 'integrations', 'platform', 'audit'].includes(nextSection)) setMoreOpen(true);
     setOrganizationId("");
     setAccountUserId("");
     setAccountOverview(null);
@@ -376,10 +379,15 @@ export function AdminOperationsConsole() {
             })}
             <div className="pt-4">
               <button aria-expanded={moreOpen} aria-controls="admin-more-navigation" onClick={() => setMoreOpen(!moreOpen)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white">Workspace tools<ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} /></button>
-              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{NAVIGATION.filter((item) => ["workspace", "integrations", "platform", "audit"].includes(item.key)).map((item) => {
+              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{NAVIGATION.filter((item) => ["workspace", "features", "integrations", "platform", "audit"].includes(item.key)).map((item) => {
                 const Icon = item.icon;
                 return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-500 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" />{item.label}</button>;
               })}</div>}
+            </div>
+            <div aria-label="Deployment dashboards" className="!mt-6 space-y-2 border-t border-white/10 px-1 pt-4">
+              <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Deployments</p>
+              <a href="https://supabase.com/dashboard/project/zttlbebkdqlgwtomnrtr" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border border-emerald-400/15 bg-emerald-400/5 px-3 py-2.5 text-sm text-emerald-200 hover:bg-emerald-400/10"><Database className="h-4 w-4" /><span className="flex-1">Supabase</span><ExternalLink className="h-3.5 w-3.5" /><span className="sr-only"> (opens in a new tab)</span></a>
+              <a href="https://vercel.com/gmolter8-gmailcoms-projects/dash-test-51zf/deployments" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-slate-200 hover:bg-white/10"><svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4 fill-current"><path d="M8 2 16 15H0Z" /></svg><span className="flex-1">Vercel</span><ExternalLink className="h-3.5 w-3.5" /><span className="sr-only"> (opens in a new tab)</span></a>
             </div>
           </nav>
           <div className="space-y-2 border-t border-white/10 pt-4">
@@ -395,13 +403,13 @@ export function AdminOperationsConsole() {
               <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-200 lg:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
               <div><h1 className="text-2xl font-semibold">{accountUserId ? "Account management" : NAVIGATION.find((item) => item.key === section)?.label || "Overview"}</h1></div>
             </div>
-            <button onClick={() => { if (section === "banner") { setBannerRefresh(v => v + 1); } else if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
+            <button onClick={() => { if (section === "features") { setFeatureRefresh(v => v + 1); } else if (section === "banner") { setBannerRefresh(v => v + 1); } else if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
           </header>
 
           {toast && <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100"><span>{toast}</span><button onClick={() => setToast(null)}><X className="h-4 w-4" /></button></div>}
           {error && <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-          {section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : accountUserId ? (
+          {section === "features" ? <AdminFeaturesPage refreshVersion={featureRefresh} /> : section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : accountUserId ? (
             <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
               {accountLinks && accountOverview ? <AdminAccountQuicklinks key={accountUserId} user={accountOverview.user} onComplete={() => { void refreshAccount(); void loadAdminOverview().then(setOverview).catch(() => undefined); }} onOpenReference={openReference} /> : resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
