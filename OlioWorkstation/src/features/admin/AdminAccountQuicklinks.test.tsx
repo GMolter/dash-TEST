@@ -26,6 +26,66 @@ beforeEach(() => {
 });
 
 describe("AdminAccountQuicklinks", () => {
+  it("copies a collapsed folder and its children into a reviewed bulk operation", async () => {
+    const actor = userEvent.setup();
+    render(<AdminAccountQuicklinks user={user} onComplete={vi.fn()} onOpenReference={vi.fn()} />);
+    await actor.click(await screen.findByRole('checkbox', { name: 'Select folder School and its links' }));
+    expect(screen.getByText('2 selected, including folder contents')).toBeInTheDocument();
+    await actor.click(screen.getByRole('button', { name: 'Copy' }));
+    expect(screen.queryByTestId('operation')).not.toBeInTheDocument();
+    await actor.click(screen.getByRole('button', { name: 'Paste' }));
+    await actor.click(screen.getByRole('button', { name: 'Review bulk action' }));
+    expect(JSON.parse(screen.getByTestId('operation').textContent!)).toMatchObject({ kind: 'bulk-quicklinks', values: { mode: 'copy', source_user_id: 'user-1', target_user_id: 'user-1', folder_ids: ['folder-1'], link_ids: ['nested'] } });
+  });
+
+  it("retains cut items when navigating to another profile and only stages the move on paste", async () => {
+    const actor = userEvent.setup();
+    const props = { onComplete: vi.fn(), onOpenReference: vi.fn() };
+    const view = render(<AdminAccountQuicklinks user={user} {...props} />);
+    await actor.click(await screen.findByRole('checkbox', { name: 'Select link Root link' }));
+    await actor.click(screen.getByRole('button', { name: 'Cut' }));
+    expect(screen.queryByTestId('operation')).not.toBeInTheDocument();
+    expect(screen.getByText('Root link')).toBeInTheDocument();
+    view.rerender(<AdminAccountQuicklinks user={{ ...user, _admin_id: 'user-2', display_name: 'Blair' }} {...props} />);
+    await actor.click(await screen.findByRole('button', { name: 'Paste' }));
+    await actor.click(screen.getByRole('button', { name: 'Review bulk action' }));
+    expect(JSON.parse(screen.getByTestId('operation').textContent!)).toMatchObject({ values: { mode: 'move', source_user_id: 'user-1', target_user_id: 'user-2', folder_ids: [], link_ids: ['root'] } });
+  });
+
+  it("bulk edits folder contents and requires an explicit changed field", async () => {
+    const actor = userEvent.setup();
+    render(<AdminAccountQuicklinks user={user} onComplete={vi.fn()} onOpenReference={vi.fn()} />);
+    await actor.click(await screen.findByRole('checkbox', { name: 'Select folder School and its links' }));
+    await actor.click(screen.getByRole('button', { name: 'Bulk edit' }));
+    expect(screen.getByRole('button', { name: 'Review bulk action' })).toBeDisabled();
+    await actor.selectOptions(screen.getByRole('combobox', { name: 'Bulk scope' }), 'personal');
+    await actor.click(screen.getByRole('button', { name: 'Review bulk action' }));
+    expect(JSON.parse(screen.getByTestId('operation').textContent!)).toMatchObject({ values: { mode: 'edit', folder_ids: ['folder-1'], link_ids: ['nested'], patch: { scope: 'personal' } } });
+  });
+
+  it('validates an imported file before staging folders and links for review', async () => {
+    const actor = userEvent.setup();
+    render(<AdminAccountQuicklinks user={user} onComplete={vi.fn()} onOpenReference={vi.fn()} />);
+    const input = await screen.findByLabelText('Import quicklinks JSON');
+    const file = new File(['{}'], 'links.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: async () => JSON.stringify({ format: 'olio-quicklinks', version: 1, folders: [{ key: 'f', name: 'Imported', icon: '', scope: 'personal', order_index: 0 }], links: [{ title: 'Course', url: 'https://example.com', icon: '', scope: 'personal', order_index: 0, folder: 'f' }] }) });
+    await actor.upload(input, file);
+    expect(await screen.findByRole('heading', { name: 'import 2 items' })).toBeInTheDocument();
+    expect(screen.queryByTestId('operation')).not.toBeInTheDocument();
+    await actor.click(screen.getByRole('button', { name: 'Review bulk action' }));
+    expect(JSON.parse(screen.getByTestId('operation').textContent!)).toMatchObject({ values: { mode: 'import', target_user_id: 'user-1', bundle: { folders: [{ name: 'Imported' }], links: [{ folder: 'f' }] } } });
+  });
+
+  it('shows an invalid import error without staging a write', async () => {
+    const actor = userEvent.setup();
+    render(<AdminAccountQuicklinks user={user} onComplete={vi.fn()} onOpenReference={vi.fn()} />);
+    const file = new File(['{}'], 'invalid.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: async () => '{}' });
+    await actor.upload(await screen.findByLabelText('Import quicklinks JSON'), file);
+    expect(await screen.findByRole('alert')).toHaveTextContent('INVALID_BUNDLE');
+    expect(screen.queryByTestId('operation')).not.toBeInTheDocument();
+  });
+
   it("loads all pages, nests links and searches within collapsed folders", async () => {
     const actor = userEvent.setup();
     render(<AdminAccountQuicklinks user={user} onComplete={vi.fn()} onOpenReference={vi.fn()} />);

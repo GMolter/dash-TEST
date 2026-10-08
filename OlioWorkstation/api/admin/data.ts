@@ -1,4 +1,5 @@
 import { protectedOwnerRows } from "../_utils/adminOwnerProtection.js";
+import { planQuicklinkOperation } from "../_utils/adminQuicklinks.js";
 export const config = { runtime: "nodejs", maxDuration: 30 };
 
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
@@ -21,7 +22,7 @@ import {
 } from "../_utils/adminResources.js";
 
 type OperationKind =
-  | "create" | "update" | "delete" | "reveal"
+  | "create" | "update" | "delete" | "reveal" | "bulk-quicklinks"
   | "ban" | "unban" | "reset-password" | "request-admin" | "revoke-admin"
   | "approve-admin" | "reject-admin" | "request-delete" | "remove-organization"
   | "transfer-owner" | "regenerate-code" | "set-member" | "remove-member"
@@ -190,6 +191,12 @@ function applyId(query: any, resource: AdminResource, id: string) {
 }
 
 function assertOperation(resource: AdminResource, operation: AdminOperation) {
+  if (operation.kind === "bulk-quicklinks" && resource.key === "quicklinks") {
+    if (typeof operation.reason !== "string" || operation.reason.trim().length < 3 || operation.reason.length > 500) throw new Error("REASON_REQUIRED");
+    operation.reason = operation.reason.trim();
+    operation.ids = [];
+    return;
+  }
   if (!resourceActions(resource).includes(operation.kind)) throw new Error("ACTION_NOT_ALLOWED");
   const reason = String(operation.reason || "").trim();
   if (reason.length < 3 || reason.length > 500) throw new Error("REASON_REQUIRED");
@@ -795,7 +802,8 @@ export default async function handler(req: any, res: any) {
         if (members?.length) throw new Error("OWNER_ACCOUNT_PROTECTED");
       }
     }
-    const protectionRows = operation.kind === "create" ? [] : await fetchRows(service, resource, normalizeIds(operation.ids), false);
+    const bulkQuicklinks = operation.kind === "bulk-quicklinks" && resource.key === "quicklinks";
+    const protectionRows = operation.kind === "create" || bulkQuicklinks ? [] : await fetchRows(service, resource, normalizeIds(operation.ids), false);
     if ((await protectedOwnerRows(service, resource, [...protectionRows, operation.values || {}], access.appOwner)).some(Boolean)) throw new Error("OWNER_ACCOUNT_PROTECTED");
     if (phase === "reveal") {
       const ids = normalizeIds(operation.ids);
@@ -812,7 +820,8 @@ export default async function handler(req: any, res: any) {
 
     assertOperation(resource, operation);
     if (resource.key === "users") await guardUserOperation(service, access.userId, access.appOwner, operation);
-    const beforeRows = operation.kind === "create" ? [] : await fetchRows(service, resource, operation.ids || [], true);
+    const quicklinkPlan = bulkQuicklinks ? await planQuicklinkOperation(service, operation.values || {}, access.appOwner) : null;
+    const beforeRows = quicklinkPlan ? [...quicklinkPlan.expected.folders, ...quicklinkPlan.expected.links] : operation.kind === "create" ? [] : await fetchRows(service, resource, operation.ids || [], true);
     let membershipState: unknown = null;
     if (resource.key === "organizations" && ["set-member", "remove-member", "transfer-owner"].includes(operation.kind)) {
       const { data, error } = await service.from("profiles").select("id,org_id,role").or(`org_id.eq.${operation.ids![0]},id.eq.${operation.values?.member_id || operation.values?.owner_id}`).order("id");
@@ -824,7 +833,7 @@ export default async function handler(req: any, res: any) {
       if (error) throw error;
       if (data && data.id !== operation.ids?.[0]) throw new Error("INVALID_JOIN_CODE: That join code is already in use.");
     }
-    const fingerprint = sha({ beforeRows, membershipState });
+    const fingerprint = sha({ beforeRows, membershipState, ...(quicklinkPlan ? { quicklinks: quicklinkPlan.expected } : {}) });
     const digest = sha(operation);
 
     if (phase === "prepare") {
@@ -837,7 +846,7 @@ export default async function handler(req: any, res: any) {
       const payload: TokenPayload = { v: 1, actor: access.userId, operationId, digest, fingerprint, confirmation, exp: Math.floor(Date.now() / 1000) + TOKEN_SECONDS };
       return res.status(200).json({
         operationToken: signPayload(payload), expiresAt: new Date(payload.exp * 1000).toISOString(), confirmation,
-        preview: { action: operation.kind, resource: resource.label, count: operation.kind === "create" ? 1 : beforeRows.length, targets: sanitizeAudit(resource, beforeRows), changes: Object.keys(operation.values || {}), impact },
+        preview: { action: quicklinkPlan ? `${quicklinkPlan.mode} quick links` : operation.kind, resource: resource.label, count: quicklinkPlan ? quicklinkPlan.count : operation.kind === "create" ? 1 : beforeRows.length, targets: sanitizeAudit(resource, beforeRows), changes: Object.keys(operation.values || {}), impact, ...(quicklinkPlan ? { summary: quicklinkPlan.summary } : {}) },
       });
     }
 
@@ -849,9 +858,9 @@ export default async function handler(req: any, res: any) {
 
     const auditInsert = {
       operation_id: payload.operationId, actor_id: access.userId, actor_email: access.email,
-      action: operation.kind, resource: resource.key, target_ids: operation.ids || [], reason: operation.reason,
+      action: operation.kind, resource: resource.key, target_ids: quicklinkPlan ? beforeRows.map(row => String(row.id)) : operation.ids || [], reason: operation.reason,
       changed_fields: operation.kind === "reveal" ? operation.revealFields || [] : Object.keys(operation.values || {}),
-      before_data: sanitizeAudit(resource, membershipState ? { organizations: beforeRows, members: membershipState } : beforeRows), after_data: sanitizeAudit(resource, operation.values || {}), status: "pending",
+      before_data: sanitizeAudit(resource, membershipState ? { organizations: beforeRows, members: membershipState } : beforeRows), after_data: sanitizeAudit(resource, quicklinkPlan ? { mode: quicklinkPlan.mode, count: quicklinkPlan.count, target_user_id: operation.values?.target_user_id } : operation.values || {}), status: "pending",
     };
     const { data: audit, error: auditError } = await service.from("admin_audit_log").insert(auditInsert).select("id").single();
     if (auditError) {
@@ -860,12 +869,16 @@ export default async function handler(req: any, res: any) {
     }
 
     try {
-      const result = resource.key === "users" ? await executeUser(service, operation, access) : await executeNormal(service, resource, operation, access);
+      const result = quicklinkPlan ? await (async () => {
+        const { data, error } = await service.rpc("admin_bulk_quicklinks", { p_plan: quicklinkPlan });
+        if (error) throw error;
+        return data;
+      })() : resource.key === "users" ? await executeUser(service, operation, access) : await executeNormal(service, resource, operation, access);
       const resultRecord = result && typeof result === "object" && !Array.isArray(result) ? result as Record<string, unknown> : null;
       const resultId = resultRecord?._admin_id || resultRecord?.id || resultRecord?.owner_id;
       await service.from("admin_audit_log").update({
         status: "succeeded",
-        target_ids: operation.ids?.length ? operation.ids : (resultId ? [String(resultId)] : []),
+        target_ids: quicklinkPlan ? [...new Set([...quicklinkPlan.expected.folders, ...quicklinkPlan.expected.links, ...quicklinkPlan.folders, ...quicklinkPlan.links].map(row => String(row.id)))] : operation.ids?.length ? operation.ids : (resultId ? [String(resultId)] : []),
         after_data: sanitizeAudit(resource, result),
         completed_at: new Date().toISOString(),
       }).eq("id", audit.id);
@@ -880,6 +893,7 @@ export default async function handler(req: any, res: any) {
     }
     if (["42703", "42P01", "PGRST204", "PGRST205", "PGRST202"].includes(error?.code)) {
       console.error("admin database schema unavailable", { code: error.code });
+      if (String(error?.message || '').includes('admin_bulk_quicklinks')) return res.status(503).json({ error: 'Bulk quick links require Supabase migration 20261008220000_admin_quicklink_bulk.sql. Apply it, then refresh.' });
       return res.status(503).json({ error: "Admin database setup is incomplete. Apply the latest Supabase migrations, including 20260908120000_admin_operations_console.sql 20260908170000_add_app_owners_and_admin_reviews.sql, and 20260922200000_admin_organization_management.sql, then refresh." });
     }
     if (error?.message === "ACCOUNT_OWNS_ORGANIZATION" || (error?.code === "23503" && String(error?.message).includes('organizations_owner_id_fkey'))) {

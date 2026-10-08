@@ -3,6 +3,7 @@ import { ChevronDown, Folder, Link, Pencil, Plus, Search } from "lucide-react";
 import { loadAdminResource } from "./api";
 import { AdminRecordDrawer } from "./AdminRecordDrawer";
 import { AdminOperationDialog } from "./AdminOperationDialog";
+import { AdminQuicklinkBulkTools, clearQuicklinkCutClipboard } from "./AdminQuicklinkBulkTools";
 import type { AdminListResponse, AdminOperation, AdminReference, AdminRow } from "./types";
 
 type Props = { user: AdminRow; onComplete: () => void; onOpenReference: (reference: AdminReference) => void };
@@ -28,6 +29,11 @@ export function AdminAccountQuicklinks({ user, onComplete, onOpenReference }: Pr
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editor, setEditor] = useState<Editor | null>(null);
   const [pending, setPending] = useState<Omit<AdminOperation, "reason"> | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  useEffect(() => { setSelected(new Set()); setPending(null); setEditor(null); }, [user._admin_id]);
+  function toggleSelection(key: string) {
+    setSelected(current => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; });
+  }
   useEffect(() => {
     let active = true;
     setCollections(null);
@@ -58,6 +64,7 @@ export function AdminAccountQuicklinks({ user, onComplete, onOpenReference }: Pr
   }
   function linkRow(row: AdminRow) {
     return <div key={row._admin_id} className="flex min-w-0 items-center gap-3 px-4 py-4">
+      <input type="checkbox" aria-label={`Select link ${row.title}`} checked={selected.has(`link:${row._admin_id}`) || selected.has(`folder:${row.folder_id}`)} disabled={selected.has(`folder:${row.folder_id}`)} onChange={() => toggleSelection(`link:${row._admin_id}`)} />
       <Link className="h-5 w-5 shrink-0 text-blue-300" />
       <button className="min-w-0 flex-1 text-left" onClick={() => setEditor({ data: links, row })}><span className="block truncate text-sm font-medium text-white">{String(row.title || "Untitled link")}</span><span className="block truncate text-xs text-slate-400">{String(row.url || "No URL")}</span>{Boolean(row.folder_id) && !folderIds.has(String(row.folder_id)) && <span className="text-xs text-amber-200">Folder outside this account view</span>}</button>
       <span className="text-xs capitalize text-slate-400">{String(row.scope || "personal")}</span>
@@ -69,6 +76,7 @@ export function AdminAccountQuicklinks({ user, onComplete, onOpenReference }: Pr
       <div><h3 className="font-semibold">Quick links & folders</h3><p className="mt-1 text-xs text-slate-400">{links.total} links · {folders.total} folders</p></div>
       <div className="flex gap-2">{folders.actions.includes("create") && <button className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm" onClick={() => create(folders)}><Folder className="h-4 w-4" /> Add folder</button>}{links.actions.includes("create") && <button className="inline-flex items-center gap-2 rounded-lg bg-blue-500/15 px-3 py-2 text-sm text-blue-100" onClick={() => create(links)}><Plus className="h-4 w-4" /> Add quick link</button>}</div>
     </div>
+    <AdminQuicklinkBulkTools key={user._admin_id} user={user} folders={folders.rows} links={links.rows} selected={selected} onSelect={setSelected} onOperation={setPending} />
     <label className="m-4 flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2"><Search className="h-4 w-4 text-slate-400" /><input aria-label="Search links and folders" placeholder="Search links and folders…" value={search} onChange={(event) => setSearch(event.target.value)} className="w-full bg-transparent text-sm outline-none" /></label>
     <div className="divide-y divide-white/10">{visible.map(({ row, folder }) => {
       if (!folder) return linkRow(row);
@@ -76,6 +84,7 @@ export function AdminAccountQuicklinks({ user, onComplete, onOpenReference }: Pr
       const open = expanded.has(row._admin_id) || Boolean(query);
       return <article key={row._admin_id}>
         <div className="flex flex-wrap items-center gap-3 px-4 py-4">
+          <input type="checkbox" aria-label={`Select folder ${row.name} and its links`} checked={selected.has(`folder:${row._admin_id}`)} onChange={() => toggleSelection(`folder:${row._admin_id}`)} />
           <button aria-expanded={open} aria-label={`${open ? "Collapse" : "Expand"} ${row.name}`} className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(row._admin_id)) next.delete(row._admin_id); else next.add(row._admin_id); return next; })}>
             <Folder className="h-6 w-6 shrink-0 text-amber-200" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{String(row.name)}</span><span className="text-xs text-slate-400">{children.length} links · {String(row.scope || "personal")}</span></span><ChevronDown className={`h-4 w-4 ${open ? "rotate-180" : ""}`} />
           </button>
@@ -87,6 +96,6 @@ export function AdminAccountQuicklinks({ user, onComplete, onOpenReference }: Pr
     })}</div>
     {!visible.length && <p className="p-8 text-center text-sm text-slate-400">{query ? "No matching links or folders." : "No links or folders yet. Add a folder or quick link to get started."}</p>}
     {editor && <AdminRecordDrawer label={editor.data.label} fields={editor.data.fields} actions={editor.data.actions} row={editor.row} creating={!editor.row} initialValues={editor.defaults} accountUserId={user._admin_id} initialLabels={{ user_id: String(user.display_name || user.email), org_id: user._admin_refs?.org_id?.label || "", folder_id: String(folders.rows.find((folder) => folder._admin_id === editor.defaults?.folder_id)?.name || "") }} revealed={{}} onClose={() => setEditor(null)} onReveal={() => undefined} onOpenReference={onOpenReference} onOperation={(kind, values) => setPending({ resource: editor.data.resource, kind, ids: editor.row ? [editor.row._admin_id] : undefined, values })} />}
-    <AdminOperationDialog operation={pending} title={`${pending?.kind === "create" ? "Create" : pending?.kind === "delete" ? "Delete" : "Update"} ${editor?.data.label || "quick links"}`} onCancel={() => setPending(null)} onComplete={() => { setPending(null); setEditor(null); setRevision((value) => value + 1); onComplete(); }} />
+    <AdminOperationDialog operation={pending} title={pending?.kind === 'bulk-quicklinks' ? `${String(pending.values?.mode)} quick links and folders` : `${pending?.kind === "create" ? "Create" : pending?.kind === "delete" ? "Delete" : "Update"} ${editor?.data.label || "quick links"}`} onCancel={() => setPending(null)} onComplete={() => { if (pending?.values?.mode === 'move') clearQuicklinkCutClipboard(); setSelected(new Set()); setPending(null); setEditor(null); setRevision((value) => value + 1); onComplete(); }} />
   </section>;
 }

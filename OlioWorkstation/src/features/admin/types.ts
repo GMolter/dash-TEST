@@ -53,6 +53,7 @@ export type PreparedOperation = {
   expiresAt: string;
   confirmation: string;
   preview: {
+    summary?: string;
     action: string;
     resource: string;
     count: number;

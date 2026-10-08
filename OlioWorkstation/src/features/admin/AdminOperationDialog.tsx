@@ -115,6 +115,7 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
                 <PreviewStat label="Resource" value={prepared.preview.resource} />
                 <PreviewStat label="Records" value={String(prepared.preview.count)} />
               </div>
+              {prepared.preview.summary && <p className="rounded-xl border border-blue-400/20 bg-blue-400/5 p-3 text-sm text-blue-100">{prepared.preview.summary}</p>}
               {operation.kind === "ban" && <p className="text-sm text-amber-100">Ban for {BAN_DURATIONS.find((duration) => duration.value === banDuration)?.label}. Reason shown to the user: {reason}</p>}
               {prepared.preview.changes.length > 0 && (
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">

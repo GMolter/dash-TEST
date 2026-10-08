@@ -37,6 +37,24 @@ The Vercel project Root Directory should be configured as `OlioWorkstation`.
 
 ## Admin operations console
 
+Account management → Quick links & folders supports bulk selection, Copy/Cut/Paste,
+Move to another profile or folder, common icon/scope edits, and Olio JSON import/export.
+Selecting a folder includes every contained link, even when collapsed or filtered.
+Select all includes the complete account collection. Operations support up to 500
+items including folder contents; JSON imports are limited to 1 MB. Cut keeps the source
+intact until a reviewed move succeeds. The internal clipboard lasts until page reload.
+Folders remain at the account root (the data model has one folder level). Copies and
+imports create new IDs and retain folder relationships; existing destination items are
+kept. Imports and cross-profile transfers default to personal visibility in the target
+profile's organization. Bulk edit changes icon and/or scope; individual names and URLs
+remain editable with each row's pencil.
+
+Apply `20261008220000_admin_quicklink_bulk.sql` before deploying these bulk mutations.
+The service-only RPC commits all folder/link changes together and rejects stale
+snapshots. The existing signed review, owner protection, and audit flow also apply.
+Database regression coverage is in `supabase/tests/admin_quicklink_bulk.test.sql`;
+run it against a migrated local Supabase database with `supabase test db`.
+
 The admin console uses the signed-in account's server-verified admin access, without
 an unlock password or admin cookie. Unauthorized visitors see the 404 page.
 Keep a random `ADMIN_OPERATION_SECRET` in Vercel for signed operation confirmations.
