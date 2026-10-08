@@ -24,10 +24,12 @@ If you already have an account and see the invitation to create one, check your 
 
 ## Complete a required password change
 
-If Olio asks you to change your password, enter a new password with at least 12 characters and confirm it. Choose **Save password and continue**. Follow any error shown before continuing.
+If Olio asks you to change your password, enter a new password with at least 12 characters and confirm it. Choose **Save password and continue**. If the password was saved but automatic sign-in fails, choose **Try continuing again**, or sign out and sign in with the new password. Contact your administrator if the account still requires a password change.
 
 ## Start using Home
 
 Open the navigation menu to reach **Utilities**, **Organization**, **Profile**, or **Help Center**. See [Home Dashboard](olio://help/home-dashboard) to arrange your workspace.
 
-If your profile cannot load, choose **Try again** on the account setup screen.
+If your profile cannot load, choose **Try again** on the account setup screen. If an account restriction screen appears, read its reason and any end time, then contact your app administrator if you need help.
+
+You can read published guides at **/help** without signing in. See [Using the Help Center](olio://help/help-center) for search and navigation.

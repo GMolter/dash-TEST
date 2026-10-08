@@ -1,93 +1,161 @@
-import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, CheckCheck, ChevronRight, Clipboard, Code2, FileText, Folder, Grip, LayoutDashboard, Link2, ListTodo, LockKeyhole, Plus, QrCode, SlidersHorizontal, Sparkles, Users, Wrench } from 'lucide-react';
+import { useEffect, useState, type MouseEvent } from 'react';
+import { ArrowDown, ArrowRight, LayoutDashboard, Folder, Wrench, X, Menu, ListTodo } from 'lucide-react';
+import { AnimatedBackground } from '../components/AnimatedBackground';
+import { FolderCard, QuicklinkCard, ShortcutCard } from '../components/DashboardCards';
+import { BoardColumnView, type BoardCard, type BoardColumn } from '../components/BoardColumn';
+import { UtilitiesHub } from '../components/UtilitiesHub';
+import { TaskPanelContent } from '../components/DashboardTaskPanel';
+import type { DashboardTodo } from '../hooks/useDashboardTodos';
 import './Landing.css';
 
 const views = [
-  { id: 'dashboard', label: 'Your dashboard', icon: LayoutDashboard, caption: 'A home for the way you work.', detail: 'Your links, tasks, and favorite tools, arranged your way.' },
-  { id: 'projects', label: 'Your projects', icon: Folder, caption: 'Big ideas. Clear next steps.', detail: 'Bring your plans, boards, and files into one project workspace.' },
-  { id: 'tools', label: 'Your everyday tools', icon: Wrench, caption: 'Small tools. Less friction.', detail: 'Shorten a link, share a snippet, or keep useful text close at hand.' },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, title: 'Customize your dashboard', description: 'Arrange and resize cards, organize bookmarks into folders, and choose your background.' },
+  { id: 'projects', label: 'Projects', icon: Folder, title: 'Manage projects with boards and planners', description: 'Track tasks through each stage, set priorities, and keep project files together.' },
+  { id: 'utilities', label: 'Utilities', icon: Wrench, title: 'Use the tools built into Workstation', description: 'Shorten URLs, generate QR codes, share one-time messages, and save reusable text.' },
 ] as const;
 type Preview = typeof views[number]['id'];
-
-const utilities = [
-  { icon: Link2, name: 'URL Shortener', text: 'Long links, made simple.', color: 'violet' },
-  { icon: LockKeyhole, name: 'Secret Sharing', text: 'Messages with a one-time reveal.', color: 'green' },
-  { icon: QrCode, name: 'QR Generator', text: 'From a link to a quick scan.', color: 'blue' },
-  { icon: Clipboard, name: 'Quick Pastes', text: 'Your reusable text, kept private.', color: 'peach' },
-  { icon: Code2, name: 'Pastebin', text: 'Give your text and code a link.', color: 'pink' },
-  { icon: Link2, name: 'Quick Links', text: 'Your go-to places, together.', color: 'violet' },
+const tools = [
+  { id: 'quicklinks', label: 'Quick Links', icon: '🔗', desc: 'Manage bookmarks' },
+  { id: 'projects', label: 'Projects', icon: '📁', desc: 'Track your work' },
+  { id: 'help', label: 'Help Center', icon: '📚', desc: 'Browse docs and guides' },
+  { id: 'shortener', label: 'URL Shortener', icon: '✂️', desc: 'Shorten URLs' },
+  { id: 'secrets', label: 'Secret Sharing', icon: '🔒', desc: 'One-time links' },
+  { id: 'qr', label: 'QR Generator', icon: '📱', desc: 'Generate QR codes' },
+  { id: 'quick-pastes', label: 'Quick Pastes', icon: '📋', desc: 'Manage private reusable text' },
+  { id: 'pastebin', label: 'Pastebin', icon: '📝', desc: 'Share code/text' },
+  { id: 'plugins', label: 'Plugins & Dashboard', icon: '🧩', desc: 'Install modules and customize Home' },
 ];
-
-function Brand() {
-  return <span className="lp-brand"><span className="lp-brand-icon"><LayoutDashboard size={20} /></span><span>olio<span className="lp-brand-dot">.</span></span></span>;
+const sampleLinks = [
+  { id: 'docs', title: 'Documentation', url: 'https://developer.mozilla.org', icon: '📚', order_index: 0 },
+  { id: 'design', title: 'Figma', url: 'https://figma.com', icon: '🎨', order_index: 1 },
+  { id: 'github', title: 'GitHub', url: 'https://github.com', icon: '💻', order_index: 2 },
+];
+const columns: BoardColumn[] = ['To Do', 'In Progress', 'Done'].map((name, i) => ({ id: String(i), name, project_id: 'example', position: i, archived: false, created_at: '', updated_at: '' }));
+function sampleCard(id: string, title: string, column: string, priority: BoardCard['priority'] = 'none'): BoardCard {
+  return { id, title, column_id: column, priority, project_id: 'example', description: '', due_date: null, assignee_name: 'Jamie', position: 0, archived: false, completed: column === '2', created_at: '', updated_at: '' };
 }
 
-function DashboardDemo() {
-  const [completed, setCompleted] = useState([false, false, true]);
-  return <div className="lp-dashboard-grid">
-    <section className="lp-demo-card lp-links-card">
-      <div className="lp-card-heading"><span><Link2 size={15} /> Quick Links</span><Grip size={15} /></div>
-      <div className="lp-bookmarks">{[{ name: 'Design files', icon: Folder, color: 'violet' }, { name: 'Team resources', icon: Users, color: 'blue' }, { name: 'Project notes', icon: FileText, color: 'peach' }, { name: 'Inspiration', icon: Sparkles, color: 'pink' }].map(({ name, icon: Icon, color }) => <div key={name}><span className={`lp-icon ${color}`}><Icon size={20} /></span><span>{name}</span></div>)}</div>
-      <div className="lp-demo-folder"><Folder size={16} /><span>Everything for your next big idea</span><ChevronRight size={15} /></div>
-    </section>
-    <section className="lp-demo-card lp-tasks-card">
-      <div className="lp-card-heading"><span><ListTodo size={15} /> My Tasks</span><span className="lp-count">{completed.filter(Boolean).length}/3</span></div>
-      {['Gather a little inspiration', 'Make room for the next idea', 'Bring it all together'].map((task, index) => <button key={task} className={`lp-task ${completed[index] ? 'is-complete' : ''}`} aria-pressed={completed[index]} onClick={() => setCompleted(previous => previous.map((value, i) => i === index ? !value : value))}><span className="lp-checkbox">{completed[index] && <Check size={12} />}</span><span>{task}</span></button>)}
-      <p className="lp-demo-hint">Try checking something off.</p>
-    </section>
-    <section className="lp-demo-card lp-shortcuts-card"><div className="lp-card-heading"><span><Wrench size={15} /> Within reach</span><Grip size={15} /></div><div className="lp-shortcuts">{utilities.slice(0, 4).map(({ icon: Icon, name, color }) => <div key={name}><span className={`lp-icon ${color}`}><Icon size={17} /></span><span>{name}</span><ArrowUpRight size={13} /></div>)}</div></section>
+function AccountLink() {
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    // Only session state is needed here; workspace/profile providers stay unmounted.
+    void import('../lib/supabase').then(({ supabase }) => {
+      if (!active) return;
+      let revision = 0;
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        revision += 1;
+        if (active) setSignedIn(Boolean(session));
+      });
+      unsubscribe = () => data.subscription.unsubscribe();
+      const initialRevision = revision;
+      void supabase.auth.getSession().then(({ data: sessionData }) => {
+        if (active && revision === initialRevision) setSignedIn(Boolean(sessionData.session));
+      }).catch(() => {});
+    }).catch(() => {});
+    return () => { active = false; unsubscribe?.(); };
+  }, []);
+  return <a className="landing-account" href="/">{signedIn ? 'Dashboard' : 'Log in'}<ArrowRight size={16} /></a>;
+}
+
+function DashboardPreview({ onSelect }: { onSelect: (view: Preview) => void }) {
+  const [folderOpen, setFolderOpen] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(false);
+  const [todos, setTodos] = useState<DashboardTodo[]>([{ id: 'sample-task', user_id: 'example', title: 'Review the project brief', note: null, completed: false, sort_order: 0, completed_at: null, created_at: '', updated_at: '' }]);
+  return <div className="landing-home">
+    <div className="landing-home-controls">
+      <button className="glass-control flex h-14 w-14 items-center justify-center" aria-label="Show utilities preview" onClick={() => onSelect('utilities')}><Menu className="h-6 w-6" /></button>
+      <button className="glass-control flex h-14 items-center gap-3 px-5" onClick={() => setTasksOpen(!tasksOpen)} aria-expanded={tasksOpen}><ListTodo className="h-5 w-5 text-indigo-200" /><span className="text-sm">My Tasks</span><span className="rounded-full border border-indigo-300/20 bg-indigo-400/15 px-2 py-1 text-xs">{todos.filter(todo => !todo.completed).length}</span></button>
+    </div>
+    <div className="mx-auto max-w-4xl text-center">
+      <h3 className="text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl">Olio Workstation</h3>
+      <p className="mt-3 text-sm text-slate-300 sm:text-lg">Good morning<span className="mx-2 text-violet-400">•</span>Wed, Oct 7<span className="mx-2 text-violet-400">•</span><span className="font-mono text-slate-200">9:41:00 AM</span></p>
+      <div className="mx-auto mt-4 h-px w-14 bg-gradient-to-r from-transparent via-violet-400 to-transparent shadow-[0_0_14px_rgba(139,92,246,0.9)]" />
+    </div>
+    {tasksOpen && <aside aria-label="Sample tasks" className="landing-task-drawer todo-drawer-open border-l border-slate-700/70 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
+      <TaskPanelContent todos={todos} loading={false} syncing={false} error={null} mobile={false} onClose={() => setTasksOpen(false)}
+        onAddTodo={async (title, note) => { setTodos(previous => [...previous, { id: crypto.randomUUID(), user_id: 'example', title, note: note || null, completed: false, sort_order: previous.length, completed_at: null, created_at: '', updated_at: '' }]); return true; }}
+        onSaveTodo={async (id, updates) => { setTodos(previous => previous.map(todo => todo.id === id ? { ...todo, ...updates } : todo)); return true; }}
+        onToggleTodo={async id => { setTodos(previous => previous.map(todo => todo.id === id ? { ...todo, completed: !todo.completed } : todo)); return true; }}
+        onDeleteTodo={async id => { setTodos(previous => previous.filter(todo => todo.id !== id)); return true; }}
+        onMoveTodo={async (id, direction) => { setTodos(previous => { const ordered = [...previous].sort((a, b) => a.sort_order - b.sort_order); const index = ordered.findIndex(todo => todo.id === id); const next = index + (direction === 'up' ? -1 : 1); if (next < 0 || next >= ordered.length) return previous; [ordered[index], ordered[next]] = [ordered[next], ordered[index]]; return ordered.map((todo, i) => ({ ...todo, sort_order: i })); }); return true; }} />
+    </aside>}
+    <div className="landing-home-cards">
+      <FolderCard folder={{ id: 'resources', name: 'Resources', icon: 'folder', order_index: 0 }} linkCount={3} onOpen={() => setFolderOpen(!folderOpen)} />
+      {sampleLinks.map(link => <QuicklinkCard key={link.id} link={link} />)}
+      <ShortcutCard shortcut="utilities" onNavigate={() => onSelect('utilities')} onOpenTool={() => onSelect('utilities')} />
+    </div>
+    {folderOpen && <section className="glass-panel mt-5 rounded-[2rem] p-5" aria-label="Resources folder"><div className="mb-4 flex justify-between"><h4 className="font-semibold">Resources</h4><button onClick={() => setFolderOpen(false)} aria-label="Close folder"><X size={18} /></button></div><div className="grid grid-cols-3 gap-3">{sampleLinks.map(link => <QuicklinkCard key={link.id} link={link} />)}</div></section>}
   </div>;
 }
 
-function ProjectsDemo() {
-  return <div className="lp-project-demo"><div className="lp-project-heading"><span><span className="lp-icon violet"><Folder size={19} /></span> A fresh start <span className="lp-project-tag">Organization project</span></span><span className="lp-project-avatars"><i>JD</i><i>AM</i></span></div><div className="lp-board">{[
-    { label: 'To Do', cards: ['Collect inspiration', 'Sketch the first ideas'], tag: 'Plan', color: 'blue' },
-    { label: 'In Progress', cards: ['Make something meaningful'], tag: 'Create', color: 'violet' },
-    { label: 'Done', cards: ['Find our direction'], tag: 'Milestone', color: 'green' },
-  ].map(({ label, cards, tag, color }) => <section key={label}><div className="lp-lane-title"><span><i className={color} />{label}</span><span>{cards.length}</span></div>{cards.map(card => <div className="lp-board-card" key={card}><span className={`lp-mini-tag ${color}`}>{tag}</span><p>{card}</p><span className="lp-board-meta"><span><FileText size={12} /> Project notes</span>{label === 'Done' ? <CheckCheck size={15} /> : <span className="lp-small-avatar">JD</span>}</span></div>)}<span className="lp-add-card"><Plus size={13} /> Add a card</span></section>)}</div></div>;
-}
-
-function ToolsDemo() {
-  return <div className="lp-tools-demo">{utilities.map(({ icon: Icon, name, text, color }) => <div className="lp-tool-preview" key={name}><span className={`lp-icon ${color}`}><Icon size={21} /></span><div><h4>{name}</h4><p>{text}</p></div></div>)}</div>;
+function BoardPreview() {
+  const [cards, setCards] = useState(() => [sampleCard('one', 'Write the project brief', '0', 'medium'), sampleCard('two', 'Review page layouts', '1', 'high'), sampleCard('three', 'Collect requirements', '2')]);
+  const [dragged, setDragged] = useState<string | null>(null);
+  const [selected, setSelected] = useState<BoardCard | null>(null);
+  return <div className="landing-project">
+    <div className="mb-6"><p className="text-sm text-slate-400">Projects / Website refresh</p><h3 className="mt-2 text-2xl font-semibold">Website refresh</h3></div>
+    <div className="rounded-3xl border border-slate-800/60 bg-slate-950/35 p-4 backdrop-blur sm:p-6">
+      <div className="mb-6"><div className="text-2xl font-semibold">Board</div><div className="text-slate-300">Organize tasks across columns</div></div>
+      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4">
+        {columns.map(column => <BoardColumnView key={column.id} column={column} cards={cards.filter(card => card.column_id === column.id)} highlightCardId={null}
+          onCreateCard={(id, title) => setCards(previous => [...previous, sampleCard(crypto.randomUUID(), title, id)])}
+          onDragStart={setDragged} onDragOver={event => event.preventDefault()}
+          onDrop={id => { setCards(previous => previous.map(card => card.id === dragged ? { ...card, column_id: id, completed: id === '2' } : card)); setDragged(null); }}
+          onCardClick={setSelected} />)}
+      </div>
+      {selected && <div className="mt-4 rounded-xl border border-slate-700 p-4"><div className="flex justify-between gap-4"><strong>{selected.title}</strong><button aria-label="Close task details" onClick={() => setSelected(null)}><X size={18} /></button></div><p className="mt-2 text-sm text-slate-400">Assigned to {selected.assignee_name}. Priority: {selected.priority}.</p><label className="mt-3 flex items-center gap-2 text-sm">Move to<select className="rounded-lg border border-slate-700 bg-slate-900 p-2" value={selected.column_id} onChange={event => { const updated = { ...selected, column_id: event.target.value, completed: event.target.value === '2' }; setSelected(updated); setCards(previous => previous.map(card => card.id === updated.id ? updated : card)); }}>{columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}</select></label></div>}
+    </div>
+  </div>;
 }
 
 export default function Landing() {
   const [preview, setPreview] = useState<Preview>('dashboard');
-  const currentView = views.find(view => view.id === preview)!;
-
+  const [tool, setTool] = useState<string | null>(null);
+  const [reduceMotion, setReduceMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const activeView = views.find(view => view.id === preview)!;
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = 'Olio Workstation — A little less scattered.';
-    const description = document.createElement('meta');
-    description.name = 'description';
-    description.content = 'Bring your links, tasks, projects, and everyday tools together in Olio Workstation. A personal workspace, made for your flow.';
-    document.head.appendChild(description);
-    return () => { document.title = previousTitle; description.remove(); };
+    document.title = 'Olio Workstation — Dashboard, projects, and utilities';
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReduceMotion(media.matches);
+    media.addEventListener('change', update);
+    return () => { document.title = previousTitle; media.removeEventListener('change', update); };
   }, []);
-
-  return <div className="lp-page">
-    <a href="#main" className="lp-skip">Skip to content</a>
-    <header className="lp-header lp-container"><a href="/landing" aria-label="Olio landing page"><Brand /></a><nav aria-label="Main navigation"><a href="#workspace">Workspace</a><a href="#features">Features</a><a href="#tools">Tools</a></nav><a className="lp-nav-cta" href="/">Open Olio <ArrowUpRight size={15} /></a></header>
+  const scrollToTour = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    document.getElementById('workspace')?.scrollIntoView({ behavior: reduceMotion ? 'instant' : 'smooth', block: 'start' });
+    window.history.replaceState(null, '', '#workspace');
+  };
+  return <div className="landing-page">
+    <a href="#main" className="landing-skip">Skip to content</a>
+    <header className="landing-header landing-container">
+      <a className="landing-brand" href="/landing"><LayoutDashboard size={23} /><span>olio<span className="text-violet-400">.</span></span><span className="landing-product">Workstation</span></a>
+      <AccountLink />
+    </header>
     <main id="main">
-      <section className="lp-hero lp-container" aria-labelledby="hero-heading">
-        <div className="lp-orbits" aria-hidden="true"><div /><div /><div /><span /></div>
-        <div className="lp-hero-copy"><div className="lp-eyebrow"><span /> OLIO WORKSTATION</div><h1 id="hero-heading">A little less scattered.<br /><span>A lot more together.</span></h1><p>Your projects, links, and everyday tools.<br className="lp-desktop-break" /> One thoughtfully organized space to make things happen.</p><div className="lp-hero-actions"><a href="/" className="lp-button lp-button-primary">Find your flow <ArrowRight size={17} /></a><a href="#workspace" className="lp-button lp-button-secondary">Take a look around <ArrowDown size={16} /></a></div><p className="lp-hero-note">In your browser. In your element.</p></div>
-        <div id="workspace" className="lp-showcase">
-          <div className="lp-preview-tabs" role="group" aria-label="Choose a workspace preview">{views.map(({ id, label, icon: Icon }) => <button key={id} aria-pressed={preview === id} aria-controls="workspace-preview" onClick={() => setPreview(id)}><Icon size={16} />{label}</button>)}</div>
-          <div className="lp-app-window" id="workspace-preview" aria-label={`${currentView.label} example`}>
-            <div className="lp-window-bar"><span className="lp-window-dots" aria-hidden="true"><i /><i /><i /></span><span><LockKeyhole size={11} /> olio.one</span><span className="lp-demo-label">WORKSPACE PREVIEW</span></div>
-            <div className="lp-app-body"><aside className="lp-preview-sidebar" aria-label="Preview navigation"><LayoutDashboard size={21} /><div>{views.map(({ id, icon: Icon, label }) => <button key={id} aria-label={`Preview ${label.toLowerCase()}`} aria-pressed={preview === id} onClick={() => setPreview(id)}><Icon size={18} /></button>)}</div><span className="lp-user-avatar">JD</span></aside><div className="lp-preview-content"><div className="lp-preview-top"><span>PERSONAL WORKSPACE</span><span className="lp-sample-pill">Sample workspace</span></div><div className="lp-preview-heading"><div><h3>{preview === 'dashboard' ? 'A little space for your best work.' : preview === 'projects' ? 'Ideas, meet a plan.' : 'The right tool. Right here.'}</h3><p>{preview === 'dashboard' ? 'Good morning, Jamie. Make yourself at home.' : preview === 'projects' ? 'From first thought to final detail.' : 'Keep the little things moving.'}</p></div><span className="lp-customize"><SlidersHorizontal size={14} />{preview === 'dashboard' ? 'Your layout' : preview === 'projects' ? 'Boards' : 'Utilities'}</span></div><div key={preview} className="lp-demo-scene">{preview === 'dashboard' ? <DashboardDemo /> : preview === 'projects' ? <ProjectsDemo /> : <ToolsDemo />}</div></div></div>
-          </div>
-          <div className="lp-preview-caption" aria-live="polite"><strong>{currentView.caption}</strong><span>{currentView.detail}</span></div>
-        </div>
+      <section className="landing-hero landing-container">
+        <div className="landing-ambient" aria-hidden="true"><span /><span /></div>
+        <p className="landing-eyebrow">OLIO WORKSTATION</p>
+        <h1>Your dashboard.<br /><span>Your projects and tools.</span></h1>
+        <p className="landing-summary">Organize your bookmarks, manage projects, and use everyday utilities in a workspace you can customize.</p>
+        <a href="#workspace" className="landing-tour-button" onClick={scrollToTour}>Take a look around <ArrowDown size={18} /></a>
       </section>
-
-      <section className="lp-features lp-container" id="features" aria-labelledby="features-heading"><div className="lp-section-intro"><span className="lp-kicker">LESS SEARCHING. MORE DOING.</span><h2 id="features-heading">Make room for<br /><span>what matters.</span></h2><p>A place for the details, so you can focus on the bigger picture.</p></div><div className="lp-feature-grid"><article className="lp-feature-card lp-personal-card"><div className="lp-feature-art lp-layout-art" aria-hidden="true"><div className="lp-layout-block"><Link2 /><i /><i /></div><div className="lp-layout-block"><ListTodo /><i /><i /><i /></div><div className="lp-layout-block"><Wrench /><span><b /><b /><b /></span></div><span className="lp-layout-cursor"><ArrowUpRight size={20} /> Yours, by design</span></div><div className="lp-feature-text"><span className="lp-kicker">01 / MAKE IT YOURS</span><h3>Your day. Your dashboard.</h3><p>Arrange your cards, collect your go-to links, and keep a personal checklist. Choose a background that feels like you.</p></div></article><article className="lp-feature-card"><div className="lp-feature-art lp-project-art" aria-hidden="true"><div className="lp-project-orbit" /><span className="lp-orbit-icon"><Folder size={29} /></span><span className="lp-floating-pill pill-one"><ListTodo size={15} /> Planner</span><span className="lp-floating-pill pill-two"><LayoutDashboard size={15} /> Boards</span><span className="lp-floating-pill pill-three"><FileText size={15} /> Files</span></div><div className="lp-feature-text"><span className="lp-kicker">02 / KEEP IT MOVING</span><h3>From “what if” to what’s next.</h3><p>Turn ideas into tasks, move work across boards, and keep files with your projects. Plan on your own or work with your organization.</p></div></article></div></section>
-
-      <section className="lp-utilities lp-container" id="tools" aria-labelledby="tools-heading"><div className="lp-tools-heading"><div><span className="lp-kicker">THE LITTLE THINGS, TAKEN CARE OF</span><h2 id="tools-heading">A small toolkit.<br /><span>A smoother day.</span></h2></div><p>Useful things you reach for all the time,<br className="lp-desktop-break" /> already part of your workspace.</p></div><div className="lp-utility-grid">{utilities.map(({ icon: Icon, name, text, color }) => <article key={name}><span className={`lp-icon ${color}`}><Icon size={22} /></span><h3>{name}</h3><p>{text}</p></article>)}</div></section>
-
-      <section className="lp-final-section lp-container"><div className="lp-final-glow" aria-hidden="true" /><span className="lp-brand-icon"><LayoutDashboard size={25} /></span><h2>A place to get<br /><span>into your flow.</span></h2><p>Bring your next idea. Give it a little space.</p><a className="lp-button lp-button-primary" href="/">Open Olio Workstation <ArrowRight size={17} /></a></section>
+      <section id="workspace" className="landing-tour landing-container" aria-labelledby="tour-title">
+        <div className="landing-tour-heading"><h2 id="tour-title">Inside Workstation</h2><span>Interactive preview · Sample data</span></div>
+        <div className="landing-tabs" role="group" aria-label="Choose a preview">{views.map(({ id, label, icon: Icon }, index) => <button key={id} className={preview === id ? 'active' : ''} aria-pressed={preview === id} aria-controls="landing-screen" onClick={() => { setPreview(id); setTool(null); }}><span className="landing-tab-number">0{index + 1}</span><Icon size={17} />{label}</button>)}</div>
+        <div className="landing-screen" id="landing-screen" aria-label={`${activeView.label} preview`}>
+          <div className="landing-screen-background" aria-hidden="true">{!reduceMotion && <AnimatedBackground fixed={false} theme="dynamic-waves" preset="indigo" />}</div>
+          <div key={preview} className="landing-screen-content">
+            {preview === 'dashboard' && <DashboardPreview onSelect={setPreview} />}
+            {preview === 'projects' && <BoardPreview />}
+            {preview === 'utilities' && <div className="landing-utilities"><UtilitiesHub tools={tools} persistPreferences={false} onOpenTool={id => { if (id === 'projects') setPreview('projects'); else if (id === 'quicklinks') setPreview('dashboard'); else setTool(id); }} />{tool && <div role="status" className="glass-panel mt-5 rounded-2xl p-5"><div className="flex items-center justify-between gap-4"><strong>{tools.find(item => item.id === tool)?.label}</strong><button aria-label="Close tool description" onClick={() => setTool(null)}><X size={18} /></button></div><p className="mt-2 text-sm text-slate-300">{tools.find(item => item.id === tool)?.desc}. Available in your Workstation account.</p></div>}</div>}
+          </div>
+        </div>
+        <div className="landing-description" aria-live="polite"><div><h3>{activeView.title}</h3><p>{activeView.description}</p></div><span>{preview === 'dashboard' ? 'Open a folder or try My Tasks.' : preview === 'projects' ? 'Add a task or move a card between columns.' : 'Toggle descriptions to see what each tool does.'} Changes here are not saved.</span></div>
+      </section>
     </main>
-    <footer className="lp-footer lp-container"><a href="/landing" aria-label="Olio landing page"><Brand /></a><span>A little more organized. A little more you.</span><a href="/help">Help Center <ArrowUpRight size={14} /></a></footer>
+    <footer className="landing-footer landing-container"><span>Olio Workstation</span><a href="/help">Help Center <ArrowRight size={14} /></a></footer>
   </div>;
 }

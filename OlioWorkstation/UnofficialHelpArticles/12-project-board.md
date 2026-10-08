@@ -19,7 +19,7 @@ Open the card to change its title, description, priority, due date, or assignee 
 
 Drag a card into its next lane. Moving it into Done, or a lane whose name contains “done” or “complete,” marks it completed.
 
-To reopen completed work, open the card, clear **Mark as completed**, and save. Moving it back to another lane keeps its completion setting until you change it.
+To reopen completed work, move it to a lane whose name does not contain “done” or “complete,” then open the card, clear **Mark as completed**, and save. Moving it back alone keeps its saved completion setting; clearing the checkbox while it remains in a completion lane still makes it appear completed.
 
 ## Delete a card
 

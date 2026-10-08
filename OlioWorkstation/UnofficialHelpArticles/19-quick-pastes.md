@@ -5,7 +5,7 @@ Summary: Create, organize, and reuse private text.
 Sort Order: 10
 ########
 
-Quick Pastes is your private collection of text to reuse, such as replies, notes, and templates.
+Quick Pastes is your private collection of text to reuse, such as replies, notes, and templates. It has no organization or public sharing audience; use Pastebin when you want a shareable link.
 
 ## Create or edit a Quick Paste
 

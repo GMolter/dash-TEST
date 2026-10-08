@@ -32,4 +32,8 @@ If a save warning appears, check your connection before expecting the same layou
 
 - Open [My Tasks](olio://help/my-tasks) for your personal checklist.
 - Set up [ClassDash](olio://help/plugins-and-classdash) to see your next class.
-- Choose **Profile → Customize** to change the background theme and colors.
+- Choose **Profile → App Background → Customize** to change the built-in theme and colors or apply your own photo. See [Profile and Settings](olio://help/profile-and-settings).
+
+## Dashboard messages
+
+Application administrators can display a general banner or a message for your account. These may appear only during a scheduled window. Read the message and follow any relevant instructions; contact your administrator if you need clarification. Organization announcements are separate and appear under **Organization → Announcements**.

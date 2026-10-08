@@ -11,7 +11,7 @@ Open **Utilities → Projects** to reach the Projects Center.
 
 1. Choose **New Project**.
 2. Choose whether it belongs to **Org** or **Personal**.
-3. Choose a template and enter a project name. Add a description if helpful.
+3. Choose **Blank Project**, **Personal Project**, or **School Project** as the template, then enter a project name. Add a description if helpful.
 4. Choose **Create Project**.
 5. Open its card to start working.
 
@@ -27,4 +27,4 @@ Use the search control at the top or **Ctrl/Cmd+K** when you are not typing to f
 
 Each project has Overview, Boards, Planner, Files, and Resources. See [Project Overview](olio://help/project-overview) for navigation and settings.
 
-If a project seems missing, check its audience tab and clear your filters first.
+If a project seems missing, check its audience tab and clear your filters first. An archived project remains available under **Archived**; it has not been deleted. Leaving an organization removes access to its projects.

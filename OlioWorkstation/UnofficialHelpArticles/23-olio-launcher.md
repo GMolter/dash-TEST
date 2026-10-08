@@ -13,6 +13,8 @@ Sort Order: 22
 4. Check that the device name and code match the Launcher in front of you.
 5. Choose **Approve launcher**, then return to Launcher and wait for **Connected**.
 
+Approval grants the connected device read-only access to your private Quick Pastes and its connection status. It cannot create, edit, delete, reorder, favorite, or share your saved data.
+
 Choose **Deny** for an unrecognized request. If a request expires, start again from Launcher Settings.
 
 ## Use Quick Pastes

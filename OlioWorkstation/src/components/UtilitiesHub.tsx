@@ -10,11 +10,14 @@ type Tool = {
 export function UtilitiesHub({
   tools,
   onOpenTool,
+  persistPreferences = true,
 }: {
   tools: Tool[];
   onOpenTool: (toolId: string) => void;
+  persistPreferences?: boolean;
 }) {
   const [showDescriptions, setShowDescriptions] = useState<boolean>(() => {
+    if (!persistPreferences) return false;
     try {
       const saved = localStorage.getItem('utilities_show_desc');
       return saved === 'true';
@@ -24,12 +27,13 @@ export function UtilitiesHub({
   });
 
   useEffect(() => {
+    if (!persistPreferences) return;
     try {
       localStorage.setItem('utilities_show_desc', String(showDescriptions));
     } catch {
       // ignore
     }
-  }, [showDescriptions]);
+  }, [showDescriptions, persistPreferences]);
 
   return (
     <div className="space-y-8">

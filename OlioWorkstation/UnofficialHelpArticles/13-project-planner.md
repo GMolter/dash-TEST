@@ -13,7 +13,7 @@ Drag tasks to reorder them. Select a task's title to edit it, and expand its des
 
 ## Work with several tasks
 
-Use the selection controls to choose tasks. Shift selects a range; Ctrl helps select individual tasks. Convert selected tasks into board cards or choose **Delete Selected** and confirm.
+Use the selection controls to choose tasks. Shift selects a range; Ctrl or Cmd helps select individual tasks. Convert selected tasks into board cards or choose **Delete Selected** and confirm.
 
 Conversion creates cards in the board's To Do lane, or its first available lane, and keeps the original planner tasks. Updates to the copies are separate.
 
@@ -31,4 +31,4 @@ Use a task's menu to archive it or delete it. **Show Archived** includes archive
 6. Review the suggested tasks and due dates. Add follow-up instructions and generate again if needed.
 7. Review each proposed deletion, then choose **Accept Suggestions** when the changes are ready.
 
-Accepting applies the suggested tasks and selected deletions. Check dates and removal choices before accepting. The project shows its remaining AI uses; generating or refining a plan uses that allowance.
+Accepting applies the suggested tasks and selected deletions. Check dates and removal choices before accepting. The project shows its remaining AI uses; generating or refining a plan uses that allowance. Your prompt and the selected project context are sent to the AI service for processing. Review the context choices before generating.

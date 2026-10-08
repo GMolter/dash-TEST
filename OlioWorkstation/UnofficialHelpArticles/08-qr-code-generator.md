@@ -13,7 +13,7 @@ Sort Order: 8
 4. Scan the preview with your phone to check the result.
 5. Choose **Download QR Code** to save **qrcode.png**.
 
-Changing the text requires choosing **Generate QR Code** again before downloading.
+The preview appears beside the entry form on wider screens and below it on smaller screens. Changing the text requires choosing **Generate QR Code** again before downloading; the existing preview still contains the previous value.
 
 The text or URL is sent to an external QR-code service to create the image. Use content you are comfortable sending to that service.
 
@@ -21,6 +21,6 @@ The text or URL is sent to an external QR-code service to create the image. Use 
 
 Add the downloaded image to a document, poster, or message. Keep the code clear and leave its white border visible. Test it at its final display or print size.
 
-A code containing a link depends on that link staying available. You can create a [short URL](olio://help/url-shortener) first, then use it to generate the code.
+A QR code does not grant access to its destination. Personal and organization links still require the right signed-in account. A code containing a link depends on that link staying available. You can create a [short URL](olio://help/url-shortener) first, then use it to generate the code.
 
 If generation or downloading fails, check your internet connection and try again.

@@ -21,10 +21,10 @@ Use **Insert Link** to link to an external URL, a project file, a resource, a pl
 
 Choose **Upload**, then choose a file from your device. The file is added at the top level; drag it into a folder to organize it. Select an uploaded file in the tree to open it in a new tab.
 
-Uploaded files can be opened through their direct links. Share those links only with the intended recipients.
+Uploaded files use direct public file URLs. Anyone who has an upload URL may be able to open it without signing in, even when the project itself is personal or limited to an organization. Project audience settings do not make the uploaded file URL private.
 
 ## Delete an item
 
-Use the item's context menu and choose **Delete**. Deleting a folder removes its contents too, so check the folder before using this action.
+Use the item's context menu and choose **Delete**. This action removes the item without a separate confirmation. Deleting a folder removes its contents too, so check the folder first. Removing an uploaded item from the project tree does not guarantee that its direct file URL is revoked.
 
 For a fast way to create a document, use **Quick Note** in the project and choose where to save it.

@@ -5,13 +5,13 @@ Summary: Find the right tool for links, projects, text, QR codes, and plugins.
 Sort Order: 4
 ########
 
-Open **Utilities** from the navigation menu, then choose a tool.
+Open **Utilities** from the navigation menu, then choose a tool. Choose **Show Descriptions** for a short explanation of each tool, or **Hide Descriptions** for a simpler view.
 
 | Tool | Use it to |
 |:-----|:----------|
 | [Quick Links](olio://help/quick-links) | Save and organize personal bookmarks |
 | [Projects](olio://help/projects-center) | Organize work with boards, plans, files, and resources |
-| Help Center | Search articles and read guides |
+| [Help Center](olio://help/help-center) | Search articles and read guides |
 | [URL Shortener](olio://help/url-shortener) | Create a short link and see its click count |
 | [Secret Sharing](olio://help/secret-sharing) | Send a message that can be opened once |
 | [QR Generator](olio://help/qr-code-generator) | Make a downloadable QR code |
