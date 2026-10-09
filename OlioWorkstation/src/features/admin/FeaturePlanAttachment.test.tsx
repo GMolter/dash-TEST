@@ -48,6 +48,40 @@ it('shows load failures in the viewer and retries without downloading', async ()
   expect(await screen.findByRole('dialog', { name: 'plan.md' })).toBeVisible();
   expect(downloadPlanFile).not.toHaveBeenCalled();
 });
+it('defaults Markdown to formatted headings, lists, tables and code, and toggles exact raw text', async () => {
+  const markdown = '# Launch plan\n\nUse **careful testing** and `checks`.\n\n## Tasks\n\n- [x] Design\n- [ ] Build\n\n| Step | Owner |\n| --- | --- |\n| Test | Admin |\n\n```ts\nconst ready = true;\n```';
+  vi.mocked(loadPlanFile).mockResolvedValue({ name: 'plan.MD', content: markdown });
+  const actor = userEvent.setup();
+  render(<FeaturePlanAttachment ideaId="idea-1" title="Search" initialName="plan.MD" />);
+  await actor.click(screen.getByRole('button', { name: 'View plan.MD' }));
+  const viewer = await screen.findByRole('dialog', { name: 'plan.MD' });
+  expect(within(viewer).getByRole('button', { name: 'Formatted' })).toHaveAttribute('aria-pressed', 'true');
+  expect(within(viewer).getByRole('heading', { name: 'Launch plan', level: 1 })).toBeVisible();
+  expect(viewer.querySelector('strong')).toHaveTextContent('careful testing');
+  expect(within(viewer).getAllByRole('checkbox')[0]).toBeChecked();
+  expect(within(viewer).getByRole('table')).toHaveTextContent('TestAdmin');
+  expect(viewer.querySelector('pre code')).toHaveTextContent('const ready = true;');
+  await actor.click(within(viewer).getByRole('button', { name: 'Raw' }));
+  expect(viewer.querySelector('pre')?.textContent).toBe(markdown);
+  expect(within(viewer).queryByRole('table')).not.toBeInTheDocument();
+  await actor.click(within(viewer).getByRole('button', { name: 'Formatted' }));
+  expect(within(viewer).getByRole('table')).toBeVisible();
+  expect(loadPlanFile).toHaveBeenCalledTimes(1);
+  expect(downloadPlanFile).not.toHaveBeenCalled();
+});
+it('keeps HTML inert and blocks unsafe links in formatted Markdown', async () => {
+  vi.mocked(loadPlanFile).mockResolvedValue({ name: 'plan.md', content: '<script>alert(1)</script>\n\n[Unsafe](javascript:evil) and [Docs](https://example.com)' });
+  const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+  const actor = userEvent.setup();
+  render(<FeaturePlanAttachment ideaId="idea-1" title="Search" initialName="plan.md" />);
+  await actor.click(screen.getByRole('button', { name: 'View plan.md' }));
+  const viewer = await screen.findByRole('dialog', { name: 'plan.md' });
+  expect(viewer.querySelector('script')).toBeNull();
+  await actor.click(within(viewer).getByRole('button', { name: 'Unsafe' }));
+  expect(open).not.toHaveBeenCalled();
+  await actor.click(within(viewer).getByRole('button', { name: 'Docs' }));
+  expect(open).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer');
+});
 it('uploads a plan to the right idea and exposes download and replace controls', async () => {
   const actor = userEvent.setup();
   render(<FeaturePlanAttachment ideaId="idea-1" title="Search" />);

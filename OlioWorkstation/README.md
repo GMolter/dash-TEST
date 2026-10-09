@@ -48,8 +48,9 @@ Each saved idea also supports one UTF-8 `.md` or `.txt` planning attachment (up 
 `20261009120000_admin_feature_planning_files.sql` to enable attachments. Content is
 stored atomically with the idea under its existing admin-only permissions and loaded
 only when viewing or downloading. Clicking the filename opens a scrollable in-browser
-text viewer; a separate Download button saves the file. File contents are displayed
-literally, never rendered as executable HTML or made public.
+viewer; Markdown defaults to formatted headings, lists, tables, and code blocks, with
+a Formatted / Raw toggle. Plain-text files retain their original text layout. A separate
+Download button saves the original file. Attachments are never made public.
 
 Account management → Quick links & folders supports bulk selection, Copy/Cut/Paste,
 Move to another profile or folder, common icon/scope edits, and Olio JSON import/export.

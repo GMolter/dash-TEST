@@ -13,6 +13,7 @@ type LinkedContentProps = {
   resolveHelpHref?: (articleId: string) => string | null;
   onActivateInternalLink?: (link: ParsedMarkdownLink) => void;
   onActivateHelpTeleport?: (anchorId: string) => void;
+  onOpenExternalUrl?: (url: string) => void;
 };
 
 type HoverState = {
@@ -56,6 +57,7 @@ export function LinkedContent({
   resolveHelpHref,
   onActivateInternalLink,
   onActivateHelpTeleport,
+  onOpenExternalUrl,
 }: LinkedContentProps) {
   const doc = useMemo(() => parseArticleDocument(content || ""), [content]);
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -420,7 +422,8 @@ export function LinkedContent({
           if (isMissing) return;
 
           if (link.target?.type === "external") {
-            window.open(link.target.url, "_blank", "noopener,noreferrer");
+            if (onOpenExternalUrl) onOpenExternalUrl(link.target.url);
+            else window.open(link.target.url, "_blank", "noopener,noreferrer");
             return;
           }
 
@@ -440,7 +443,8 @@ export function LinkedContent({
             return;
           }
 
-          window.open(link.href, "_blank", "noopener,noreferrer");
+          if (onOpenExternalUrl) onOpenExternalUrl(link.href);
+          else window.open(link.href, "_blank", "noopener,noreferrer");
         }}
         className={`inline cursor-pointer border-none bg-transparent p-0 text-left align-baseline font-medium underline underline-offset-4 break-all ${
           isMissing
