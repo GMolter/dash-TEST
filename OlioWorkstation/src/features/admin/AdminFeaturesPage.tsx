@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Lightbulb, Pencil, Plus } from 'lucide-react';
+import { FeaturePlanAttachment } from './FeaturePlanAttachment';
 import { featureStatuses, listFeatureIdeas, saveFeatureIdea, type FeatureIdea, type FeatureInput, type FeatureStatus } from './adminFeatures';
 
 const empty: FeatureInput = { title: '', notes: '', status: 'idea' };
@@ -53,7 +54,7 @@ export function AdminFeaturesPage({ refreshVersion }: { refreshVersion: number }
     {loading ? <p className="text-sm text-slate-400">Loading ideas…</p> : <>
       <div className="space-y-3">{rows.map(idea => <article key={idea.id} className="flex flex-wrap items-start gap-3 rounded-xl border border-white/10 bg-slate-950/35 p-4">
         <Lightbulb className={`mt-1 h-4 w-4 shrink-0 ${idea.status === 'completed' ? 'text-emerald-300' : idea.status === 'in_progress' ? 'text-blue-300' : 'text-amber-200'}`} />
-        <div className="min-w-0 flex-1"><h2 className="break-words font-medium">{idea.title}</h2>{idea.notes && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-400">{idea.notes}</p>}</div>
+        <div className="min-w-0 flex-1"><h2 className="break-words font-medium">{idea.title}</h2>{idea.notes && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-400">{idea.notes}</p>}<FeaturePlanAttachment ideaId={idea.id} title={idea.title} initialName={idea.plan_name} /></div>
         <select aria-label={`Status for ${idea.title}`} disabled={saving || editing === idea.id} value={idea.status} onChange={e => { void save({ title: idea.title, notes: idea.notes, status: e.target.value as FeatureStatus }, idea.id); }} className="rounded-lg border border-white/10 bg-slate-900 p-2 text-sm">{Object.entries(featureStatuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
         <button className={button} aria-label={`Edit ${idea.title}`} disabled={saving} onClick={() => { setEditing(idea.id); setForm({ title: idea.title, notes: idea.notes, status: idea.status }); }}><Pencil className="h-4 w-4" /></button>
       </article>)}</div>

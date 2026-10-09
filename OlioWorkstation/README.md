@@ -43,6 +43,11 @@ optional notes and Idea / In progress / Completed statuses. Apply
 `20261008230000_admin_feature_ideas.sql` before using it. Row-level policies restrict
 reads and writes to current app admins and enforce the account ban guard. This lightweight
 list saves directly; it does not use the sensitive account-operation confirmation flow.
+Each saved idea also supports one UTF-8 `.md` or `.txt` planning attachment (up to
+256 KB), with download, replacement, and removal controls. Apply
+`20261009120000_admin_feature_planning_files.sql` to enable attachments. Content is
+stored atomically with the idea under its existing admin-only permissions and loaded
+only when downloading; it is never rendered as executable HTML or made public.
 
 Account management → Quick links & folders supports bulk selection, Copy/Cut/Paste,
 Move to another profile or folder, common icon/scope edits, and Olio JSON import/export.
