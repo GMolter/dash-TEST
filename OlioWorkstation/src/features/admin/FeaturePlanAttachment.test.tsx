@@ -1,15 +1,52 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { FeaturePlanAttachment } from './FeaturePlanAttachment';
-import { readPlanFile, savePlanFile, downloadPlanFile } from './featurePlanFiles';
+import { readPlanFile, savePlanFile, downloadPlanFile, loadPlanFile } from './featurePlanFiles';
 
-vi.mock('./featurePlanFiles', () => ({ readPlanFile: vi.fn(), savePlanFile: vi.fn(), downloadPlanFile: vi.fn() }));
+vi.mock('./featurePlanFiles', () => ({ readPlanFile: vi.fn(), savePlanFile: vi.fn(), downloadPlanFile: vi.fn(), loadPlanFile: vi.fn() }));
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(readPlanFile).mockResolvedValue({ name: 'plan.md', content: '# Plan' });
   vi.mocked(savePlanFile).mockResolvedValue();
   vi.mocked(downloadPlanFile).mockResolvedValue();
+  vi.mocked(loadPlanFile).mockResolvedValue({ name: 'plan.md', content: '# Plan\n\nBuild the feature.' });
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute('open', ''); } });
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute('open'); } });
+});
+it('opens the filename in a viewer and downloads only through the download button', async () => {
+  const actor = userEvent.setup();
+  render(<FeaturePlanAttachment ideaId="idea-1" title="Search" initialName="plan.md" />);
+  await actor.click(screen.getByRole('button', { name: 'View plan.md' }));
+  const viewer = await screen.findByRole('dialog', { name: 'plan.md' });
+  expect(within(viewer).getByText(/Build the feature/)).toBeVisible();
+  expect(loadPlanFile).toHaveBeenCalledWith('idea-1');
+  expect(downloadPlanFile).not.toHaveBeenCalled();
+  await actor.click(within(viewer).getByRole('button', { name: 'Download' }));
+  expect(downloadPlanFile).toHaveBeenCalledExactlyOnceWith('idea-1');
+  await actor.click(within(viewer).getByRole('button', { name: 'Close plan viewer' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+it('displays file text literally and supports dismissing with Escape', async () => {
+  vi.mocked(loadPlanFile).mockResolvedValue({ name: 'plan.txt', content: '<script>alert(1)</script><img src="external" />' });
+  const actor = userEvent.setup();
+  render(<FeaturePlanAttachment ideaId="idea-1" title="Search" initialName="plan.txt" />);
+  await actor.click(screen.getByRole('button', { name: 'View plan.txt' }));
+  const viewer = await screen.findByRole('dialog', { name: 'plan.txt' });
+  expect(viewer.querySelector('pre')).toHaveTextContent('<script>alert(1)</script>');
+  expect(viewer.querySelector('script, img')).toBeNull();
+  fireEvent(viewer, new Event('cancel', { cancelable: true }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+it('shows load failures in the viewer and retries without downloading', async () => {
+  vi.mocked(loadPlanFile).mockRejectedValueOnce(new Error('Connection failed'));
+  const actor = userEvent.setup();
+  render(<FeaturePlanAttachment ideaId="idea-1" title="Search" initialName="plan.md" />);
+  await actor.click(screen.getByRole('button', { name: 'View plan.md' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Connection failed');
+  await actor.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByRole('dialog', { name: 'plan.md' })).toBeVisible();
+  expect(downloadPlanFile).not.toHaveBeenCalled();
 });
 it('uploads a plan to the right idea and exposes download and replace controls', async () => {
   const actor = userEvent.setup();

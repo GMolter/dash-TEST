@@ -15,12 +15,16 @@ export async function savePlanFile(id: string, file: { name: string; content: st
   const { error } = await supabase.from('admin_feature_ideas').update({ plan_name: file?.name ?? null, plan_content: file?.content ?? null }).eq('id', id).select('id').single();
   if (error) throw new Error(error.message);
 }
-export async function downloadPlanFile(id: string) {
+export async function loadPlanFile(id: string): Promise<{ name: string; content: string }> {
   const { data, error } = await supabase.from('admin_feature_ideas').select('plan_name,plan_content').eq('id', id).single();
   if (error) throw new Error(error.message);
   if (!data?.plan_name || data.plan_content === null) throw new Error('This planning file was removed. Refresh the list.');
-  const url = URL.createObjectURL(new Blob([data.plan_content], { type: 'text/plain;charset=utf-8' }));
+  return { name: data.plan_name, content: data.plan_content };
+}
+export async function downloadPlanFile(id: string) {
+  const plan = await loadPlanFile(id);
+  const url = URL.createObjectURL(new Blob([plan.content], { type: 'text/plain;charset=utf-8' }));
   const anchor = document.createElement('a');
-  anchor.href = url; anchor.download = data.plan_name; anchor.click();
+  anchor.href = url; anchor.download = plan.name; anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
