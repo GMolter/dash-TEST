@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   hook: vi.fn(),
   dispatch: vi.fn(),
   admin: vi.fn(),
+  importFailure: false,
 }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({}) }));
 vi.mock('../api/_utils/supabaseConfig.js', () => ({
@@ -22,7 +23,11 @@ vi.mock('../api/_utils/emailAuth.js', () => ({ enqueueAuthHook: mocks.hook }));
 vi.mock('../api/_utils/emailWorker.js', () => ({
   dispatchEmail: mocks.dispatch,
 }));
-vi.mock('../api/_utils/emailAdmin.js', () => ({ emailAdmin: mocks.admin }));
+vi.mock('../api/_utils/emailAdmin.js', () => {
+  if (mocks.importFailure)
+    throw Object.assign(new Error('PRIVATE MODULE DETAILS'), { code: 'ERR_REQUIRE_ESM' });
+  return { emailAdmin: mocks.admin };
+});
 import handler from '../api/email';
 async function request(
   action: string,
@@ -49,6 +54,7 @@ async function request(
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.importFailure = false;
   mocks.access.mockResolvedValue({
     ok: false,
     status: 403,
@@ -94,4 +100,19 @@ it('bounds raw body size before admin actions', async () => {
   const res = await request('save-draft', {}, 'x'.repeat(524289));
   expect(res.status).toHaveBeenCalledWith(400);
   expect(mocks.admin).not.toHaveBeenCalled();
+});
+it('reports a runtime import failure without crashing or leaking details', async () => {
+  mocks.importFailure = true;
+  mocks.access.mockResolvedValue({ ok: true, userId: 'admin' });
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const response = await request('state');
+    expect(response.status).toHaveBeenCalledWith(503);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'ERR_REQUIRE_ESM' }));
+    expect(JSON.stringify(response.json.mock.calls)).not.toContain('PRIVATE');
+    expect(log).toHaveBeenCalledWith('email request failed', expect.objectContaining({ action: 'state', code: 'ERR_REQUIRE_ESM', runtime: process.version }));
+  } finally {
+    mocks.importFailure = false;
+    log.mockRestore();
+  }
 });

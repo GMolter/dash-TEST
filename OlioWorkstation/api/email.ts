@@ -2,11 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServiceConfig } from './_utils/supabaseConfig.js';
 import { requireAdminAccess } from './_utils/adminAccess.js';
-import { appOrigin, digest, secretMatches } from './_utils/emailPolicy.js';
-import { normalizeEmail } from '../shared/email.js';
-import { enqueueAuthHook } from './_utils/emailAuth.js';
-import { dispatchEmail } from './_utils/emailWorker.js';
-import { emailAdmin } from './_utils/emailAdmin.js';
+import { appOrigin } from './_utils/appOrigin.js';
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 async function rawBody(req: VercelRequest, limit: number) {
   // Vercel restores the original bytes on data/end events; req.body is a lazy JSON
@@ -31,11 +27,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const cfg = getSupabaseServiceConfig();
   if (!cfg.ok)
     return res.status(503).json({ error: 'Email service unavailable.' });
-  const service = createClient(cfg.url, cfg.serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
   try {
+    const service = createClient(cfg.url, cfg.serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
     if (action === 'dispatch') {
+      const { secretMatches } = await import('./_utils/emailPolicy.js');
       if (
         !secretMatches(
           String(req.headers.authorization || ''),
@@ -45,11 +42,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       )
         return res.status(401).json({ error: 'Unauthorized' });
+      const { dispatchEmail } = await import('./_utils/emailWorker.js');
       return res.status(200).json(await dispatchEmail(service));
     }
     if (action === 'hook') {
       // Never reconstruct a parsed object for signature verification.
       const raw = await rawBody(req, 65536);
+      const { enqueueAuthHook } = await import('./_utils/emailAuth.js');
       await enqueueAuthHook(
         service,
         raw,
@@ -63,6 +62,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (action === 'recovery' || action === 'resend') {
       const input = JSON.parse(await rawBody(req, 4096));
+      const { normalizeEmail } = await import('../shared/email.js');
+      const { digest } = await import('./_utils/emailPolicy.js');
       const generic = {
         ok: true,
         message:
@@ -118,10 +119,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const input = JSON.parse((await rawBody(req, 524288)) || '{}');
     if (!input || Array.isArray(input) || typeof input !== 'object')
       throw new Error('Invalid payload.');
+    const { emailAdmin } = await import('./_utils/emailAdmin.js');
     return res
       .status(200)
       .json(await emailAdmin(service, access, action, input));
   } catch (error) {
+    const failure = error as { code?: unknown; cause?: { code?: unknown } };
+    const code = String(failure?.code || failure?.cause?.code || 'EMAIL_ACTION_FAILED');
+    const moduleFailure = ['ERR_REQUIRE_ESM', 'ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND', 'ERR_PACKAGE_PATH_NOT_EXPORTED'].includes(code);
+    // Do not log request bodies, addresses, authorization headers, or provider messages.
+    console.error('email request failed', {
+      action: /^[a-z-]{1,40}$/.test(action) ? action : 'unknown',
+      code: /^[A-Z0-9_]{1,60}$/.test(code) ? code : 'EMAIL_ACTION_FAILED',
+      runtime: process.version,
+    });
+    if (moduleFailure && action !== 'hook')
+      return res.status(503).json({
+        error: 'Email runtime dependency failed to load. Redeploy using Node.js 24.x and check Vercel runtime logs.',
+        code,
+      });
     if (action === 'hook')
       return res
         .status(400)
