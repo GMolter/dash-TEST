@@ -34,7 +34,7 @@ it('uses the shared sidebar and overview for custom admins and hides unassigned 
   vi.mocked(loadAdminOverview).mockResolvedValue({ isOwner: false, metrics: {}, recentAudit: [], resources: [resources[0]] });
   render(<AdminOperationsConsole />);
   const navigation = await screen.findByRole('navigation', { name: 'Admin navigation' });
-  expect(screen.getByText('What needs your attention?')).toBeVisible();
+  expect(screen.getByText('Where would you like to go?')).toBeVisible();
   expect(within(navigation).queryByRole('button', { name: 'People' })).not.toBeInTheDocument();
   expect(within(navigation).queryByRole('link', { name: /Supabase/ })).not.toBeInTheDocument();
   await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace tools' }));

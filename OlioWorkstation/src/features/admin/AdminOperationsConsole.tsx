@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, BookOpenText, Building2, Database, Gauge,
   LayoutDashboard, Menu, Plug, RefreshCw, Shield, ShieldAlert,
-  ShieldCheck, Users, X, ChevronDown, ArrowRight, Megaphone, Lightbulb, ExternalLink,
+  ShieldCheck, Users, X, ChevronDown, Megaphone, Lightbulb, ExternalLink,
 } from "lucide-react";
 import { loadAdminOverview, loadAdminResource, loadAdminUserAccount, revealAdminField } from "./api";
 import { AdminOperationDialog } from "./AdminOperationDialog";
@@ -19,7 +19,7 @@ import { AdminAccountQuicklinks } from "./AdminAccountQuicklinks";
 import { AdminWorkspaceBrowser } from './AdminWorkspaceBrowser';
 import { adminSection, defaultAdminResource, resourceInSection } from './adminNavigation';
 import type { AdminListResponse, AdminOperation, AdminOverview, AdminReference, AdminRow, AdminUserAccountOverview } from "./types";
-import { formatAdminValue, humanizeAdminText } from "./adminFormat";
+import { AdminOverviewPage } from "./AdminOverviewPage";
 
 type AccessState = "checking" | "error" | "denied" | "ready";
 type PendingOperation = { operation: Omit<AdminOperation, "reason">; title: string } | null;
@@ -420,7 +420,7 @@ function SharedAdminOperationsConsole() {
           {toast && <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100"><span>{toast}</span><button onClick={() => setToast(null)}><X className="h-4 w-4" /></button></div>}
           {error && <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-          {section === "features" ? <AdminFeaturesPage refreshVersion={featureRefresh} /> : section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} allowedSections={visibleNavigation.map(item => item.key)} /> : accountUserId ? (
+          {section === "features" ? <AdminFeaturesPage refreshVersion={featureRefresh} /> : section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <AdminOverviewPage overview={overview} onNavigate={selectSection} allowedSections={visibleNavigation.map(item => item.key)} /> : accountUserId ? (
             <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
               {accountLinks && accountOverview ? <AdminAccountQuicklinks key={accountUserId} user={accountOverview.user} onComplete={() => { void refreshAccount(); void loadAdminOverview().then(setOverview).catch(() => undefined); }} onOpenReference={openReference} /> : resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
@@ -469,31 +469,6 @@ function SharedAdminOperationsConsole() {
   );
 }
 
-function Overview({ overview, onNavigate, allowedSections }: { overview: AdminOverview | null; onNavigate: (section: string) => void; allowedSections: string[] }) {
-  const counts = [["users", "People", "people"], ["organizations", "Organizations", "organizations"], ["projects", "Projects", "projects"]] as const;
-  const pendingReviews = overview?.isOwner ? overview.metrics.pendingAdminReviews || 0 : 0;
-  const pendingPairings = overview?.metrics.pendingPairings || 0;
-  const activity = overview?.recentAudit.slice(0, 4) || [];
-  return <div className="mx-auto max-w-6xl space-y-8">
-    <section><p className="text-xs font-medium uppercase tracking-widest text-blue-300">Admin workspace</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">What needs your attention?</h2><p className="mt-3 text-sm text-slate-400">Manage people, keep teams informed, and keep Olio running smoothly.</p></section>
-    <div className="grid gap-3 sm:grid-cols-3">{[{ key: 'people', title: 'Manage people', detail: 'Accounts, access, and personal settings', icon: Users }, { key: 'organizations', title: 'Manage organizations', detail: 'Membership, owners, and shared work', icon: Building2 }, { key: 'banner', title: 'Manage banners', detail: 'Active messages and scheduled updates', icon: Megaphone }].filter(item => allowedSections.includes(item.key)).map(item => <button key={item.key} onClick={() => onNavigate(item.key)} className="group rounded-2xl border border-white/10 bg-slate-900/50 p-5 text-left hover:border-blue-400/30 hover:bg-blue-400/5"><item.icon className="mb-5 h-5 w-5 text-blue-300" /><div className="flex items-center justify-between gap-2"><span className="font-medium">{item.title}</span><ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-blue-300" /></div><p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p></button>)}</div>
-    <div className="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 bg-slate-950/25 py-5">{counts.filter(([, , section]) => allowedSections.includes(adminSection(section))).map(([key, label, section]) => <button key={key} onClick={() => onNavigate(section)} className="px-3 text-left sm:px-6 hover:text-blue-200"><div className="text-2xl font-semibold">{overview?.metrics[key]?.toLocaleString() ?? "—"}</div><div className="mt-1 text-xs text-slate-400 sm:text-sm">{label}</div></button>)}</div>
-    {(pendingReviews > 0 || pendingPairings > 0) && <section className="space-y-2">
-      <h2 className="text-sm font-medium text-slate-400">Needs attention</h2>
-      {pendingReviews > 0 && <button onClick={() => onNavigate("reviews")} className="flex w-full items-center gap-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-left text-sm text-amber-100"><ShieldCheck className="h-4 w-4" /><span className="flex-1">{pendingReviews} account request{pendingReviews === 1 ? "" : "s"} to review</span><ArrowRight className="h-4 w-4" /></button>}
-      {pendingPairings > 0 && <button onClick={() => onNavigate("integrations")} className="flex w-full items-center gap-3 rounded-xl border border-white/10 p-4 text-left text-sm text-slate-200"><Plug className="h-4 w-4" /><span className="flex-1">{pendingPairings} pending device pairing{pendingPairings === 1 ? "" : "s"}</span><ArrowRight className="h-4 w-4" /></button>}
-    </section>}
-    {allowedSections.includes('audit') && <section>
-      <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-medium text-slate-300">Recent activity</h2><button onClick={() => onNavigate("audit")} className="text-xs text-slate-400 hover:text-blue-200">View all →</button></div>
-      <div className="divide-y divide-white/[0.06]">{activity.length ? activity.map((event) => <div key={String(event.id)} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3"><div className="min-w-0"><div className="text-sm text-slate-200">{activityLabel(String(event.action), String(event.resource))}</div><div className="mt-1 truncate text-xs text-slate-500">{String(event.actor_email || "Admin")}</div></div><span className="text-xs text-slate-500">{formatAdminValue(event.created_at, "datetime")}</span></div>) : <p className="py-6 text-sm text-slate-500">No recent activity.</p>}</div>
-    </section>}
-  </div>;
-}
-
-function activityLabel(action: string, resource: string) {
-  const accessLabels: Record<string, string> = { "request-admin": "Admin access requested", "approve-admin": "Admin access approved", "reject-admin": "Admin access declined", "revoke-admin": "Admin access removed" };
-  return accessLabels[action] || `${humanizeAdminText(action)} · ${humanizeAdminText(resource)}`;
-}
 function FullPageStatus({ icon: Icon, title, detail, spinning = false, action }: { icon: typeof Shield; title: string; detail: string; spinning?: boolean; action?: React.ReactNode }) {
   return <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-center text-white"><div className="max-w-md rounded-3xl border border-white/10 bg-slate-950/50 p-8 backdrop-blur-xl"><Icon className={`mx-auto h-8 w-8 text-blue-300 ${spinning ? "animate-spin" : ""}`} /><h1 className="mt-4 text-xl font-semibold">{title}</h1><p className="mt-2 text-sm leading-6 text-slate-400">{detail}</p>{action && <div className="mt-5">{action}</div>}</div></div>;
 }
