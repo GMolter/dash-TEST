@@ -1,3 +1,4 @@
+import { useAdminCapabilities } from './useAdminCapabilities';
 import { useEffect, useMemo, useState } from "react";
 import { loadAdminResource, revealAdminField } from "./api";
 import { AdminRecordDrawer, ReferenceInput } from "./AdminRecordDrawer";
@@ -18,6 +19,7 @@ const memberField = { name: "user_id", label: "Person", type: "text" as const };
 export function AdminOrganizationPage({ organizationId, refreshVersion, onBack, onOpenReference }: {
   organizationId: string; refreshVersion: number; onBack: () => void; onOpenReference: (reference: AdminReference) => void;
 }) {
+  const { can, all } = useAdminCapabilities();
   const [resource, setResource] = useState("organizations");
   const [org, setOrg] = useState<AdminRow | null>(null);
   const [code, setCode] = useState("");
@@ -45,7 +47,7 @@ export function AdminOrganizationPage({ organizationId, refreshVersion, onBack, 
     let cancelled = false;
     Promise.all([
       loadAdminResource({ resource: "organizations", recordId: organizationId, page: 1, pageSize: 1, search: "" }),
-      revealAdminField("organizations", organizationId, "code"),
+      all("organizations.reveal", "organizations.fields.code.read") ? revealAdminField("organizations", organizationId, "code") : Promise.resolve({ result: {} }),
     ]).then(([next, revealedCode]) => { if (!cancelled) { setOrg(next.rows[0] || null); setCode(String(revealedCode.result?.code || "")); } })
       .catch(e => { if (!cancelled) setError(e.message); });
     return () => { cancelled = true; };
@@ -96,16 +98,16 @@ export function AdminOrganizationPage({ organizationId, refreshVersion, onBack, 
       <div><p className="text-sm text-blue-300">Organization management</p><h2 className="mt-1 text-3xl font-semibold">{String(org?.name || "Organization")}</h2></div>
       <div><p className="text-xs text-slate-400">Join code</p><p className="font-mono text-4xl tracking-[0.2em]">{code || "—"}</p></div>
     </header>
-    <nav aria-label="Organization management sections" className="flex flex-wrap gap-2">{VIEWS.map(([key, label]) =>
+    <nav aria-label="Organization management sections" className="flex flex-wrap gap-2">{VIEWS.filter(([key]) => can(key + ".read") && (key === "organizations" || can(key + ".fields.org_id.read"))).map(([key, label]) =>
       <button key={key} className={`${button} ${resource === key ? "bg-blue-500/20 text-blue-100" : "text-slate-400"}`} aria-current={resource === key ? "page" : undefined} onClick={() => changeView(key)}>{label}</button>)}</nav>
     {error && <div role="alert" className="rounded-xl bg-red-500/10 p-4 text-red-200">{error}<button className="ml-3 underline" onClick={() => setRevision(v => v + 1)}>Try again</button></div>}
     {message && <p role="status" className="text-sm text-emerald-200">{message}</p>}
     {resource === "organizations" ? <section className="space-y-4 rounded-2xl border border-white/10 p-5">
       <h3 className="text-lg font-semibold">Organization settings</h3>
       <p className="text-sm text-slate-400">Edit the name, join code, and creation date. Manage every owner in People & owners.</p>
-      <div className="flex flex-wrap gap-3"><button disabled={!data?.rows[0]} className={button} onClick={() => { setRow(data!.rows[0]); setRevealed({ code }); }}>Edit settings</button>
-        <button className={button} onClick={() => operate("regenerate-code")}>Generate new join code</button>
-        <button className={`${button} text-red-300`} onClick={() => operate("delete")}>Delete organization</button></div>
+      <div className="flex flex-wrap gap-3"><button disabled={!data?.rows[0] || !can("organizations.update")} className={button} onClick={() => { setRow(data!.rows[0]); setRevealed({ code }); }}>Edit settings</button>
+        <button className={button} disabled={!can("organizations.regenerate-code")} onClick={() => operate("regenerate-code")}>Generate new join code</button>
+        <button className={`${button} text-red-300`} disabled={!can("organizations.delete")} onClick={() => operate("delete")}>Delete organization</button></div>
       <p className="text-xs text-slate-400">Join codes contain four digits. Changing the code immediately replaces the previous invitation code.</p>
     </section> : <>
       {resource === "users" && <section className="space-y-4 rounded-2xl border border-white/10 p-5">
@@ -113,11 +115,11 @@ export function AdminOrganizationPage({ organizationId, refreshVersion, onBack, 
         <p className="text-sm text-slate-400">Choose a person and their role. Multiple owners are supported; every organization must retain at least one owner. A person in another organization must be removed there first.</p>
         <div className="grid gap-3 sm:grid-cols-3"><ReferenceInput key={`${row?._admin_id || "person"}:${revision}`} field={memberField} value={person} initialLabel={row?._admin_id === person ? String(row.display_name || row.email) : undefined} onChange={v => setPerson(String(v || ""))} />
           <select aria-label="Organization role" className={input} value={role} onChange={e => setRole(e.target.value)}>{["member", "admin", "owner"].map(v => <option key={v}>{v}</option>)}</select>
-          <button className={button} disabled={!person} onClick={() => membership("set-member", { member_id: person, role })}>Save membership</button></div>
-        {person && <div className="flex flex-wrap gap-3"><button className={button} onClick={() => onOpenReference({ resource: "users", id: person, label: "Account" })}>Open account</button><button className={`${button} text-red-300`} onClick={() => membership("remove-member", { member_id: person })}>Remove from organization</button></div>}
+          <button className={button} disabled={!person || !can("organizations.set-member")} onClick={() => membership("set-member", { member_id: person, role })}>Save membership</button></div>
+        {person && <div className="flex flex-wrap gap-3"><button className={button} onClick={() => onOpenReference({ resource: "users", id: person, label: "Account" })}>Open account</button><button className={`${button} text-red-300`} disabled={!can("organizations.remove-member")} onClick={() => membership("remove-member", { member_id: person })}>Remove from organization</button></div>}
         <details className="border-t border-white/10 pt-4"><summary className="cursor-pointer text-sm">Transfer ownership</summary><p className="my-3 text-sm text-slate-400">Select the owner to replace. The person selected above becomes an owner; the previous owner becomes an admin. Other owners keep their roles.</p>
           <ReferenceInput key={revision} field={{ ...memberField, label: "Previous owner" }} value={previousOwner} onChange={v => setPreviousOwner(String(v || ""))} />
-          <button className={`${button} mt-3`} disabled={!person || !previousOwner || person === previousOwner} onClick={() => membership("transfer-owner", { owner_id: person, previous_owner_id: previousOwner })}>Transfer ownership to selected person</button></details>
+          <button className={`${button} mt-3`} disabled={!can("organizations.transfer-owner") || !person || !previousOwner || person === previousOwner} onClick={() => membership("transfer-owner", { owner_id: person, previous_owner_id: previousOwner })}>Transfer ownership to selected person</button></details>
       </section>}
       {resource === "org-activity" && <p className="text-sm text-slate-400">Edit, add, or delete entries in the organization’s activity feed. Administrative changes remain recorded separately in the admin audit log.</p>}
       <AdminResourceTable data={tableData} loading={loading} search={search} filters={filters} selected={selected} onSearch={v => { setSearch(v); setPage(1); }}
@@ -132,3 +134,4 @@ export function AdminOrganizationPage({ organizationId, refreshVersion, onBack, 
     <AdminOperationDialog operation={pending} title="Review organization change" onCancel={() => setPending(null)} onComplete={complete} />
   </div>;
 }
+

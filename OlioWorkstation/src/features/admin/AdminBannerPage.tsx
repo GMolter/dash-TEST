@@ -1,3 +1,4 @@
+import { useAdminCapabilities } from './useAdminCapabilities';
 import { AdminTargetedAlerts } from './AdminTargetedAlerts';
 import { useEffect, useState } from "react";
 import { CalendarClock, Eye, Megaphone, Pencil, Save } from "lucide-react";
@@ -11,6 +12,8 @@ import type { AdminOperation } from "./types";
 const inputClass = "mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400/60";
 
 function GlobalBannerSettings({ refreshVersion = 0 }: { refreshVersion?: number }) {
+  const { all } = useAdminCapabilities();
+  const canEdit = all("app-settings.update", ...["banner_enabled", "banner_text", "banner_starts_at", "banner_ends_at"].map(field => "app-settings.fields." + field + ".update"));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -53,7 +56,7 @@ function GlobalBannerSettings({ refreshVersion = 0 }: { refreshVersion?: number 
     <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40">
       <div className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="flex items-center gap-3"><div className="rounded-xl bg-blue-400/10 p-3"><Megaphone className="h-5 w-5 text-blue-300" /></div><div><h2 className="font-semibold">Everyone</h2><p className="mt-1 text-xs text-slate-400">One announcement across all dashboards · {status}</p></div></div>
-        <button disabled={!!operation} onClick={() => { if (editing) setReload(v => v + 1); setEditing(!editing); }} className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2 text-sm text-blue-200 hover:bg-white/5"><Pencil className="h-4 w-4" />{editing ? 'Cancel edit' : status === 'Live' || status === 'Scheduled' ? 'Edit global banner' : 'Create global banner'}</button>
+        <button disabled={!canEdit || !!operation} onClick={() => { if (editing) setReload(v => v + 1); setEditing(!editing); }} className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2 text-sm text-blue-200 hover:bg-white/5"><Pencil className="h-4 w-4" />{editing ? 'Cancel edit' : status === 'Live' || status === 'Scheduled' ? 'Edit global banner' : 'Create global banner'}</button>
       </div>
       {!editing && (status === 'Live' || status === 'Scheduled') && <div className="mx-5 mb-5 rounded-xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm text-amber-100"><BannerMessage text={text} /></div>}
     {editing && <div className="border-t border-white/10 p-5 sm:p-6">
@@ -91,9 +94,11 @@ function GlobalBannerSettings({ refreshVersion = 0 }: { refreshVersion?: number 
 }
 
 export function AdminBannerPage({ refreshVersion = 0 }: { refreshVersion?: number }) {
+  const { can } = useAdminCapabilities();
   return <div className="mx-auto max-w-6xl space-y-8">
     <p className="text-sm text-slate-400">Manage what people see on their dashboard. Create a message for everyone or choose a specific audience.</p>
-    <GlobalBannerSettings refreshVersion={refreshVersion} />
-    <AdminTargetedAlerts refreshVersion={refreshVersion} />
+    {can("app-settings.read") && <GlobalBannerSettings refreshVersion={refreshVersion} />}
+    {can("dashboard-alerts.read") && <AdminTargetedAlerts refreshVersion={refreshVersion} />}
   </div>;
 }
+

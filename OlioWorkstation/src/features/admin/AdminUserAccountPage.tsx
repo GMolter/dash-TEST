@@ -1,3 +1,4 @@
+import { useAdminCapabilities } from './useAdminCapabilities';
 import { AdminAccessEditor } from './AdminAccessEditor';
 import { useAdminAccess } from './AdminAccessBoundary';
 import { DashboardPhotoSettings } from '../../components/DashboardPhotoSettings';
@@ -40,6 +41,7 @@ const GROUP_LABELS: Record<string, string> = {
 
 export function AdminUserAccountPage({ overview, loading, error, selectedResource, onBack, onAccountOperation, onOpenReference, onSelectResource, children }: Props) {
   const adminAccess = useAdminAccess();
+  const { can, all } = useAdminCapabilities();
   const [showEmpty, setShowEmpty] = useState(false);
   const [tab, setTab] = useState('overview');
   const editing = tab === 'access';
@@ -93,7 +95,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
   const initials = name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   const banned = !!user.banned_until && new Date(String(user.banned_until)).getTime() > Date.now();
   const fields = overview.userFields.filter((field) => ["email_confirmed_at", "last_sign_in_at", "created_at", "updated_at"].includes(field.name) || (field.name === "banned_until" && banned));
-  const changes = accountChanges(user, form);
+  const changes = Object.fromEntries(Object.entries(accountChanges(user, form)).filter(([key]) => can("users.fields." + key + ".update")));
 
 
 
@@ -118,15 +120,15 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2"><button onClick={() => { setBannerUserId(bannerUserId === user._admin_id ? null : user._admin_id); setBannerSentTo(null); setTab("overview"); }} className="rounded-xl border border-violet-400/30 bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-100">{bannerUserId === user._admin_id ? "Close banner composer" : "Send banner"}</button><button disabled={overview.canManage === false} onClick={() => { setTab(editing ? "overview" : "access"); setBannerUserId(null); }} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button></div>
+        <div className="flex flex-wrap gap-2"><button disabled={!all("dashboard-alerts.create", "dashboard-alerts.fields.user_ids.update")} onClick={() => { setBannerUserId(bannerUserId === user._admin_id ? null : user._admin_id); setBannerSentTo(null); setTab("overview"); }} className="rounded-xl border border-violet-400/30 bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-100">{bannerUserId === user._admin_id ? "Close banner composer" : "Send banner"}</button><button disabled={overview.canManage === false} onClick={() => { setTab(editing ? "overview" : "access"); setBannerUserId(null); }} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button></div>
       </div>
     </section>
 
     <nav aria-label="Account sections" className="grid grid-cols-2 gap-1 border-b border-white/10 sm:flex">
-      {[['overview', 'Overview'], ['access', 'Account & access'], ['data', 'Account data'], ...(overview.canManage ? [['appearance', 'Appearance']] : [])].map(([key, label]) => <button key={key} aria-current={tab === key ? 'page' : undefined} disabled={key === 'access' && overview.canManage === false} onClick={() => { setTab(key); setBannerUserId(null); }} className={`shrink-0 border-b-2 px-4 py-3 text-sm transition disabled:opacity-40 ${tab === key ? 'border-blue-400 text-blue-200' : 'border-transparent text-slate-400 hover:text-white'}`}>{label}</button>)}
+      {[['overview', 'Overview'], ['access', 'Account & access'], ['data', 'Account data'], ...(overview.canManage && can('users.background-view') && can('users.fields.id.read') ? [['appearance', 'Appearance']] : [])].map(([key, label]) => <button key={key} aria-current={tab === key ? 'page' : undefined} disabled={key === 'access' && overview.canManage === false} onClick={() => { setTab(key); setBannerUserId(null); }} className={`shrink-0 border-b-2 px-4 py-3 text-sm transition disabled:opacity-40 ${tab === key ? 'border-blue-400 text-blue-200' : 'border-transparent text-slate-400 hover:text-white'}`}>{label}</button>)}
     </nav>
 
-    {tab === 'appearance' && overview.canManage && <section className="rounded-2xl border border-white/10 bg-slate-900/40 p-5 sm:p-6"><div className="mb-6 flex items-start gap-3"><Paintbrush className="mt-1 h-5 w-5 text-violet-300" /><div><h3 className="font-semibold">Dashboard appearance</h3><p className="mt-1 text-sm text-slate-400">View or change the custom background for {name}.</p></div></div><DashboardPhotoSettings key={user._admin_id} accountUserId={user._admin_id} /></section>}
+    {tab === 'appearance' && overview.canManage && <section className="rounded-2xl border border-white/10 bg-slate-900/40 p-5 sm:p-6"><div className="mb-6 flex items-start gap-3"><Paintbrush className="mt-1 h-5 w-5 text-violet-300" /><div><h3 className="font-semibold">Dashboard appearance</h3><p className="mt-1 text-sm text-slate-400">View or change the custom background for {name}.</p></div></div><fieldset disabled={!can("users.background-write")}><DashboardPhotoSettings key={user._admin_id} accountUserId={user._admin_id} /></fieldset></section>}
 
     {bannerSentTo === user._admin_id && <p role="status" className="text-sm text-emerald-300">Banner saved for {name}. It will appear within 30 seconds or at the scheduled start.</p>}
     {bannerUserId === user._admin_id && <AdminTargetedAlerts key={user._admin_id} recipient={{ id: user._admin_id, label: name + ' (' + email + ')' }} onSent={() => { setBannerUserId(null); setBannerSentTo(user._admin_id); }} />}
@@ -134,17 +136,17 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
     {editing && overview.canManage !== false && <section className="rounded-2xl border border-blue-400/20 bg-slate-950/55 p-5 shadow-xl shadow-blue-950/10 backdrop-blur-xl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h3 className="font-semibold text-white">Edit account and access</h3><p className="mt-1 text-sm text-slate-400">Changes stay on this page and go through the normal confirmation and audit review.</p></div>
-        <button disabled={!form.email.trim() || (Boolean(user.org_id) && !form.organizationId) || Object.keys(changes).length === 0} onClick={() => onAccountOperation("update", changes)} className="inline-flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2 text-sm font-medium text-blue-100 disabled:opacity-40"><Save className="h-4 w-4" /> Review changes</button>
+        <button disabled={!can("users.update") || !form.email.trim() || (Boolean(user.org_id) && !form.organizationId) || Object.keys(changes).length === 0} onClick={() => onAccountOperation("update", changes)} className="inline-flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2 text-sm font-medium text-blue-100 disabled:opacity-40"><Save className="h-4 w-4" /> Review changes</button>
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="text-xs font-medium text-slate-400">Email <span className="text-red-300">*</span><input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400/50" /></label>
-        <label className="text-xs font-medium text-slate-400">Display name<input value={form.displayName} onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400/50" /></label>
+        <label className="text-xs font-medium text-slate-400">Email <span className="text-red-300">*</span><input disabled={!can("users.fields.email.update")} type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400/50" /></label>
+        <label className="text-xs font-medium text-slate-400">Display name<input disabled={!can("users.fields.display_name.update")} value={form.displayName} onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400/50" /></label>
         <div>
           <div className="mb-1.5 flex items-center justify-between gap-2"><span className="text-xs font-medium text-slate-400">Organization</span></div>
-          <ReferenceInput key={`${user._admin_id}:organization:${organizationInputVersion}`} field={{ name: "org_id", label: "Organization", type: "text" }} value={form.organizationId} initialLabel={form.organizationId === String(user.org_id || "") ? user._admin_refs?.org_id?.label : undefined} onChange={(value) => setForm((current) => ({ ...current, organizationId: value ? String(value) : null }))} />
+          <fieldset disabled={!can("users.fields.org_id.update")}><ReferenceInput key={`${user._admin_id}:organization:${organizationInputVersion}`} field={{ name: "org_id", label: "Organization", type: "text" }} value={form.organizationId} initialLabel={form.organizationId === String(user.org_id || "") ? user._admin_refs?.org_id?.label : undefined} onChange={(value) => setForm((current) => ({ ...current, organizationId: value ? String(value) : null }))} /></fieldset>
         </div>
-        <label className="text-xs font-medium text-slate-400">Organization role<select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-sm capitalize text-white outline-none focus:border-blue-400/50"><option value="member">Member</option><option value="admin">Admin</option><option value="owner">Owner</option></select></label>
+        <label className="text-xs font-medium text-slate-400">Organization role<select disabled={!can("users.fields.role.update")} value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-sm capitalize text-white outline-none focus:border-blue-400/50"><option value="member">Member</option><option value="admin">Admin</option><option value="owner">Owner</option></select></label>
         <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 sm:col-span-2">
           <p className="text-sm text-amber-100">Administrator access requires a reason and approval from an application owner.</p>
           {user.app_admin !== true && overview.userActions.includes("request-admin") && <button onClick={() => document.getElementById("admin-access-editor")?.scrollIntoView({ behavior: "smooth" })} className="mt-3 rounded-xl border border-amber-400/30 px-3 py-2 text-sm text-amber-100">Request administrator access</button>}
@@ -220,3 +222,4 @@ function Badge({ label, tone = "slate" }: { label: string; tone?: "slate" | "gre
   const colors = { slate: "bg-white/5 text-slate-300", green: "bg-emerald-400/10 text-emerald-200", red: "bg-red-400/10 text-red-200", blue: "bg-blue-400/10 text-blue-200", amber: "bg-amber-400/10 text-amber-200" };
   return <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${colors[tone]}`}>{label}</span>;
 }
+

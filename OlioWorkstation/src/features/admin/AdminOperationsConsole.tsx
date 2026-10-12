@@ -1,5 +1,5 @@
 import { useAdminAccess } from './AdminAccessBoundary';
-import { DelegatedAdminConsole } from './DelegatedAdminConsole';
+
 import { AdminFeaturesPage } from "./AdminFeaturesPage";
 import { AdminBannerPage } from "./AdminBannerPage";
 import { NotFound } from "../../pages/NotFound";
@@ -66,14 +66,14 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function AdminOperationsConsole() {
-  return <OwnerAdminOperationsConsole />;
+  return <SharedAdminOperationsConsole />;
 }
-function OwnerAdminOperationsConsole() {
+function SharedAdminOperationsConsole() {
   const permissionAccess = useAdminAccess();
   const delegated = !!permissionAccess && !permissionAccess.appOwner;
-  const [delegatedRefresh, setDelegatedRefresh] = useState(0);
+
   const locationState = readLocation();
-  const initial = delegated ? { ...locationState, account: '', organization: '' } : locationState;
+  const initial = locationState;
   const [organizationId, setOrganizationId] = useState(initial.organization);
   const [featureRefresh, setFeatureRefresh] = useState(0);
   const [bannerRefresh, setBannerRefresh] = useState(0);
@@ -124,7 +124,7 @@ function OwnerAdminOperationsConsole() {
     try {
       const next = await loadAdminOverview();
       setOverview(next);
-      if (delegated && section !== "overview" && !next.resources.some(item => resourceInSection(item.group, section))) { setSection("overview"); setResource(""); }
+      if (delegated && section !== "overview" && !next.resources.some(item => resourceInSection(item.group, section))) { setSection("overview"); setResource(""); setAccountUserId(""); setOrganizationId(""); }
       setAccess("ready");
       if (!next.isOwner && section === "reviews") {
         setSection("overview");
@@ -151,7 +151,7 @@ function OwnerAdminOperationsConsole() {
   }, [searchInput]);
 
   const refreshAccount = useCallback(async () => {
-    if (delegated || access !== "ready" || !accountUserId) return;
+    if (access !== "ready" || !accountUserId) return;
     setAccountLoading(true);
     setAccountError(null);
     try {
@@ -168,7 +168,7 @@ function OwnerAdminOperationsConsole() {
 
   const refreshResource = useCallback(async () => {
     const request = ++resourceRequest.current;
-    if (delegated || access !== "ready" || organizationId || section === "overview" || section === "banner" || section === "features" || !resource || accountLinks || (accountUserId && !accountOverview)) { setLoading(false); return; }
+    if (access !== "ready" || organizationId || section === "overview" || section === "banner" || section === "features" || !resource || accountLinks || (accountUserId && !accountOverview)) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
@@ -412,15 +412,15 @@ function OwnerAdminOperationsConsole() {
           <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
             <div className="flex items-center gap-3">
               <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-200 lg:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
-              <div><h1 className="text-2xl font-semibold">{!delegated && accountUserId ? "Account management" : NAVIGATION.find((item) => item.key === section)?.label || "Overview"}</h1></div>
+              <div><h1 className="text-2xl font-semibold">{accountUserId ? "Account management" : NAVIGATION.find((item) => item.key === section)?.label || "Overview"}</h1></div>
             </div>
-            <button onClick={() => { if (delegated) { setDelegatedRefresh(v => v + 1); void bootstrap(); } else if (section === "features") { setFeatureRefresh(v => v + 1); } else if (section === "banner") { setBannerRefresh(v => v + 1); } else if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
+            <button onClick={() => { if (section === "features") { setFeatureRefresh(v => v + 1); } else if (section === "banner") { setBannerRefresh(v => v + 1); } else if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
           </header>
 
           {toast && <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100"><span>{toast}</span><button onClick={() => setToast(null)}><X className="h-4 w-4" /></button></div>}
           {error && <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-          {delegated && section !== "overview" ? <DelegatedAdminConsole key={section} overview={overview!} section={section} refreshVersion={delegatedRefresh} onNavigate={key => { const target = resources.find(item => item.key === key); if (target) { selectSection(adminSection(target.group)); setResource(key); } }} initialResource={resource} /> : section === "features" ? <AdminFeaturesPage refreshVersion={featureRefresh} /> : section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} allowedSections={visibleNavigation.map(item => item.key)} /> : accountUserId ? (
+          {section === "features" ? <AdminFeaturesPage refreshVersion={featureRefresh} /> : section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} allowedSections={visibleNavigation.map(item => item.key)} /> : accountUserId ? (
             <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
               {accountLinks && accountOverview ? <AdminAccountQuicklinks key={accountUserId} user={accountOverview.user} onComplete={() => { void refreshAccount(); void loadAdminOverview().then(setOverview).catch(() => undefined); }} onOpenReference={openReference} /> : resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
@@ -516,3 +516,4 @@ function navigate(path: string) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
+
