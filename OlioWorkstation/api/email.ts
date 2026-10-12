@@ -135,7 +135,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     if (moduleFailure && action !== 'hook')
       return res.status(503).json({
-        error: 'Email runtime dependency failed to load. Redeploy using Node.js 24.x and check Vercel runtime logs.',
+        error: 'Email runtime dependency failed to load. Rebuild and redeploy the application, then check Vercel runtime logs.',
         code,
       });
     if (action === 'hook')

@@ -21,3 +21,4 @@ dist-ssr
 *.sln
 *.sw?
 .env
+OlioWorkstation/api/_utils/emailSanitizer.generated.cjs

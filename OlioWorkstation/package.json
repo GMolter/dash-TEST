@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/check-email-runtime.cjs && npm run typecheck:api && vite build",
+    "build": "node scripts/build-email-runtime.cjs && npm run typecheck:api && vite build",
+    "postinstall": "node scripts/build-email-runtime.cjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -37,6 +38,7 @@
     "yauzl": "^3.4.0"
   },
   "devDependencies": {
+    "esbuild": "0.21.5",
     "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^9.9.1",
     "@testing-library/jest-dom": "^6.6.3",

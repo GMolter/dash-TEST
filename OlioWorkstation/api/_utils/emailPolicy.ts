@@ -6,7 +6,7 @@ import {
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto';
-import sanitizeHtml from 'sanitize-html';
+import sanitizeHtml from './emailSanitizer.generated.cjs';
 import { recipientList, scheduledInstant } from '../../shared/email.js';
 export { recipientList, scheduledInstant };
 export function renderEmail(subject: unknown, body: unknown) {
