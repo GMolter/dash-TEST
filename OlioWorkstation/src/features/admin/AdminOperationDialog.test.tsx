@@ -17,8 +17,8 @@ describe("AdminOperationDialog", () => {
     } : path.includes('permission-assignment') ? { revision: 0 } : { rows: [{ request_kind: 'admin_promotion', target_user_id: 'target', proposed_preset: null }] });
     const user = userEvent.setup();
     render(<AdminOperationDialog operation={{ resource: 'admin-access-requests', kind: 'approve-admin', ids: ['request'] }} title="Approve request" onCancel={vi.fn()} onComplete={vi.fn()} />);
-    const select = await screen.findByRole('combobox', { name: 'Access level' });
-    await user.selectOptions(select, 'full');
+    const select = await screen.findByRole('button', { name: /Full admin/ });
+    await user.click(select);
     await user.type(screen.getByLabelText('Reason for this action'), 'Approved duties');
     await user.click(screen.getByRole('button', { name: 'Review operation' }));
     expect(prepareAdminOperation).toHaveBeenCalledWith(expect.objectContaining({ values: { preset: 'full', permissions: ['features.read', 'features.update'], revision: 0 } }));

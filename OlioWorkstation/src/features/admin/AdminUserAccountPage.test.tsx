@@ -5,10 +5,20 @@ import { AdminUserAccountPage } from "./AdminUserAccountPage";
 import type { AdminUserAccountOverview } from './types';
 
 vi.mock('../../components/DashboardPhotoSettings', () => ({ DashboardPhotoSettings: () => <div>Background editor</div> }));
+vi.mock('./AdminAccessBoundary', () => ({ useAdminAccess: () => ({ appOwner: true }) }));
+vi.mock('./AdminAccessEditor', () => ({ AdminAccessEditor: () => <div>Administrator permissions editor</div> }));
 
 vi.mock('./AdminTargetedAlerts', () => ({ AdminTargetedAlerts: ({ recipient, onSent }: { recipient: { id: string; label: string }; onSent: () => void }) => <div data-testid="banner-recipient">{recipient.id}: {recipient.label}<button onClick={onSent}>Complete banner</button></div> }));
 
 describe("AdminUserAccountPage", () => {
+  it('keeps permissions off the overview and places them below account controls', async () => {
+    render(<AdminUserAccountPage overview={{ user: { _admin_id: 'user-a', display_name: 'Avery', email: 'avery@example.com' }, userFields: [], userActions: [], resources: [], canManage: true, totalRecords: 1 }} loading={false} error={null} selectedResource="" onBack={vi.fn()} onAccountOperation={vi.fn()} onOpenReference={vi.fn()} onSelectResource={vi.fn()} />);
+    expect(screen.queryByText('Administrator permissions editor')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Account & access' }));
+    const editor = screen.getByText('Administrator permissions editor');
+    expect(editor).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Edit account and access' }).compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
   it('opens a banner composer for the viewed user and clears it when switching accounts', async () => {
     const actor = userEvent.setup();
     const overview: AdminUserAccountOverview = { user: { _admin_id: 'user-a', display_name: 'Avery', email: 'avery@example.com' }, userFields: [], userActions: [], resources: [], canManage: true, totalRecords: 1 };

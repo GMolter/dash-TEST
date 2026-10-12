@@ -66,11 +66,14 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function AdminOperationsConsole() {
-  const access = useAdminAccess();
-  return access && !access.appOwner ? <DelegatedAdminConsole /> : <OwnerAdminOperationsConsole />;
+  return <OwnerAdminOperationsConsole />;
 }
 function OwnerAdminOperationsConsole() {
-  const initial = readLocation();
+  const permissionAccess = useAdminAccess();
+  const delegated = !!permissionAccess && !permissionAccess.appOwner;
+  const [delegatedRefresh, setDelegatedRefresh] = useState(0);
+  const locationState = readLocation();
+  const initial = delegated ? { ...locationState, account: '', organization: '' } : locationState;
   const [organizationId, setOrganizationId] = useState(initial.organization);
   const [featureRefresh, setFeatureRefresh] = useState(0);
   const [bannerRefresh, setBannerRefresh] = useState(0);
@@ -107,6 +110,7 @@ function OwnerAdminOperationsConsole() {
   const resources = useMemo(() => overview?.resources || [], [overview?.resources]);
   const sectionResources = useMemo(() => resources.filter((item) => resourceInSection(item.group, section)), [resources, section]);
   const workspaceMode = section === 'workspace' && !accountUserId && !organizationId;
+  const visibleNavigation = NAVIGATION.filter(item => item.key === "overview" || ((!delegated || resources.some(resource => resourceInSection(resource.group, item.key))) && (!("ownerOnly" in item) || overview?.isOwner)));
   const selectedResource = sectionResources.find((item) => item.key === resource);
   const ownerAccountLocked = row?._admin_protected === true || (data?.resource === "users" && row?.app_owner === true && !overview?.isOwner);
   const accountLinks = Boolean(accountUserId) && ["quicklinks", "quicklink-folders"].includes(resource);
@@ -120,6 +124,7 @@ function OwnerAdminOperationsConsole() {
     try {
       const next = await loadAdminOverview();
       setOverview(next);
+      if (delegated && section !== "overview" && !next.resources.some(item => resourceInSection(item.group, section))) { setSection("overview"); setResource(""); }
       setAccess("ready");
       if (!next.isOwner && section === "reviews") {
         setSection("overview");
@@ -146,7 +151,7 @@ function OwnerAdminOperationsConsole() {
   }, [searchInput]);
 
   const refreshAccount = useCallback(async () => {
-    if (access !== "ready" || !accountUserId) return;
+    if (delegated || access !== "ready" || !accountUserId) return;
     setAccountLoading(true);
     setAccountError(null);
     try {
@@ -163,7 +168,7 @@ function OwnerAdminOperationsConsole() {
 
   const refreshResource = useCallback(async () => {
     const request = ++resourceRequest.current;
-    if (access !== "ready" || organizationId || section === "overview" || section === "banner" || section === "features" || !resource || accountLinks || (accountUserId && !accountOverview)) { setLoading(false); return; }
+    if (delegated || access !== "ready" || organizationId || section === "overview" || section === "banner" || section === "features" || !resource || accountLinks || (accountUserId && !accountOverview)) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
@@ -379,22 +384,22 @@ function OwnerAdminOperationsConsole() {
             <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 lg:hidden" aria-label="Close navigation"><X className="h-5 w-5" /></button>
           </div>
           <nav aria-label="Admin navigation" className="mt-7 flex-1 space-y-1 overflow-y-auto"><p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Manage</p>
-            {NAVIGATION.filter((item) => ["overview", "people", "organizations", "banner", "reviews"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
+            {visibleNavigation.filter((item) => ["overview", "people", "organizations", "banner", "reviews"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
               const Icon = item.icon;
               return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" /><span className="flex-1">{item.key === "audit" ? "Activity" : item.label}</span>{item.key === "reviews" && !!overview?.metrics.pendingAdminReviews && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">{overview.metrics.pendingAdminReviews}</span>}</button>;
             })}
             <div className="pt-4">
               <button aria-expanded={moreOpen} aria-controls="admin-more-navigation" onClick={() => setMoreOpen(!moreOpen)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white">Workspace tools<ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} /></button>
-              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{NAVIGATION.filter((item) => ["workspace", "features", "integrations", "platform", "audit"].includes(item.key)).map((item) => {
+              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{visibleNavigation.filter((item) => ["workspace", "features", "integrations", "platform", "audit"].includes(item.key)).map((item) => {
                 const Icon = item.icon;
                 return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-500 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" />{item.label}</button>;
               })}</div>}
             </div>
-            <div aria-label="Deployment dashboards" className="!mt-6 space-y-2 border-t border-white/10 px-1 pt-4">
+            {!delegated && <div aria-label="Deployment dashboards" className="!mt-6 space-y-2 border-t border-white/10 px-1 pt-4">
               <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Deployments</p>
               <a href="https://supabase.com/dashboard/project/zttlbebkdqlgwtomnrtr" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border border-emerald-400/15 bg-emerald-400/5 px-3 py-2.5 text-sm text-emerald-200 hover:bg-emerald-400/10"><Database className="h-4 w-4" /><span className="flex-1">Supabase</span><ExternalLink className="h-3.5 w-3.5" /><span className="sr-only"> (opens in a new tab)</span></a>
               <a href="https://vercel.com/gmolter8-gmailcoms-projects/dash-test-51zf/deployments" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-slate-200 hover:bg-white/10"><svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4 fill-current"><path d="M8 2 16 15H0Z" /></svg><span className="flex-1">Vercel</span><ExternalLink className="h-3.5 w-3.5" /><span className="sr-only"> (opens in a new tab)</span></a>
-            </div>
+            </div>}
           </nav>
           <div className="space-y-2 border-t border-white/10 pt-4">
             <a href="/" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white"><LayoutDashboard className="h-4 w-4" /> Back to Olio</a>
@@ -407,15 +412,15 @@ function OwnerAdminOperationsConsole() {
           <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
             <div className="flex items-center gap-3">
               <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-200 lg:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
-              <div><h1 className="text-2xl font-semibold">{accountUserId ? "Account management" : NAVIGATION.find((item) => item.key === section)?.label || "Overview"}</h1></div>
+              <div><h1 className="text-2xl font-semibold">{!delegated && accountUserId ? "Account management" : NAVIGATION.find((item) => item.key === section)?.label || "Overview"}</h1></div>
             </div>
-            <button onClick={() => { if (section === "features") { setFeatureRefresh(v => v + 1); } else if (section === "banner") { setBannerRefresh(v => v + 1); } else if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
+            <button onClick={() => { if (delegated) { setDelegatedRefresh(v => v + 1); void bootstrap(); } else if (section === "features") { setFeatureRefresh(v => v + 1); } else if (section === "banner") { setBannerRefresh(v => v + 1); } else if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
           </header>
 
           {toast && <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100"><span>{toast}</span><button onClick={() => setToast(null)}><X className="h-4 w-4" /></button></div>}
           {error && <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-          {section === "features" ? <AdminFeaturesPage refreshVersion={featureRefresh} /> : section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} /> : accountUserId ? (
+          {delegated && section !== "overview" ? <DelegatedAdminConsole key={section} overview={overview!} section={section} refreshVersion={delegatedRefresh} onNavigate={key => { const target = resources.find(item => item.key === key); if (target) { selectSection(adminSection(target.group)); setResource(key); } }} initialResource={resource} /> : section === "features" ? <AdminFeaturesPage refreshVersion={featureRefresh} /> : section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <Overview overview={overview} onNavigate={selectSection} allowedSections={visibleNavigation.map(item => item.key)} /> : accountUserId ? (
             <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
               {accountLinks && accountOverview ? <AdminAccountQuicklinks key={accountUserId} user={accountOverview.user} onComplete={() => { void refreshAccount(); void loadAdminOverview().then(setOverview).catch(() => undefined); }} onOpenReference={openReference} /> : resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}
@@ -464,24 +469,24 @@ function OwnerAdminOperationsConsole() {
   );
 }
 
-function Overview({ overview, onNavigate }: { overview: AdminOverview | null; onNavigate: (section: string) => void }) {
+function Overview({ overview, onNavigate, allowedSections }: { overview: AdminOverview | null; onNavigate: (section: string) => void; allowedSections: string[] }) {
   const counts = [["users", "People", "people"], ["organizations", "Organizations", "organizations"], ["projects", "Projects", "projects"]] as const;
   const pendingReviews = overview?.isOwner ? overview.metrics.pendingAdminReviews || 0 : 0;
   const pendingPairings = overview?.metrics.pendingPairings || 0;
   const activity = overview?.recentAudit.slice(0, 4) || [];
   return <div className="mx-auto max-w-6xl space-y-8">
     <section><p className="text-xs font-medium uppercase tracking-widest text-blue-300">Admin workspace</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">What needs your attention?</h2><p className="mt-3 text-sm text-slate-400">Manage people, keep teams informed, and keep Olio running smoothly.</p></section>
-    <div className="grid gap-3 sm:grid-cols-3">{[{ key: 'people', title: 'Manage people', detail: 'Accounts, access, and personal settings', icon: Users }, { key: 'organizations', title: 'Manage organizations', detail: 'Membership, owners, and shared work', icon: Building2 }, { key: 'banner', title: 'Manage banners', detail: 'Active messages and scheduled updates', icon: Megaphone }].map(item => <button key={item.key} onClick={() => onNavigate(item.key)} className="group rounded-2xl border border-white/10 bg-slate-900/50 p-5 text-left hover:border-blue-400/30 hover:bg-blue-400/5"><item.icon className="mb-5 h-5 w-5 text-blue-300" /><div className="flex items-center justify-between gap-2"><span className="font-medium">{item.title}</span><ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-blue-300" /></div><p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p></button>)}</div>
-    <div className="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 bg-slate-950/25 py-5">{counts.map(([key, label, section]) => <button key={key} onClick={() => onNavigate(section)} className="px-3 text-left sm:px-6 hover:text-blue-200"><div className="text-2xl font-semibold">{overview?.metrics[key]?.toLocaleString() ?? "—"}</div><div className="mt-1 text-xs text-slate-400 sm:text-sm">{label}</div></button>)}</div>
+    <div className="grid gap-3 sm:grid-cols-3">{[{ key: 'people', title: 'Manage people', detail: 'Accounts, access, and personal settings', icon: Users }, { key: 'organizations', title: 'Manage organizations', detail: 'Membership, owners, and shared work', icon: Building2 }, { key: 'banner', title: 'Manage banners', detail: 'Active messages and scheduled updates', icon: Megaphone }].filter(item => allowedSections.includes(item.key)).map(item => <button key={item.key} onClick={() => onNavigate(item.key)} className="group rounded-2xl border border-white/10 bg-slate-900/50 p-5 text-left hover:border-blue-400/30 hover:bg-blue-400/5"><item.icon className="mb-5 h-5 w-5 text-blue-300" /><div className="flex items-center justify-between gap-2"><span className="font-medium">{item.title}</span><ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-blue-300" /></div><p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p></button>)}</div>
+    <div className="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 bg-slate-950/25 py-5">{counts.filter(([, , section]) => allowedSections.includes(adminSection(section))).map(([key, label, section]) => <button key={key} onClick={() => onNavigate(section)} className="px-3 text-left sm:px-6 hover:text-blue-200"><div className="text-2xl font-semibold">{overview?.metrics[key]?.toLocaleString() ?? "—"}</div><div className="mt-1 text-xs text-slate-400 sm:text-sm">{label}</div></button>)}</div>
     {(pendingReviews > 0 || pendingPairings > 0) && <section className="space-y-2">
       <h2 className="text-sm font-medium text-slate-400">Needs attention</h2>
       {pendingReviews > 0 && <button onClick={() => onNavigate("reviews")} className="flex w-full items-center gap-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-left text-sm text-amber-100"><ShieldCheck className="h-4 w-4" /><span className="flex-1">{pendingReviews} account request{pendingReviews === 1 ? "" : "s"} to review</span><ArrowRight className="h-4 w-4" /></button>}
       {pendingPairings > 0 && <button onClick={() => onNavigate("integrations")} className="flex w-full items-center gap-3 rounded-xl border border-white/10 p-4 text-left text-sm text-slate-200"><Plug className="h-4 w-4" /><span className="flex-1">{pendingPairings} pending device pairing{pendingPairings === 1 ? "" : "s"}</span><ArrowRight className="h-4 w-4" /></button>}
     </section>}
-    <section>
+    {allowedSections.includes('audit') && <section>
       <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-medium text-slate-300">Recent activity</h2><button onClick={() => onNavigate("audit")} className="text-xs text-slate-400 hover:text-blue-200">View all →</button></div>
       <div className="divide-y divide-white/[0.06]">{activity.length ? activity.map((event) => <div key={String(event.id)} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3"><div className="min-w-0"><div className="text-sm text-slate-200">{activityLabel(String(event.action), String(event.resource))}</div><div className="mt-1 truncate text-xs text-slate-500">{String(event.actor_email || "Admin")}</div></div><span className="text-xs text-slate-500">{formatAdminValue(event.created_at, "datetime")}</span></div>) : <p className="py-6 text-sm text-slate-500">No recent activity.</p>}</div>
-    </section>
+    </section>}
   </div>;
 }
 
@@ -511,7 +516,3 @@ function navigate(path: string) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
-
-
-
-

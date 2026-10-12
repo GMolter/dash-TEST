@@ -4,6 +4,8 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { AdminOperationsConsole } from './AdminOperationsConsole';
 import { loadAdminOverview, loadAdminResource } from './api';
 import type { AdminListResponse } from './types';
+const accessMock = vi.hoisted(() => ({ value: null as any }));
+vi.mock('./AdminAccessBoundary', () => ({ useAdminAccess: () => accessMock.value }));
 
 vi.mock('./api', () => ({ loadAdminOverview: vi.fn(), loadAdminResource: vi.fn(), loadAdminUserAccount: vi.fn(), revealAdminField: vi.fn() }));
 vi.mock('./AdminFeaturesPage', () => ({ AdminFeaturesPage: () => <div>Shared feature ideas</div> }));
@@ -20,10 +22,26 @@ function list(resource: string): AdminListResponse {
     fields: [{ name: 'title', label: 'Title', type: 'text', editable: true, create: true }, { name: 'content', label: 'Content', type: 'textarea', sensitive: true, editable: true }], actions: ['create', 'update', 'delete'], redactedFields: ['content'], filterFields: [], sortFields: ['title'], page: 1, pageSize: 25, sort: 'title', direction: 'desc' };
 }
 beforeEach(() => {
+  accessMock.value = null;
   vi.clearAllMocks();
   window.history.replaceState({}, '', '/admin');
   vi.mocked(loadAdminOverview).mockResolvedValue({ isOwner: true, metrics: {}, recentAudit: [], resources });
   vi.mocked(loadAdminResource).mockImplementation(async input => list(input.resource));
+});
+
+it('uses the shared sidebar and overview for custom admins and hides unassigned areas', async () => {
+  accessMock.value = { appOwner: false, preset: 'custom', permissions: [] };
+  vi.mocked(loadAdminOverview).mockResolvedValue({ isOwner: false, metrics: {}, recentAudit: [], resources: [resources[0]] });
+  render(<AdminOperationsConsole />);
+  const navigation = await screen.findByRole('navigation', { name: 'Admin navigation' });
+  expect(screen.getByText('What needs your attention?')).toBeVisible();
+  expect(within(navigation).queryByRole('button', { name: 'People' })).not.toBeInTheDocument();
+  expect(within(navigation).queryByRole('link', { name: /Supabase/ })).not.toBeInTheDocument();
+  await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace tools' }));
+  await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace data' }));
+  expect(await screen.findByText('projects example')).toBeVisible();
+  expect(loadAdminResource).toHaveBeenCalledWith(expect.objectContaining({ resource: 'projects' }));
+  expect(within(navigation).queryByRole('button', { name: 'Help Center' })).not.toBeInTheDocument();
 });
 
 it('keeps deployment links outside the collapsed workspace tools and opens them in new tabs', async () => {

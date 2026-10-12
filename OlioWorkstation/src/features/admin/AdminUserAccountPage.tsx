@@ -100,7 +100,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
   return <div className="mx-auto max-w-6xl space-y-6">
     <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"><ArrowLeft className="h-4 w-4" /> Back to all people</button>
 
-    {adminAccess?.appOwner && !user.app_owner && <AdminAccessEditor userId={user._admin_id} />}
+
     <section className="rounded-2xl border border-white/10 bg-gradient-to-r from-blue-500/[0.08] to-slate-900/50 p-5 sm:p-7">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">
@@ -160,6 +160,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
       </div>
     </section>}
 
+    {tab === 'access' && adminAccess?.appOwner && !user.app_owner && <AdminAccessEditor key={user._admin_id} userId={user._admin_id} />}
     {tab === 'data' && selectedResource ? <>
       <section className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4 sm:flex-row sm:items-end sm:justify-between">
         <div><button onClick={() => { onSelectResource(""); setTab("overview"); }} className="text-xs text-blue-300 hover:text-blue-200">← Account overview</button><h3 className="mt-1 text-lg font-semibold text-white">{selected?.label || "Account data"}</h3><p className="mt-1 text-sm text-slate-400">Only records owned by {name}, or contained in their projects, are shown.</p></div>
@@ -219,6 +220,3 @@ function Badge({ label, tone = "slate" }: { label: string; tone?: "slate" | "gre
   const colors = { slate: "bg-white/5 text-slate-300", green: "bg-emerald-400/10 text-emerald-200", red: "bg-red-400/10 text-red-200", blue: "bg-blue-400/10 text-blue-200", amber: "bg-amber-400/10 text-amber-200" };
   return <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${colors[tone]}`}>{label}</span>;
 }
-
-
-
