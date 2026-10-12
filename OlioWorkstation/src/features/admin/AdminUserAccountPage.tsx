@@ -1,3 +1,5 @@
+import { AdminAccessEditor } from './AdminAccessEditor';
+import { useAdminAccess } from './AdminAccessBoundary';
 import { DashboardPhotoSettings } from '../../components/DashboardPhotoSettings';
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Ban, KeyRound, Layers3, Paintbrush, Save, Trash2, UserCheck, UserRoundCog, X } from "lucide-react";
@@ -37,6 +39,7 @@ const GROUP_LABELS: Record<string, string> = {
 };
 
 export function AdminUserAccountPage({ overview, loading, error, selectedResource, onBack, onAccountOperation, onOpenReference, onSelectResource, children }: Props) {
+  const adminAccess = useAdminAccess();
   const [showEmpty, setShowEmpty] = useState(false);
   const [tab, setTab] = useState('overview');
   const editing = tab === 'access';
@@ -97,6 +100,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
   return <div className="mx-auto max-w-6xl space-y-6">
     <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"><ArrowLeft className="h-4 w-4" /> Back to all people</button>
 
+    {adminAccess?.appOwner && !user.app_owner && <AdminAccessEditor userId={user._admin_id} />}
     <section className="rounded-2xl border border-white/10 bg-gradient-to-r from-blue-500/[0.08] to-slate-900/50 p-5 sm:p-7">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">
@@ -143,8 +147,8 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
         <label className="text-xs font-medium text-slate-400">Organization role<select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-sm capitalize text-white outline-none focus:border-blue-400/50"><option value="member">Member</option><option value="admin">Admin</option><option value="owner">Owner</option></select></label>
         <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 sm:col-span-2">
           <p className="text-sm text-amber-100">Administrator access requires a reason and approval from an application owner.</p>
-          {user.app_admin !== true && overview.userActions.includes("request-admin") && <button onClick={() => onAccountOperation("request-admin")} className="mt-3 rounded-xl border border-amber-400/30 px-3 py-2 text-sm text-amber-100">Request administrator access</button>}
-          {user.app_admin === true && user.app_owner !== true && overview.userActions.includes("revoke-admin") && <button onClick={() => onAccountOperation("revoke-admin")} className="mt-3 rounded-xl border border-red-400/30 px-3 py-2 text-sm text-red-200">Remove administrator access</button>}
+          {user.app_admin !== true && overview.userActions.includes("request-admin") && <button onClick={() => document.getElementById("admin-access-editor")?.scrollIntoView({ behavior: "smooth" })} className="mt-3 rounded-xl border border-amber-400/30 px-3 py-2 text-sm text-amber-100">Request administrator access</button>}
+          {user.app_admin === true && user.app_owner !== true && overview.userActions.includes("revoke-admin") && <button onClick={() => document.getElementById("admin-access-editor")?.scrollIntoView({ behavior: "smooth" })} className="mt-3 rounded-xl border border-red-400/30 px-3 py-2 text-sm text-red-200">Remove administrator access</button>}
         </div>      </div>
 
       <div className="mt-5 grid gap-4 border-t border-white/8 pt-5 lg:grid-cols-[1fr_auto]">

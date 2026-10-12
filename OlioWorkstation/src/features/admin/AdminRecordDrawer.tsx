@@ -74,7 +74,7 @@ export function AdminRecordDrawer({ embedded = false, label, fields, actions, ro
       <div key={field.name} className={!embedded && (field.type === "textarea" || field.type === "json") ? "sm:col-span-2" : ""}>
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <label className="text-xs font-medium text-slate-400">{adminFieldLabel(field)}{field.required && <span className="text-red-300"> *</span>}</label>
-          {field.sensitive && !creating && !row?._admin_protected && revealedValue === undefined && (
+          {field.sensitive && actions.includes("reveal") && !creating && !row?._admin_protected && revealedValue === undefined && (
             <button onClick={() => onReveal(field.name)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-amber-200 hover:bg-amber-400/10"><Eye className="h-3.5 w-3.5" /> Reveal</button>
           )}
         </div>
@@ -161,6 +161,8 @@ function GuidedActions({ actions, row, onOperation }: { actions: string[]; row: 
         {row.status === "pending" && actions.includes("approve-admin") && <ActionButton icon={ShieldCheck} label={row.request_kind === "account_deletion" ? "Approve account deletion" : "Approve admin access"} destructive={row.request_kind === "account_deletion"} onClick={() => onOperation("approve-admin")} />}
         {row.status === "pending" && actions.includes("reject-admin") && <ActionButton icon={XCircle} label="Reject request" onClick={() => onOperation("reject-admin")} destructive />}
         {actions.includes(isBanned ? "unban" : "ban") && <ActionButton icon={isBanned ? UserCheck : Ban} label={isBanned ? "Unban account" : "Ban account"} onClick={() => onOperation(isBanned ? "unban" : "ban")} destructive={!isBanned} />}
+        {actions.includes('remove-organization') && Boolean(row.org_id) && <ActionButton icon={ShieldOff} label="Remove organization membership" onClick={() => onOperation('remove-organization')} destructive />}
+        {(actions.includes('set-member') || actions.includes('remove-member')) && <MemberActions actions={actions} onOperation={onOperation} />}
         {actions.includes("regenerate-code") && <ActionButton icon={RotateCcw} label="Regenerate code" onClick={() => onOperation("regenerate-code")} />}
         {actions.includes("transfer-owner") && <TransferOwner onSubmit={(ownerId) => onOperation("transfer-owner", { owner_id: ownerId })} />}
         {actions.includes("cancel") && <ActionButton icon={ShieldOff} label="Cancel pairing" onClick={() => onOperation("cancel")} />}
@@ -169,6 +171,12 @@ function GuidedActions({ actions, row, onOperation }: { actions: string[]; row: 
       </div>
     </section>
   );
+}
+
+function MemberActions({ actions, onOperation }: { actions: string[]; onOperation: Props['onOperation'] }) {
+  const [member, setMember] = useState('');
+  const [role, setRole] = useState('member');
+  return <div className="w-full space-y-2"><ReferenceInput field={{ name: 'user_id', label: 'Organization member', type: 'text' }} value={member} onChange={value => setMember(String(value || ''))} /><select aria-label="Membership role" value={role} onChange={event => setRole(event.target.value)} className="rounded bg-slate-800 p-2"><option value="member">Member</option><option value="admin">Admin</option><option value="owner">Owner</option></select>{actions.includes('set-member') && <button disabled={!member} onClick={() => onOperation('set-member', { member_id: member, role })}>Review membership</button>}{actions.includes('remove-member') && <button disabled={!member} onClick={() => onOperation('remove-member', { member_id: member })}>Remove member</button>}</div>;
 }
 
 function TransferOwner({ onSubmit }: { onSubmit: (id: string) => void }) {

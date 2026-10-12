@@ -93,7 +93,7 @@ describe("AdminUserAccountPage", () => {
     expect(screen.getByRole("heading", { name: "Edit account and access" })).toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Request administrator access" }));
-    expect(onAccountOperation).toHaveBeenCalledWith("request-admin");
+    expect(onAccountOperation).not.toHaveBeenCalledWith("request-admin"); // Access changes now use the owner permission editor.
     await user.clear(screen.getByLabelText(/Display name/));
     await user.type(screen.getByLabelText(/Display name/), "Gavin Smith");
     await user.click(screen.getByRole("button", { name: "Review changes" }));

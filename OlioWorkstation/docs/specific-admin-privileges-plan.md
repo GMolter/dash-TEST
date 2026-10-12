@@ -1,6 +1,6 @@
 # Specific Admin Privileges — implementation plan
 
-Status: proposed; no application or live permission changes made.
+Status: implementation added in the working tree; deployment and authenticated SQL verification pending. See [rollout and verification](specific-admin-privileges-rollout.md). No live permission changes have been made.
 
 ## Goal and source
 

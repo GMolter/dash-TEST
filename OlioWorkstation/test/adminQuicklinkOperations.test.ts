@@ -13,7 +13,7 @@ vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ rpc: mocks.rpc,
 const operation = { resource: 'quicklinks', kind: 'bulk-quicklinks', reason: 'Copy school links', values: { mode: 'copy', target_user_id: 'target' } };
 const plan = { mode: 'copy', count: 2, summary: 'Copy from Avery to Blair / account root.', expected: { profiles: [], folders: [{ id: 'folder' }], links: [{ id: 'link' }], destination: [] }, folders: [{ id: 'new-folder' }], links: [{ id: 'new-link' }] };
 async function request(body: unknown) {
-  const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+  const res = { setHeader: vi.fn(), status: vi.fn().mockReturnThis(), json: vi.fn() };
   await handler({ method: 'POST', body }, res);
   return { status: res.status.mock.calls.at(-1)?.[0], body: res.json.mock.calls.at(-1)?.[0] };
 }
@@ -59,4 +59,14 @@ describe('reviewed quicklink operations', () => {
     expect((await request({ phase: 'prepare', operation })).status).toBe(401);
     expect(mocks.plan).not.toHaveBeenCalled();
   });
+});
+
+it('rejects an already prepared operation after permission revocation', async () => {
+ const prepared = await request({ phase: 'prepare', operation });
+ expect(prepared.status).toBe(200);
+ mocks.access.mockResolvedValue({ ok: true, userId: 'admin', appOwner: false, permissions: [] });
+ const executed = await request({ phase: 'execute', operation, operationToken: prepared.body.operationToken, confirmation: 'CONFIRM' });
+ expect(executed.status).toBe(403);
+ expect(mocks.rpc).not.toHaveBeenCalled();
+ expect(mocks.insert).not.toHaveBeenCalled();
 });

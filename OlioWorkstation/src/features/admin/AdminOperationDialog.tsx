@@ -4,6 +4,7 @@ import { executeAdminOperation, prepareAdminOperation } from "./api";
 import type { AdminOperation, PreparedOperation } from "./types";
 import { humanizeAdminText } from "./adminFormat";
 import { BAN_DURATIONS } from "./banDurations";
+import { AdminApprovalPermissions, type ApprovalPermissions } from './AdminApprovalPermissions';
 
 type Props = {
   operation: Omit<AdminOperation, "reason"> | null;
@@ -14,6 +15,7 @@ type Props = {
 
 export function AdminOperationDialog({ operation, title, onCancel, onComplete }: Props) {
   const [reason, setReason] = useState("");
+  const [approvalPermissions, setApprovalPermissions] = useState<ApprovalPermissions | null>();
   const [banDuration, setBanDuration] = useState("24h");
   const [prepared, setPrepared] = useState<PreparedOperation | null>(null);
   const [confirmation, setConfirmation] = useState("");
@@ -23,6 +25,7 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
 
   useEffect(() => {
     setReason("");
+    setApprovalPermissions(undefined);
     setBanDuration("24h");
     setPrepared(null);
     setConfirmation("");
@@ -31,11 +34,13 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
 
   if (!operation) return null;
   const completeOperation: AdminOperation = { ...operation, reason,
+    ...(operation.kind === 'approve-admin' && approvalPermissions ? { values: approvalPermissions } : {}),
     ...(operation.kind === "ban" ? { values: { ...operation.values, ban_duration: banDuration } } : {}),
   };
 
   async function review() {
     if (submitting.current) return;
+    if (operation?.kind === 'approve-admin' && approvalPermissions === undefined) return;
     if (reason.trim().length < 3) {
       setError("Enter a reason of at least 3 characters.");
       return;
@@ -90,7 +95,8 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
           <button type="button" disabled={busy} onClick={onCancel} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
 
-        <div className="space-y-4 p-5">
+        <div className="max-h-[70vh] overflow-y-auto space-y-4 p-5">
+          {operation.kind === 'approve-admin' && <AdminApprovalPermissions requestId={operation.ids?.[0] || ''} disabled={busy || !!prepared} onChange={setApprovalPermissions} />}
           {!prepared ? (
             <>
               {operation.kind === "remove-organization" && <p className="rounded-xl border border-red-400/20 bg-red-400/5 p-3 text-sm text-red-100">This removes the account from its organization and ends access to shared resources. The account itself will remain active.</p>}
@@ -145,7 +151,7 @@ export function AdminOperationDialog({ operation, title, onCancel, onComplete }:
         <div className="flex items-center justify-end gap-2 border-t border-white/10 bg-black/15 px-5 py-4">
           <button type="button" disabled={busy} onClick={onCancel} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5">Cancel</button>
           {!prepared ? (
-            <button type="submit" disabled={busy || reason.trim().length < 3} className="inline-flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2 text-sm font-medium text-blue-100 disabled:opacity-40">
+            <button type="submit" disabled={busy || reason.trim().length < 3 || (operation.kind === 'approve-admin' && approvalPermissions === undefined)} className="inline-flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2 text-sm font-medium text-blue-100 disabled:opacity-40">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />} Review operation
             </button>
           ) : (

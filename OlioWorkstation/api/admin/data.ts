@@ -1,3 +1,6 @@
+import { resolveRecordHandle } from '../_utils/adminRecordHandles.js';
+import { ADMIN_PERMISSION_CATALOG, ADMIN_CATALOG_VERSION, hasPermission, requirePermission, permittedResource, permittedActions, projectAdminRow, authorizeOperation, presetPermissions, validatePermissions } from '../_utils/adminPermissions.js';
+import type { AdminAccess } from '../_utils/adminAccess.js';
 import { protectedOwnerRows } from "../_utils/adminOwnerProtection.js";
 import { planQuicklinkOperation } from "../_utils/adminQuicklinks.js";
 export const config = { runtime: "nodejs", maxDuration: 30 };
@@ -22,7 +25,7 @@ import {
 } from "../_utils/adminResources.js";
 
 type OperationKind =
-  | "create" | "update" | "delete" | "reveal" | "bulk-quicklinks"
+  | "set-access" | "create" | "update" | "delete" | "reveal" | "bulk-quicklinks"
   | "ban" | "unban" | "reset-password" | "request-admin" | "revoke-admin"
   | "approve-admin" | "reject-admin" | "request-delete" | "remove-organization"
   | "transfer-owner" | "regenerate-code" | "set-member" | "remove-member"
@@ -118,7 +121,7 @@ function cleanSearch(value: string) {
 
 function normalizeIds(value: unknown) {
   if (!Array.isArray(value)) return [];
-  return [...new Set(value.map((item) => String(item)).filter((item) => SAFE_ID.test(item)))];
+  return [...new Set(value.map((item) => resolveRecordHandle(String(item))).filter((item) => SAFE_ID.test(item)))];
 }
 
 function resourceId(resource: AdminResource, row: Record<string, any>) {
@@ -222,6 +225,7 @@ function assertOperation(resource: AdminResource, operation: AdminOperation) {
     return;
   }
 
+  if (['set-access', 'request-admin', 'revoke-admin', 'approve-admin'].includes(operation.kind)) return;
   const creating = operation.kind === "create";
   const allowed = new Set(editableColumns(resource, creating));
   if (operation.kind === "reset-password") allowed.add("temporary_password");
@@ -293,7 +297,7 @@ function sanitizeAudit(resource: AdminResource, value: unknown): any {
   ]));
 }
 
-async function fetchRows(service: any, resource: AdminResource, ids: string[], includeSensitive: boolean) {
+async function fetchRows(service: any, resource: AdminResource, ids: string[], includeSensitive: boolean): Promise<Record<string, any>[]> {
   if (resource.key === "users") {
     const rows = await Promise.all(ids.map(async (id) => {
       const [{ data: profile, error: profileError }, { data: authData, error: authError }] = await Promise.all([
@@ -328,9 +332,10 @@ async function fetchRows(service: any, resource: AdminResource, ids: string[], i
 
 async function listUsers(service: any, resource: AdminResource, page: number, pageSize: number, search: string, sort: string, ascending: boolean, filters: Record<string, unknown>) {
   let query = service.from("profiles").select("id,email,display_name,org_id,role,app_admin,app_owner,created_at,updated_at", { count: "exact" });
-  if (search) query = query.or(`email.ilike.%${search}%,display_name.ilike.%${search}%`);
+  if (search && resource.searchFields.length) query = query.or(resource.searchFields.map(field => `${field}.ilike.%${search}%`).join(","));
   for (const [key, value] of Object.entries(filters)) query = value === null ? query.is(key, null) : query.eq(key, value);
-  query = query.order(sort, { ascending }).range((page - 1) * pageSize, page * pageSize - 1);
+  if (sort) query = query.order(sort, { ascending });
+  query = query.range((page - 1) * pageSize, page * pageSize - 1);
   const { data, error, count } = await query;
   if (error) throw error;
   const rows = await Promise.all((data || []).map(async (profile: any) => {
@@ -355,7 +360,13 @@ async function countTable(service: any, table: string, filter?: [string, string]
   return error ? 0 : (count || 0);
 }
 
-async function overview(service: any, actorIsOwner: boolean) {
+async function overview(service: any, actorIsOwner: boolean, access: AdminAccess) {
+  if (!actorIsOwner) {
+    const resources = ADMIN_RESOURCE_LIST.filter(item => hasPermission(access, item.key + '.read')).map(item => ({ ...item, actions: permittedActions(access, ADMIN_RESOURCES[item.key]) }));
+    const metrics: Record<string, number> = {};
+    for (const item of resources) if (!['audit-log', 'features'].includes(item.key)) metrics[item.key] = await countTable(service, ADMIN_RESOURCES[item.key].table);
+    return { isOwner: false, preset: access.preset, metrics, recentAudit: [], resources };
+  }
   const [users, organizations, projects, pastes, quickPastes, secrets, devices, pairings, audits] = await Promise.all([
     countTable(service, "profiles"), countTable(service, "organizations"), countTable(service, "projects"),
     countTable(service, "pastes"), countTable(service, "quick_pastes"), countTable(service, "secrets"),
@@ -418,17 +429,29 @@ function applyAccountScope(query: any, scope: AdminAccountScope, context: Accoun
   return query.eq("actor_id", userId);
 }
 
-async function userAccountOverview(service: any, userId: string, actorIsOwner: boolean) {
+function canScopeAccount(access: AdminAccess, resource: AdminResource) {
+  if (access.appOwner) return true;
+  const scope = ADMIN_ACCOUNT_SCOPES[resource.key];
+  const keys: Record<string, string[]> = {
+    self: ['users.fields.id.read'], organizations: ['users.fields.org_id.read', 'organizations.fields.owner_id.read'],
+    'project-related': ['projects.read', 'projects.fields.user_id.read', resource.key + '.fields.project_id.read'],
+    user: [resource.key + '.fields.user_id.read'], owner: [resource.key + '.fields.owner_id.read'], actor: [resource.key + '.fields.actor_id.read'],
+  };
+  return !!scope && (keys[scope] || []).length > 0 && keys[scope].every(key => hasPermission(access, key));
+}
+
+async function userAccountOverview(service: any, userId: string, actorIsOwner: boolean, access: AdminAccess) {
   const [profile] = await fetchRows(service, ADMIN_RESOURCES.users, [userId], false);
+  if (!profile) throw new Error("TARGET_NOT_FOUND");
   if ((profile as Record<string, any>).app_owner && !actorIsOwner) {
     const [user] = await addReferences(service, ADMIN_RESOURCES.users, [profile]);
-    return { user, canManage: false, userFields: ADMIN_RESOURCES.users.fields, userActions: [], resources: [], totalRecords: 1 };
+    return { user: projectAdminRow(access, ADMIN_RESOURCES.users, user), canManage: false, userFields: permittedResource(access, ADMIN_RESOURCES.users).fields, userActions: [], resources: [], totalRecords: 1 };
   }
   const context = await userAccountContext(service, userId, actorIsOwner);
   const users = ADMIN_RESOURCES.users;
   const [user] = await addReferences(service, users, await fetchRows(service, users, [userId], false), actorIsOwner);
   const resources = await Promise.all(Object.entries(ADMIN_ACCOUNT_SCOPES)
-    .filter(([key]) => key !== "users")
+    .filter(([key]) => key !== "users" && hasPermission(access, key + '.read') && canScopeAccount(access, ADMIN_RESOURCES[key]))
     .map(async ([key, scope]) => {
       const resource = ADMIN_RESOURCES[key];
       const countColumn = resource.primaryKey.split(",")[0];
@@ -441,10 +464,10 @@ async function userAccountOverview(service: any, userId: string, actorIsOwner: b
       };
     }));
   return {
-    user,
+    user: projectAdminRow(access, users, user),
     canManage: actorIsOwner || user.app_owner !== true,
-    userFields: users.fields,
-    userActions: resourceActions(users),
+    userFields: permittedResource(access, users).fields,
+    userActions: permittedActions(access, users),
     resources,
     totalRecords: resources.reduce((sum, item) => sum + (item.total || 0), 1),
   };
@@ -529,6 +552,7 @@ async function executeUser(service: any, operation: AdminOperation, actor: { use
     const { data, error } = await service.from("admin_access_requests").insert({
       target_user_id: id,
       request_kind: operation.kind === "request-delete" ? "account_deletion" : "admin_promotion",
+      ...(operation.kind === 'request-admin' ? { proposed_preset: values.preset, proposed_version: ADMIN_CATALOG_VERSION, proposed_grants: values.permissions, proposed_revision: values.revision } : {}),
       requested_by: actor.userId,
       requested_by_email: actor.email,
       reason: operation.reason,
@@ -542,8 +566,12 @@ async function executeUser(service: any, operation: AdminOperation, actor: { use
     if (error) throw error;
     return data;
   }
-  if (operation.kind === "revoke-admin") {
-    const { data, error } = await service.from("profiles").update({ app_admin: false }).eq("id", id).select("id,email,display_name,app_admin,app_owner").single();
+  if (operation.kind === 'set-access' || operation.kind === 'revoke-admin') {
+    const { data, error } = await service.rpc('admin_replace_permissions', {
+      p_actor: actor.userId, p_target: id, p_revision: values.revision,
+      p_preset: operation.kind === 'revoke-admin' ? 'standard' : values.preset,
+      p_version: ADMIN_CATALOG_VERSION, p_grants: operation.kind === 'revoke-admin' ? [] : validatePermissions(values.permissions), p_reason: operation.reason,
+    });
     if (error) throw error;
     return data;
   }
@@ -599,6 +627,7 @@ async function executeUser(service: any, operation: AdminOperation, actor: { use
 async function executeNormal(service: any, resource: AdminResource, operation: AdminOperation, actor: { userId: string }) {
   const values = organizationWriteValues(resource.key, normalizedValues(resource, operation.values || {}), operation.kind === "create", actor.userId);
   if (operation.kind === "create") {
+    if (resource.key === "features") values.created_by = actor.userId;
     if (resource.key === "organizations" && !values.code) {
       let code = "";
       for (let tries = 0; tries < 20; tries += 1) {
@@ -622,10 +651,11 @@ async function executeNormal(service: any, resource: AdminResource, operation: A
   const id = operation.ids?.[0];
   if (!id) throw new Error("TARGET_REQUIRED");
   if (resource.guided === "admin-review" && ["approve-admin", "reject-admin"].includes(operation.kind)) {
-    const { data, error } = await service.rpc("admin_review_access_request", {
+    const choosePermissions = operation.kind === 'approve-admin' && operation.values?.preset;
+    const { data, error } = await service.rpc(choosePermissions ? "admin_approve_with_permissions" : "admin_review_access_request", {
       p_request_id: id,
       p_reviewer_id: actor.userId,
-      p_decision: operation.kind === "approve-admin" ? "approved" : "rejected",
+      ...(choosePermissions ? { p_preset: operation.values!.preset, p_grants: operation.values!.permissions, p_revision: operation.values!.revision } : { p_decision: operation.kind === "approve-admin" ? "approved" : "rejected" }),
       p_review_reason: operation.reason,
     });
     if (error) throw error;
@@ -690,13 +720,14 @@ async function executeNormal(service: any, resource: AdminResource, operation: A
 function statusForError(error: any) {
   const code = String(error?.message || error?.code || "");
   if (/REASON_REQUIRED|REQUIRED_|INVALID_|PASSWORD_TOO_SHORT|TARGET_REQUIRED|BULK_/.test(code)) return 400;
-  if (/OWNER_ACCOUNT_PROTECTED|OWNER_REVIEW_REQUIRED|APPLICATION_ACCESS_FLAGS_SERVER_MANAGED/.test(code)) return 403;
-  if (/SELF_LOCKOUT|LAST_ADMIN|OWNER_MUST|ACCOUNT_OWNS_ORGANIZATION|OWNER_ADMIN_REQUIRED|ACTION_NOT_ALLOWED|ALREADY_ADMIN|NOT_AN_ADMIN|REQUEST_ALREADY_PENDING|PROMOTION_ALREADY_PENDING|REQUEST_NOT_PENDING|APP_OWNER_LIMIT/.test(code)) return 409;
+  if (/PERMISSION_DENIED|OWNER_ACCOUNT_PROTECTED|OWNER_REVIEW_REQUIRED|APPLICATION_ACCESS_FLAGS_SERVER_MANAGED/.test(code)) return 403;
+  if (/PERMISSION_REVISION_CONFLICT|SELF_LOCKOUT|LAST_ADMIN|OWNER_MUST|ACCOUNT_OWNS_ORGANIZATION|OWNER_ADMIN_REQUIRED|ACTION_NOT_ALLOWED|ALREADY_ADMIN|NOT_AN_ADMIN|REQUEST_ALREADY_PENDING|PROMOTION_ALREADY_PENDING|REQUEST_NOT_PENDING|APP_OWNER_LIMIT/.test(code)) return 409;
   if (/TARGET_NOT_FOUND/.test(code)) return 404;
   return 500;
 }
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Cache-Control', 'private, no-store');
   try {
     const access = await requireAdminAccess(req);
     if (access.ok === false) return res.status(access.status).json({ error: access.error });
@@ -707,41 +738,59 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === "GET") {
       const key = queryValue(req, "resource") || "overview";
-      if (key === "overview") return res.status(200).json(await overview(service, access.appOwner));
+      if (key === "overview") return res.status(200).json(await overview(service, access.appOwner, access));
+      if (key === 'permission-catalog' || key === 'permission-assignment') {
+        if (!access.appOwner) throw new Error('PERMISSION_DENIED');
+        if (key === 'permission-catalog') return res.status(200).json({ version: ADMIN_CATALOG_VERSION, enabled: process.env.ADMIN_PERMISSION_ASSIGNMENTS_ENABLED === 'true', catalog: ADMIN_PERMISSION_CATALOG, presets: { 'read-only': presetPermissions('read-only'), full: presetPermissions('full'), custom: [], standard: [] } });
+        const userId = queryValue(req, 'userId');
+        const [assignment, grants] = await Promise.all([service.from('admin_permission_assignments').select('*').eq('user_id', userId).maybeSingle(), service.from('admin_permission_grants').select('permission_key').eq('user_id', userId)]);
+        if (assignment.error || grants.error) throw assignment.error || grants.error;
+        return res.status(200).json({ ...(assignment.data || { preset: 'standard', revision: 0 }), permissions: (grants.data || []).map(row => row.permission_key) });
+      }
       if (key === "user-account") {
+        requirePermission(access, 'users.read');
         const userId = queryValue(req, "userId");
         if (!SAFE_USER_ID.test(userId)) return res.status(400).json({ error: "A valid user account is required." });
-        return res.status(200).json(await userAccountOverview(service, userId, access.appOwner));
+        return res.status(200).json(await userAccountOverview(service, userId, access.appOwner, access));
       }
-      const resource = ADMIN_RESOURCES[key];
-      if (!resource) return res.status(404).json({ error: "Unknown admin resource" });
+      const originalResource = ADMIN_RESOURCES[key];
+      if (!originalResource) return res.status(404).json({ error: "Unknown admin resource" });
+      const resource = permittedResource(access, originalResource);
       if (resource.guided === "admin-review" && !access.appOwner) return res.status(403).json({ error: "Only an application owner can review account requests." });
       const page = Math.max(1, Math.floor(Number(queryValue(req, "page")) || 1));
       const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(queryValue(req, "pageSize")) || 25)));
+      if (key === 'dashboard-alerts' && ['live', 'scheduled'].includes(queryValue(req, 'bannerView'))) {
+        for (const field of ['enabled', 'starts_at', 'ends_at']) requirePermission(access, 'dashboard-alerts.fields.' + field + '.read');
+      }
       const search = cleanSearch(queryValue(req, "search"));
       const sortInput = queryValue(req, "sort");
-      const sort = resource.sortFields.includes(sortInput) ? sortInput : resource.defaultSort;
+      if (sortInput && !resource.sortFields.includes(sortInput)) throw new Error('PERMISSION_DENIED');
+      const sort = resource.sortFields.includes(sortInput) ? sortInput : resource.sortFields[0] || '';
       const ascending = queryValue(req, "direction") === "asc";
       let filters: Record<string, unknown> = {};
       try { filters = JSON.parse(queryValue(req, "filters") || "{}"); } catch { filters = {}; }
+      if (Object.keys(filters).some(name => !resource.filterFields?.includes(name))) throw new Error('PERMISSION_DENIED');
       filters = Object.fromEntries(Object.entries(filters).filter(([name]) => resource.filterFields?.includes(name)));
       const accountUserId = queryValue(req, "accountUserId");
       if (accountUserId && !SAFE_USER_ID.test(accountUserId)) return res.status(400).json({ error: "Invalid account scope." });
+      if (accountUserId) requirePermission(access, 'users.read');
+      if (accountUserId && resource.key === 'organizations') requirePermission(access, 'users.fields.org_id.read');
       const accountScope = accountUserId ? ADMIN_ACCOUNT_SCOPES[resource.key] : undefined;
+      if (accountUserId && !canScopeAccount(access, originalResource)) throw new Error('PERMISSION_DENIED');
       if (accountUserId && !accountScope) return res.status(400).json({ error: "This data view is not available in account management." });
       const accountContext = accountUserId ? await userAccountContext(service, accountUserId, access.appOwner) : null;
-      const actions = accountContext && ["self", "actor", "owner"].includes(accountScope!) ? resourceActions(resource).filter((action) => action !== "create") : resourceActions(resource);
+      const actions = permittedActions(access, originalResource).filter(action => !(accountContext && ['self', 'actor', 'owner'].includes(accountScope!) && action === 'create'));
 
-      const requestedRecord = queryValue(req, "record");
+      const requestedRecord = resolveRecordHandle(queryValue(req, "record"));
       if (requestedRecord && SAFE_ID.test(requestedRecord)) {
         let requestedRows: Record<string, any>[];
         if (accountContext && accountScope) {
           if (resource.key === "users") {
             requestedRows = requestedRecord === accountContext.userId
-              ? await fetchRows(service, resource, [requestedRecord], false)
+              ? await fetchRows(service, originalResource, [requestedRecord], false)
               : [];
           } else {
-            let recordQuery = service.from(resource.table).select(selectedColumns(resource, false).join(","));
+            let recordQuery = service.from(resource.table).select(selectedColumns(originalResource, false).join(","));
             recordQuery = applyAccountScope(recordQuery, accountScope, accountContext);
             recordQuery = applyId(recordQuery, resource, requestedRecord);
             const { data: accountRecord, error: recordError } = await recordQuery.maybeSingle();
@@ -749,18 +798,20 @@ export default async function handler(req: any, res: any) {
             requestedRows = accountRecord ? [addAdminId(resource, accountRecord)] : [];
           }
         } else {
-          requestedRows = await fetchRows(service, resource, [requestedRecord], false);
+          requestedRows = await fetchRows(service, originalResource, [requestedRecord], false);
         }
-        const rows = await addReferences(service, resource, requestedRows, access.appOwner);
+        if (resource.key === 'audit-log' && !access.appOwner) requestedRows = requestedRows.filter(row => hasPermission(access, row.resource + '.read'));
+        const rows = (await addReferences(service, originalResource, requestedRows, access.appOwner)).map(row => projectAdminRow(access, resource, row));
         return res.status(200).json({ rows, total: rows.length, resource: resource.key, label: resource.label, fields: resource.fields, actions, redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page: 1, pageSize, sort, direction: ascending ? "asc" : "desc" });
       }
 
       const listed = accountContext && resource.key === "users"
-        ? { rows: await fetchRows(service, resource, [accountContext.userId], false), total: 1 }
+        ? { rows: await fetchRows(service, originalResource, [accountContext.userId], false), total: 1 }
         : resource.key === "users"
         ? await listUsers(service, resource, page, pageSize, search, sort, ascending, filters)
         : await (async () => {
-          let query = service.from(resource.table).select(selectedColumns(resource, false).join(","), { count: "exact" });
+          let query = service.from(resource.table).select(selectedColumns(originalResource, false).join(","), { count: "exact" });
+          if (resource.key === 'audit-log' && !access.appOwner) query = query.in('resource', Object.keys(ADMIN_RESOURCES).filter(key => hasPermission(access, key + '.read')));
           if (accountContext && accountScope) query = applyAccountScope(query, accountScope, accountContext);
           if (search && resource.searchFields.length) query = query.or(resource.searchFields.map((field) => `${field}.ilike.%${search}%`).join(","));
           for (const [name, value] of Object.entries(filters)) query = value === null ? query.is(name, null) : query.eq(name, value);
@@ -771,12 +822,13 @@ export default async function handler(req: any, res: any) {
               ? query.gt("starts_at", now)
               : query.or(`starts_at.is.null,starts_at.lte.${now}`);
           }
-          query = query.order(sort, { ascending }).range((page - 1) * pageSize, page * pageSize - 1);
+          if (sort) query = query.order(sort, { ascending });
+          query = query.range((page - 1) * pageSize, page * pageSize - 1);
           const { data, error, count } = await query;
           if (error) throw error;
           return { rows: (data || []).map((row: any) => addAdminId(resource, row)), total: count || 0 };
         })();
-      const rows = await addReferences(service, resource, listed.rows, access.appOwner);
+      const rows = (await addReferences(service, originalResource, listed.rows, access.appOwner)).map(row => projectAdminRow(access, resource, row));
       return res.status(200).json({ ...listed, rows, resource: resource.key, label: resource.label, fields: resource.fields, actions, redactedFields: sensitiveColumns(resource), filterFields: resource.filterFields || [], sortFields: resource.sortFields, page, pageSize, sort, direction: ascending ? "asc" : "desc" });
     }
 
@@ -787,8 +839,26 @@ export default async function handler(req: any, res: any) {
     if (!operation || typeof operation !== "object") return res.status(400).json({ error: "Operation is required" });
     const resource = ADMIN_RESOURCES[String(operation.resource || "")];
     if (!resource) return res.status(404).json({ error: "Unknown admin resource" });
+    authorizeOperation(access, resource, operation);
+    if (Array.isArray(operation.ids)) operation.ids = normalizeIds(operation.ids);
     if (resource.guided === "admin-review" && !access.appOwner) return res.status(403).json({ error: "Only an application owner can review account requests." });
 
+    if (['set-access', 'request-admin', 'revoke-admin'].includes(operation.kind) || (operation.kind === 'approve-admin' && operation.values?.preset)) {
+      if (process.env.ADMIN_PERMISSION_ASSIGNMENTS_ENABLED !== 'true') return res.status(503).json({ error: 'Permission assignments are disabled until rollout verification completes.' });
+      if (!access.appOwner) throw new Error('PERMISSION_DENIED');
+      const values = operation.values || {};
+      if (!Number.isInteger(values.revision) || Number(values.revision) < 0) throw new Error('INVALID_PERMISSION_REVISION');
+      if (operation.kind !== 'revoke-admin') {
+        if (!['standard', 'read-only', 'custom', 'full'].includes(String(values.preset))) throw new Error('INVALID_PRESET');
+        validatePermissions(values.permissions);
+        if (values.preset !== 'custom' && JSON.stringify(validatePermissions(values.permissions)) !== JSON.stringify(presetPermissions(String(values.preset)).sort())) throw new Error('INVALID_PRESET_GRANTS');
+      }
+    }
+    if (operation.kind === 'set-access' || operation.kind === 'revoke-admin') {
+      const { data: assignment, error } = await service.from('admin_permission_assignments').select('revision').eq('user_id', operation.ids?.[0]).maybeSingle();
+      if (error) throw error;
+      if ((assignment?.revision || 0) !== operation.values?.revision) throw new Error('PERMISSION_REVISION_CONFLICT');
+    }
     if (resource.key === "organizations" && !access.appOwner) {
       const memberId = operation.values?.member_id || operation.values?.owner_id;
       if (memberId) {
@@ -822,6 +892,14 @@ export default async function handler(req: any, res: any) {
     if (resource.key === "users") await guardUserOperation(service, access.userId, access.appOwner, operation);
     const quicklinkPlan = bulkQuicklinks ? await planQuicklinkOperation(service, operation.values || {}, access.appOwner) : null;
     const beforeRows = quicklinkPlan ? [...quicklinkPlan.expected.folders, ...quicklinkPlan.expected.links] : operation.kind === "create" ? [] : await fetchRows(service, resource, operation.ids || [], true);
+    if (operation.kind === 'approve-admin' && beforeRows[0]?.request_kind === 'admin_promotion' && process.env.ADMIN_PERMISSION_ASSIGNMENTS_ENABLED !== 'true') return res.status(503).json({ error: 'Permission assignments are disabled until rollout verification completes.' });
+    if (operation.kind === 'approve-admin' && beforeRows[0]?.request_kind === 'admin_promotion' && !operation.values?.preset && !beforeRows[0]?.proposed_preset) return res.status(400).json({ error: 'Choose admin permissions before approving this request.' });
+    if (operation.kind === 'approve-admin' && operation.values?.preset) {
+      if (beforeRows[0]?.request_kind !== 'admin_promotion' || operation.values.preset === 'standard') throw new Error('INVALID_PERMISSION_CHOICE');
+      const { data: assignment, error } = await service.from('admin_permission_assignments').select('revision').eq('user_id', beforeRows[0].target_user_id).maybeSingle();
+      if (error) throw error;
+      if ((assignment?.revision || 0) !== operation.values.revision) throw new Error('PERMISSION_REVISION_CONFLICT');
+    }
     let membershipState: unknown = null;
     if (resource.key === "organizations" && ["set-member", "remove-member", "transfer-owner"].includes(operation.kind)) {
       const { data, error } = await service.from("profiles").select("id,org_id,role").or(`org_id.eq.${operation.ids![0]},id.eq.${operation.values?.member_id || operation.values?.owner_id}`).order("id");
@@ -842,11 +920,11 @@ export default async function handler(req: any, res: any) {
       const accountBefore = beforeRows[0] as Record<string, unknown> | undefined;
       const membershipChange = resource.key === "users" && (operation.kind === "remove-organization" || (operation.kind === "update" && !!accountBefore?.org_id && operation.values && "org_id" in operation.values && operation.values.org_id !== accountBefore.org_id));
       const confirmation = membershipChange ? `REMOVE ${String(accountBefore?.email || operation.ids?.[0])}` : destructive ? `DELETE ${operation.ids?.length || 1} ${resource.key}` : "CONFIRM";
-      const impact = await impactPreview(service, resource, operation);
+      const impact = access.appOwner ? await impactPreview(service, resource, operation) : {};
       const payload: TokenPayload = { v: 1, actor: access.userId, operationId, digest, fingerprint, confirmation, exp: Math.floor(Date.now() / 1000) + TOKEN_SECONDS };
       return res.status(200).json({
         operationToken: signPayload(payload), expiresAt: new Date(payload.exp * 1000).toISOString(), confirmation,
-        preview: { action: quicklinkPlan ? `${quicklinkPlan.mode} quick links` : operation.kind, resource: resource.label, count: quicklinkPlan ? quicklinkPlan.count : operation.kind === "create" ? 1 : beforeRows.length, targets: sanitizeAudit(resource, beforeRows), changes: Object.keys(operation.values || {}), impact, ...(quicklinkPlan ? { summary: quicklinkPlan.summary } : {}) },
+        preview: { action: quicklinkPlan ? `${quicklinkPlan.mode} quick links` : operation.kind, resource: resource.label, count: quicklinkPlan ? quicklinkPlan.count : operation.kind === "create" ? 1 : beforeRows.length, targets: beforeRows.map(row => projectAdminRow(access, resource, row)), changes: Object.keys(operation.values || {}), impact, ...(quicklinkPlan ? { summary: quicklinkPlan.summary } : {}) },
       });
     }
 
@@ -882,12 +960,13 @@ export default async function handler(req: any, res: any) {
         after_data: sanitizeAudit(resource, result),
         completed_at: new Date().toISOString(),
       }).eq("id", audit.id);
-      return res.status(200).json({ ok: true, auditId: audit.id, result });
+      return res.status(200).json({ ok: true, auditId: audit.id, result: access.appOwner ? result : Array.isArray(result) ? result.map(row => projectAdminRow(access, resource, row, operation.kind === 'reveal')) : result && typeof result === 'object' ? projectAdminRow(access, resource, result, operation.kind === 'reveal') : null });
     } catch (error: any) {
       await service.from("admin_audit_log").update({ status: "failed", error_code: String(error?.code || error?.message || "EXECUTION_FAILED").slice(0, 100), completed_at: new Date().toISOString() }).eq("id", audit.id);
       throw error;
     }
   } catch (error: any) {
+    if (error?.message === 'PERMISSION_DENIED') return res.status(403).json({ error: 'Permission denied' });
     if (error?.message === "ADMIN_ACCESS_REQUIRES_REVIEW") {
       return res.status(400).json({ error: "Administrator access cannot be changed through Update account. Refresh the app and use Request administrator access, then approve the request in an owner's Pending reviews tab. To remove access, use Remove administrator access." });
     }
@@ -900,6 +979,7 @@ export default async function handler(req: any, res: any) {
       return res.status(409).json({ error: 'This account owns an organization. Transfer its ownership, or delete that organization, before deleting this account.' });
     }
     if (error?.code === "23505") return res.status(409).json({ error: "That value is already in use. Choose another value and try again." });
+    if (error?.code === '40001') return res.status(409).json({ error: 'Permissions changed. Reload the assignment before saving.' });
     if (error?.code === "P0001") return res.status(409).json({ error: error.message });
     const status = statusForError(error);
     console.error("admin data request failed", { code: String(error?.code || error?.message || "UNKNOWN").slice(0, 100) });

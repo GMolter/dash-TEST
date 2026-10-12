@@ -1,13 +1,14 @@
 import { supabase } from "../../lib/supabase";
 import type { AdminListResponse, AdminOperation, AdminOverview, AdminUserAccountOverview, PreparedOperation } from "./types";
 
-async function adminFetch(path: string, init?: RequestInit) {
+export async function adminFetch(path: string, init?: RequestInit) {
   const { data } = await supabase.auth.getSession();
   const headers = new Headers(init?.headers || {});
   if (data.session?.access_token) headers.set("Authorization", `Bearer ${data.session.access_token}`);
   const response = await fetch(path, { ...init, headers, credentials: "include" });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if ([401, 403, 404].includes(response.status)) window.dispatchEvent(new Event('admin-authorization-error'));
     const error = new Error(body.error || `Request failed (${response.status})`) as Error & { status?: number };
     error.status = response.status;
     throw error;

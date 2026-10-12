@@ -11,6 +11,7 @@ type Props = {
   user: AdminRow; folders: AdminRow[]; links: AdminRow[]; selected: Set<string>;
   onSelect: (ids: Set<string>) => void; onOperation: (operation: Omit<AdminOperation, 'reason'>) => void;
 };
+export function clearAdminQuicklinkClipboard() { clipboard = null; }
 export function clearQuicklinkCutClipboard() { if (clipboard?.mode === 'move') clipboard = null; }
 export function AdminQuicklinkBulkTools({ user, folders, links, selected, onSelect, onOperation }: Props) {
   const [notice, setNotice] = useState('');

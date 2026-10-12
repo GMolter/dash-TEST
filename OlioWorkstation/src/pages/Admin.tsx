@@ -1,3 +1,4 @@
+import { AdminAccessBoundary, useAdminAccess } from '../features/admin/AdminAccessBoundary';
 import { NotFound } from "./NotFound";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -105,9 +106,13 @@ type AdminProps = {
 };
 
 export default function Admin({ editorOnly = false }: AdminProps) {
-  return editorOnly ? <AdminEditor editorOnly /> : <AdminOperationsConsole />;
+  return <AdminAccessBoundary>{editorOnly ? <PermissionAwareEditor /> : <AdminOperationsConsole />}</AdminAccessBoundary>;
 }
 
+function PermissionAwareEditor() {
+  const access = useAdminAccess();
+  return access?.appOwner ? <AdminEditor editorOnly /> : <AdminOperationsConsole />;
+}
 function AdminEditor({ editorOnly = true }: AdminProps) {
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [authed, setAuthed] = useState<boolean>(false);

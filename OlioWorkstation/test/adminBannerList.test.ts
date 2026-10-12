@@ -12,7 +12,7 @@ it.each(['live', 'scheduled'])('applies the %s window to the database query and 
   vi.stubEnv('ADMIN_OPERATION_SECRET', 'test-only-secret');
   const fetcher = vi.fn(async () => new Response(JSON.stringify([{ id: 'live-banner', message: 'Hello', enabled: true }]), { status: 200, headers: { 'Content-Type': 'application/json', 'Content-Range': '20-20/21' } }));
   vi.stubGlobal('fetch', fetcher);
-  const response = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+  const response = { setHeader: vi.fn(), status: vi.fn().mockReturnThis(), json: vi.fn() };
   await handler({ method: 'GET', query: { resource: 'dashboard-alerts', bannerView, page: '2', pageSize: '20' } }, response);
   expect(response.status).toHaveBeenCalledWith(200);
   expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ total: 21, page: 2, rows: [expect.objectContaining({ _admin_id: 'live-banner' })] }));

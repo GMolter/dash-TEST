@@ -1,3 +1,5 @@
+import { useAdminAccess } from './AdminAccessBoundary';
+import { DelegatedAdminConsole } from './DelegatedAdminConsole';
 import { AdminFeaturesPage } from "./AdminFeaturesPage";
 import { AdminBannerPage } from "./AdminBannerPage";
 import { NotFound } from "../../pages/NotFound";
@@ -64,6 +66,10 @@ const RESOURCE_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function AdminOperationsConsole() {
+  const access = useAdminAccess();
+  return access && !access.appOwner ? <DelegatedAdminConsole /> : <OwnerAdminOperationsConsole />;
+}
+function OwnerAdminOperationsConsole() {
   const initial = readLocation();
   const [organizationId, setOrganizationId] = useState(initial.organization);
   const [featureRefresh, setFeatureRefresh] = useState(0);

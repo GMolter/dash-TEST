@@ -2,14 +2,40 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminOperationDialog } from "./AdminOperationDialog";
-import { executeAdminOperation, prepareAdminOperation } from "./api";
+import { adminFetch, executeAdminOperation, prepareAdminOperation } from "./api";
 
 vi.mock("./api", () => ({
+  adminFetch: vi.fn(),
   prepareAdminOperation: vi.fn(),
   executeAdminOperation: vi.fn(),
 }));
 
 describe("AdminOperationDialog", () => {
+  it('lets an owner choose permissions for a legacy request and locks them after review', async () => {
+    vi.mocked(adminFetch).mockImplementation(async path => path.includes('permission-catalog') ? {
+      enabled: true, catalog: [], presets: { 'read-only': ['features.read'], full: ['features.read', 'features.update'], custom: [] },
+    } : path.includes('permission-assignment') ? { revision: 0 } : { rows: [{ request_kind: 'admin_promotion', target_user_id: 'target', proposed_preset: null }] });
+    const user = userEvent.setup();
+    render(<AdminOperationDialog operation={{ resource: 'admin-access-requests', kind: 'approve-admin', ids: ['request'] }} title="Approve request" onCancel={vi.fn()} onComplete={vi.fn()} />);
+    const select = await screen.findByRole('combobox', { name: 'Access level' });
+    await user.selectOptions(select, 'full');
+    await user.type(screen.getByLabelText('Reason for this action'), 'Approved duties');
+    await user.click(screen.getByRole('button', { name: 'Review operation' }));
+    expect(prepareAdminOperation).toHaveBeenCalledWith(expect.objectContaining({ values: { preset: 'full', permissions: ['features.read', 'features.update'], revision: 0 } }));
+    expect(select).toBeDisabled();
+    await user.type(screen.getByRole('textbox'), 'DELETE 1 projects');
+    await user.click(screen.getByRole('button', { name: 'Execute' }));
+    expect(executeAdminOperation).toHaveBeenCalledWith(expect.objectContaining({ values: { preset: 'full', permissions: ['features.read', 'features.update'], revision: 0 } }), expect.anything(), expect.anything());
+  });
+
+  it('blocks review when permission choices cannot load', async () => {
+    vi.mocked(adminFetch).mockRejectedValue(new Error('Cannot load permissions'));
+    const user = userEvent.setup();
+    render(<AdminOperationDialog operation={{ resource: 'admin-access-requests', kind: 'approve-admin', ids: ['request'] }} title="Approve request" onCancel={vi.fn()} onComplete={vi.fn()} />);
+    await screen.findByText('Cannot load permissions');
+    await user.type(screen.getByLabelText('Reason for this action'), 'Approved duties');
+    expect(screen.getByRole('button', { name: 'Review operation' })).toBeDisabled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prepareAdminOperation).mockResolvedValue({
