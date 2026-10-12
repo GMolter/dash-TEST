@@ -53,8 +53,10 @@ const LauncherAuthorization = lazy(() => import('./pages/LauncherAuthorization')
 const ClassDashPage = lazy(() => import('./pages/ClassDashPage').then(({ ClassDashPage: Component }) => ({ default: Component })));
 const PluginManager = lazy(() => import('./components/PluginManager').then(({ PluginManager: Component }) => ({ default: Component })));
 const ForcedPasswordChange = lazy(() => import('./pages/ForcedPasswordChange').then(({ ForcedPasswordChange: Component }) => ({ default: Component })));
+const EmailAuthentication = lazy(() => import('./pages/EmailAuthentication').then(({ EmailAuthentication: Component }) => ({ default: Component })));
 
 type View =
+  | { type: 'email-auth'; mode: 'confirm' | 'forgot' | 'reset' }
   | { type: 'home' }
   | { type: 'utilities' }
   | { type: 'admin' }
@@ -211,6 +213,10 @@ function App() {
     const resolve = () => {
       const path = window.location.pathname || '/';
       const cleanPath = path.replace(/\/+$/, '') || '/';
+      if (cleanPath === '/auth/confirm' || cleanPath === '/auth/forgot-password' || cleanPath === '/auth/reset-password') {
+        setView({ type: 'email-auth', mode: cleanPath === '/auth/confirm' ? 'confirm' : cleanPath === '/auth/reset-password' ? 'reset' : 'forgot' });
+        return;
+      }
 
       const launcherAuthorization = parseLauncherAuthorizationLocation(cleanPath, window.location.search);
       if (launcherAuthorization) {
@@ -474,6 +480,8 @@ function App() {
       onNavigate={navigateTo}
     />
   ) : null;
+
+  if (view.type === 'email-auth') return <EmailAuthentication mode={view.mode} />;
 
   if (!authLoading && user?.app_metadata?.force_password_change === true) {
     return <ForcedPasswordChange />;

@@ -1,4 +1,5 @@
 import { resolveRecordHandle } from '../_utils/adminRecordHandles.js';
+import { appOrigin } from '../_utils/emailPolicy.js';
 import { ADMIN_PERMISSION_CATALOG, ADMIN_CATALOG_VERSION, hasPermission, requirePermission, permittedResource, permittedActions, projectAdminRow, authorizeOperation, presetPermissions, validatePermissions } from '../_utils/adminPermissions.js';
 import type { AdminAccess } from '../_utils/adminAccess.js';
 import { protectedOwnerRows } from "../_utils/adminOwnerProtection.js";
@@ -26,7 +27,7 @@ import {
 
 type OperationKind =
   | "set-access" | "create" | "update" | "delete" | "reveal" | "bulk-quicklinks"
-  | "ban" | "unban" | "reset-password" | "request-admin" | "revoke-admin"
+  | "ban" | "unban" | "reset-password" | "send-recovery" | "request-admin" | "revoke-admin"
   | "approve-admin" | "reject-admin" | "request-delete" | "remove-organization"
   | "transfer-owner" | "regenerate-code" | "set-member" | "remove-member"
   | "revoke" | "cancel";
@@ -211,7 +212,7 @@ function assertOperation(resource: AdminResource, operation: AdminOperation) {
   if (ids.length > 1 && (resource.guided || resource.key === "organizations" || resource.key === "app-settings")) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
-  if (ids.length > 1 && ["reveal", "ban", "unban", "reset-password", "request-admin", "request-delete", "remove-organization", "revoke-admin", "approve-admin", "reject-admin", "transfer-owner", "regenerate-code", "revoke", "cancel"].includes(operation.kind)) {
+  if (ids.length > 1 && ["reveal", "ban", "unban", "reset-password", "send-recovery", "request-admin", "request-delete", "remove-organization", "revoke-admin", "approve-admin", "reject-admin", "transfer-owner", "regenerate-code", "revoke", "cancel"].includes(operation.kind)) {
     throw new Error("BULK_ACTION_NOT_ALLOWED");
   }
   operation.ids = ids;
@@ -607,6 +608,15 @@ async function executeUser(service: any, operation: AdminOperation, actor: { use
     });
     if (error) throw error;
     return { id, force_password_change: true };
+  }
+  if (operation.kind === 'send-recovery') {
+    const { data: current, error: lookupError } = await service.auth.admin.getUserById(id);
+    if (lookupError || !current.user?.email) throw new Error('TARGET_NOT_FOUND');
+    const { data: allowed, error: limitError } = await service.rpc('email_cooldown', { p_key: `admin-recovery:${id}`, p_seconds: 60 });
+    if (limitError || !allowed) throw new Error('RECOVERY_COOLDOWN');
+    const { error } = await service.auth.resetPasswordForEmail(current.user.email, { redirectTo: `${appOrigin()}/auth/reset-password` });
+    if (error) throw new Error('RECOVERY_REQUEST_FAILED');
+    return { id, recovery_requested: true };
   }
   if (operation.kind === "update") {
     const normalized = normalizedValues(ADMIN_RESOURCES.users, values);

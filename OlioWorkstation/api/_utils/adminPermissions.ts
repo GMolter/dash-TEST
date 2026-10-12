@@ -32,6 +32,13 @@ for (const resource of Object.values(ADMIN_RESOURCES)) {
   }
 }
 ADMIN_PERMISSION_CATALOG.push(
+  { key: 'sections.email.read', label: 'Email: view', write: false },
+  { key: 'email.read', label: 'Email workspace', parent: 'sections.email.read', write: false },
+  { key: 'email.send', label: 'Compose, attach, send and schedule', parent: 'email.read', write: true },
+  { key: 'email.templates', label: 'Manage personal templates', parent: 'email.read', write: true },
+  { key: 'email.history', label: 'View personal outgoing history', parent: 'email.read', write: false },
+  { key: 'email.global-history', label: 'View global outgoing history', parent: 'email.read', write: false, protected: true, ownerOnly: true },
+  { key: 'email.administration', label: 'Manage email preferences and delivery health', parent: 'email.read', write: true, ownerOnly: true },
   { key: 'users.background-view', label: 'Dashboard appearance: view', parent: 'users.read', write: false },
   { key: 'users.background-write', label: 'Dashboard appearance: change or remove', parent: 'users.control', write: true }
 );

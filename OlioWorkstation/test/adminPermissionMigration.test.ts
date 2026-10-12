@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { ADMIN_PERMISSION_CATALOG } from '../api/_utils/adminPermissions';
 describe('permission migration contract', () => {
  const sql = readFileSync('supabase/migrations/20261012010000_specific_admin_privileges.sql','utf8');
- it('freezes exactly the current catalog for explicit backfill', () => {
-   const keys = [...sql.matchAll(/^\('([^']+)',/gm)].map(match => match[1]);
+ it('combines the frozen backfill and additive email permissions into the current catalog', () => {
+   const emailSql = readFileSync('supabase/migrations/20261012030000_email_integration.sql','utf8');
+   const keys = [...sql.matchAll(/^\('([^']+)',/gm), ...emailSql.matchAll(/^(?:values)?\('((?:sections\.email|email\.|users\.send-recovery)[^']*)',/gm)].map(match => match[1]);
    expect(keys.sort()).toEqual(ADMIN_PERMISSION_CATALOG.map(item => item.key).sort());
    expect(new Set(keys).size).toBe(keys.length);
  });

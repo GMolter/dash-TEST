@@ -75,6 +75,7 @@ export function Onboarding() {
               <Mail aria-hidden="true" className="h-8 w-8 text-violet-300" />
               <p className="break-words text-sm leading-6 text-slate-300">Check <strong className="text-white">{email.trim()}</strong> for a confirmation link. If an account already exists, use your existing password to sign in. Check your spam folder if you don’t see an email.</p>
               <button onClick={reset} className="glass-control w-full px-4 py-3">Back to sign in</button>
+              <a href="/auth/confirm" className="block text-center text-sm text-violet-300">Resend confirmation email</a>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -94,6 +95,7 @@ export function Onboarding() {
                     <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-2xl text-slate-400 hover:text-white focus-visible:outline focus-visible:outline-violet-400">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
                   </div>
                   {creating && <p id="password-hint" className="mt-2 text-xs text-slate-400">Use at least 6 characters.</p>}
+                  {!creating && <a href="/auth/forgot-password" className="mt-3 block text-sm text-violet-300">Forgot your password?</a>}
                 </div>
                 {error && <p role="alert" className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
                 {offerAccount && <div role="status" className="rounded-2xl border border-violet-300/20 bg-violet-400/10 p-4 text-sm leading-6 text-slate-300">

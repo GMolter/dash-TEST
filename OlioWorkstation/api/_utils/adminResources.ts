@@ -302,7 +302,7 @@ export function resourceActionsForCatalog(resource: AdminResource) {
   if (resource.key === 'quicklinks') return ['create', 'update', 'delete', 'bulk-quicklinks'];
   if (resource.key === "secrets") return ["delete"];
   if (resource.key === "app-settings") return ["update"];
-  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "set-access", "ban", "unban", "reset-password", "request-delete", "remove-organization"];
+  if (resource.guided === "users") return ["create", "update", "request-admin", "revoke-admin", "set-access", "ban", "unban", "reset-password", "send-recovery", "request-delete", "remove-organization"];
   if (resource.guided === "launcher-device") return ["revoke"];
   if (resource.guided === "launcher-pairing") return ["cancel"];
   if (resource.guided === "admin-review") return ["approve-admin", "reject-admin"];

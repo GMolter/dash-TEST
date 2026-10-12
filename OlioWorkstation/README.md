@@ -37,6 +37,15 @@ The Vercel project Root Directory should be configured as `OlioWorkstation`.
 
 ## Admin operations console
 
+Admin → Email supports private drafts/templates, individual-recipient SMTP delivery,
+attachments, reviewed scheduling, outgoing history, and opt-in event notifications.
+Apply `20261012030000_email_integration.sql` after the admin-permissions migrations.
+Choose **with RLS** if prompted; all email tables deliberately deny direct browser access.
+Delivery defaults off. Follow [the deployment guide](docs/email-integration-deployment.md)
+for Vercel secrets, the disabled Supabase scheduler, staged SMTP verification, and the
+Send Email auth hook. Owners grant sending and recovery permissions explicitly.
+Existing temporary-password resets remain available alongside recovery links.
+
 The sidebar provides direct Supabase and Vercel deployment links outside the Workspace
 tools accordion. Workspace tools → New features is a shared admin-only ideas list with
 optional notes and Idea / In progress / Completed statuses. Apply

@@ -1,5 +1,10 @@
 {
   "headers": [
+    { "source": "/auth/(.*)", "headers": [
+      { "key": "Referrer-Policy", "value": "no-referrer" },
+      { "key": "Cache-Control", "value": "no-store" },
+      { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+    ] },
     {
       "source": "/assets/(.*)",
       "headers": [
@@ -14,6 +19,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/admin/logout", "destination": "/api/admin/login?action=logout" },
     { "source": "/((?!api(?:/|$)|assets(?:/|$)|app-assets(?:/|$)|sw\\.js$).*)", "destination": "/" }
   ]
 }

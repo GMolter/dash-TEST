@@ -1,6 +1,6 @@
 # Olio Email Integration — Full Feature Plan
 
-Status: approved implementation plan; documentation only. No application, infrastructure, or live configuration changes have been made as part of creating this document.
+Status: implementation is present in the repository. Live deployment, SMTP verification, and authentication-hook activation remain outstanding. Follow [the deployment guide](email-integration-deployment.md). This document records the approved scope; it is not evidence of production activation.
 
 ## 1. Goal and agreed scope
 

@@ -7,6 +7,10 @@ function b64urlFromBase64(b64: string) {
 }
 
 export default async function handler(req: any, res: any) {
+  if (req.query?.action === 'logout') {
+    res.setHeader('Set-Cookie', 'admin_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+    return res.status(200).json({ ok: true });
+  }
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
