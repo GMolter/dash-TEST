@@ -3,9 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "npm run typecheck:api && vite build",
+    "build": "node scripts/check-email-runtime.cjs && npm run typecheck:api && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

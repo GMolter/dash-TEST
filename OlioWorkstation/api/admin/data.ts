@@ -1,5 +1,5 @@
 import { resolveRecordHandle } from '../_utils/adminRecordHandles.js';
-import { appOrigin } from '../_utils/emailPolicy.js';
+import { appOrigin } from '../_utils/appOrigin.js';
 import { ADMIN_PERMISSION_CATALOG, ADMIN_CATALOG_VERSION, hasPermission, requirePermission, permittedResource, permittedActions, projectAdminRow, authorizeOperation, presetPermissions, validatePermissions } from '../_utils/adminPermissions.js';
 import type { AdminAccess } from '../_utils/adminAccess.js';
 import { protectedOwnerRows } from "../_utils/adminOwnerProtection.js";

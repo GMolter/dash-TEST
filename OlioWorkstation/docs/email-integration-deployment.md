@@ -4,6 +4,8 @@ The code is prepared locally; deployment, live database changes, secrets, and re
 
 ## 1. Database prerequisites and the RLS prompt
 
+Use Node.js **24.x** for Vercel builds and functions, as specified in `package.json`. The email sanitizer requires modern Node support for loading ES modules from CommonJS. Older runtimes can crash with `ERR_REQUIRE_ESM` before handling a request. The build runs `scripts/check-email-runtime.cjs` to check the actual dependency loader. After deploying, confirm the deployment uses Node 24.x; changing settings does not update existing deployments.
+
 **Choose “with RLS.”** A question about running with or without RLS is not a SQL error. Use the Supabase **SQL Editor** to run the complete SQL migration, rather than creating its tables individually. The migration already enables RLS on all email tables. Browser roles have no direct table privileges; the authenticated API checks permissions and uses the server-only service role. Do not add permissive browser policies or disable RLS to get past a prompt.
 
 Apply any missing migrations in chronological order, especially:

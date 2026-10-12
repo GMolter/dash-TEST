@@ -54,19 +54,7 @@ export function renderEmail(subject: unknown, body: unknown) {
     text: `${text}\n\n${footer}`,
   };
 }
-export function appOrigin() {
-  const url = new URL(process.env.APP_ORIGIN || 'https://olio.one');
-  if (
-    url.protocol !== 'https:' ||
-    url.pathname !== '/' ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash
-  )
-    throw new Error('Invalid application origin configuration.');
-  return url.origin;
-}
+export { appOrigin } from './appOrigin.js';
 export const digest = (value: unknown) =>
   createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function secretMatches(actual: string, expected: string | undefined) {
