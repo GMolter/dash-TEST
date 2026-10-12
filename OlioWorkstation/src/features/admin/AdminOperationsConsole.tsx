@@ -94,7 +94,7 @@ function SharedAdminOperationsConsole() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(["workspace", "features", "integrations", "platform", "audit"].includes(initial.section));
+  const [moreOpen, setMoreOpen] = useState(["workspace", "email", "features", "integrations", "platform", "audit"].includes(initial.section));
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -206,7 +206,7 @@ function SharedAdminOperationsConsole() {
   function selectSection(nextSection: string) {
     nextSection = adminSection(nextSection);
     setData(null);
-    if (['workspace', 'features', 'integrations', 'platform', 'audit'].includes(nextSection)) setMoreOpen(true);
+    if (['workspace', 'email', 'features', 'integrations', 'platform', 'audit'].includes(nextSection)) setMoreOpen(true);
     setOrganizationId("");
     setAccountUserId("");
     setAccountOverview(null);
@@ -386,13 +386,13 @@ function SharedAdminOperationsConsole() {
             <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 lg:hidden" aria-label="Close navigation"><X className="h-5 w-5" /></button>
           </div>
           <nav aria-label="Admin navigation" className="mt-7 flex-1 space-y-1 overflow-y-auto"><p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Manage</p>
-            {visibleNavigation.filter((item) => ["overview", "people", "email", "organizations", "banner", "reviews"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
+            {visibleNavigation.filter((item) => ["overview", "people", "organizations", "banner", "reviews"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
               const Icon = item.icon;
               return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" /><span className="flex-1">{item.key === "audit" ? "Activity" : item.label}</span>{item.key === "reviews" && !!overview?.metrics.pendingAdminReviews && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">{overview.metrics.pendingAdminReviews}</span>}</button>;
             })}
             <div className="pt-4">
               <button aria-expanded={moreOpen} aria-controls="admin-more-navigation" onClick={() => setMoreOpen(!moreOpen)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white">Workspace tools<ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} /></button>
-              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{visibleNavigation.filter((item) => ["workspace", "features", "integrations", "platform", "audit"].includes(item.key)).map((item) => {
+              {moreOpen && <div id="admin-more-navigation" className="mt-1 space-y-1">{visibleNavigation.filter((item) => ["workspace", "email", "features", "integrations", "platform", "audit"].includes(item.key)).map((item) => {
                 const Icon = item.icon;
                 return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-500 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" />{item.label}</button>;
               })}</div>}
