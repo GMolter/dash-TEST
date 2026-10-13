@@ -48,6 +48,7 @@ beforeAll(async () => {
       'utf8',
     ),
   );
+  await db.exec(readFileSync('supabase/migrations/20261013150000_owner_notification_copy.sql', 'utf8'));
 }, 30000);
 beforeEach(async () => {
   await db.exec(`truncate public.email_attempts,public.email_jobs,public.email_messages,public.email_drafts,public.email_attachments,public.email_events,public.email_preferences,public.email_cooldowns,public.admin_audit_log,public.admin_permission_grants,public.account_ban_state,public.profiles,auth.users cascade;
@@ -65,6 +66,22 @@ const payload = {
   recipients: ['person@example.com'],
   attachment_ids: [],
 };
+it('copies subscribed owner notifications once and rechecks owner status before sending', async () => {
+  await db.query('update auth.users set email=$1 where id=$2', ['gavin@olio.one', owner]);
+  await db.query('insert into public.email_preferences(user_id,signup) values($1,true)', [owner]);
+  await db.exec("insert into public.email_events(event_type,target_id,dedupe_key) values('signup',gen_random_uuid(),'owner-copy-test'); select public.email_expand_events(); select public.email_expand_events();");
+  const jobs = await db.query<{recipient:string}>('select recipient from public.email_jobs order by recipient');
+  expect(jobs.rows.map(row => row.recipient)).toEqual(['gavin@olio.one', 'gmolter8@gmail.com']);
+  await db.query('select public.email_worker_lock($1)', [worker]);
+  const first = await db.query('select recipient from public.email_claim($1,false,true,100)', [worker]);
+  const second = await db.query('select recipient from public.email_claim($1,false,true,100)', [worker]);
+  expect([...first.rows, ...second.rows].map(row => row.recipient).sort()).toEqual(['gavin@olio.one', 'gmolter8@gmail.com']);
+  await db.exec("insert into public.email_events(event_type,target_id,dedupe_key) values('signup',gen_random_uuid(),'owner-copy-revoke'); select public.email_expand_events();");
+  await db.query('update public.profiles set app_owner=false where id=$1', [owner]);
+  await db.query('select * from public.email_claim($1,false,true,100)', [worker]);
+  await db.query('select * from public.email_claim($1,false,true,100)', [worker]);
+  expect(await scalar("select status as value from public.email_jobs where recipient='gmolter8@gmail.com' and status<>'sending'")).toBe('cancelled');
+});
 async function submit(
   who = owner,
   key = randomUUID(),

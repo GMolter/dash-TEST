@@ -23,6 +23,7 @@ const uuid = (value: unknown) => {
   return value;
 };
 type Input = {
+  job_id?: string;
   id?: string; ids?: string[]; user_id?: string; subject?: string; html?: string;
   recipients?: string[]; attachment_ids?: string[]; revision?: number;
   name?: string; shared?: boolean; global?: boolean; page?: number; search?: string;
@@ -133,6 +134,12 @@ export async function emailAdmin(
         Math.max(0, Number(input.page) || 0) * 25 + 24,
       );
     if (!input.global) query = query.eq('owner_id', actor);
+    if (input.job_id) {
+      let targetQuery = service.from('email_jobs').select('message_id').eq('id', uuid(input.job_id));
+      if (!input.global) targetQuery = targetQuery.eq('owner_id', actor);
+      const target = checked(await targetQuery.maybeSingle());
+      query = query.eq('id', target?.message_id || '00000000-0000-0000-0000-000000000000');
+    }
     let system = service
       .from('email_jobs')
       .select(
@@ -145,6 +152,7 @@ export async function emailAdmin(
         Math.max(0, Number(input.page) || 0) * 25 + 24,
       );
     if (!input.global) system = system.eq('owner_id', actor);
+    if (input.job_id) system = system.eq('id', uuid(input.job_id));
     const messages = checked(await query);
     const systemMessages = checked(await system);
     const health = access.appOwner ? checked(await service.from('email_health')

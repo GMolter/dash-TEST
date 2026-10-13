@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decryptPayload } from './emailPolicy.js';
 import { loadAttachments } from './emailAttachments.js';
+import { notificationMail } from './emailNotification.js';
 import {
   allowedTestRecipient,
   classifyMailError,
@@ -46,7 +47,7 @@ export async function dispatchEmail(service: SupabaseClient) {
       };
       let smtpStarted = false;
       try {
-        if (!allowedTestRecipient(job.recipient)) {
+        if (job.kind !== 'manual' && !allowedTestRecipient(job.recipient)) {
           outcome = { status: 'cancelled', code: 'TEST_ALLOWLIST' };
         } else {
           const transport = mailTransport();
@@ -54,6 +55,8 @@ export async function dispatchEmail(service: SupabaseClient) {
             job.kind === 'auth'
               ? decryptPayload(job.encrypted_payload)
               : job.payload;
+          if (job.kind === 'notification' && job.event_type && job.event_target)
+            mail = await notificationMail(service, job);
           let attachments: Awaited<ReturnType<typeof loadAttachments>> = [];
           if (job.kind === 'manual') {
             const { data: message, error: messageError } = await service

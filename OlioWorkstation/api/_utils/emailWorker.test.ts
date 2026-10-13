@@ -7,6 +7,24 @@ vi.mock('nodemailer', () => ({
   },
 }));
 import { dispatchEmail } from './emailWorker';
+it.each(['manual', 'notification'])('applies the test allowlist only to automatic mail: %s', async kind => {
+  vi.stubEnv('SMTP_EMAIL', 'noreply@olio.one');
+  vi.stubEnv('SMTP_PASSWORD', 'test-only');
+  vi.stubEnv('EMAIL_DELIVERY_ENABLED', 'true');
+  vi.stubEnv('EMAIL_TEST_RECIPIENT_ALLOWLIST', 'allowed@example.com');
+  mocks.send.mockResolvedValue({ accepted: ['external@example.com'] });
+  let claims = 0;
+  const rpc = vi.fn(async (name: string) => ({ error: null, data:
+    name === 'email_worker_lock' || name === 'admin_has_permission' ? true :
+    name === 'email_claim' && claims++ === 0 ? [{ id: 'job', kind, recipient: 'external@example.com', owner_id: 'owner', message_id: 'message', lease_token: 'lease', payload: {} }] : null }));
+  const chain = { eq: vi.fn().mockReturnThis(), lt: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), update: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }), single: vi.fn().mockResolvedValue({ data: { subject: 'Hello', html: '<p>Hello</p>', plain_text: 'Hello', attachment_ids: [] }, error: null }) };
+  await dispatchEmail({ rpc, from: vi.fn(() => chain) } as never);
+  if (kind === 'manual') {
+    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'external@example.com' }));
+    expect(rpc).toHaveBeenCalledWith('admin_has_permission', expect.objectContaining({ p_key: 'email.send' }));
+  } else expect(mocks.send).not.toHaveBeenCalled();
+  expect(rpc).toHaveBeenCalledWith('email_finish', expect.objectContaining({ p_status: kind === 'manual' ? 'accepted' : 'cancelled', p_error: kind === 'manual' ? null : 'TEST_ALLOWLIST' }));
+});
 afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();

@@ -3,6 +3,20 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { AdminEmailPage } from './AdminEmailPage';
 import { emailApi } from './emailApi';
 vi.mock('./emailApi', () => ({ emailApi: vi.fn() }));
+it('opens the exact failed job from a notification link', async () => {
+  window.history.replaceState(null, '', '/admin?section=email&emailJob=job-one');
+  vi.mocked(emailApi).mockImplementation(async action => {
+    if (action === 'state') return { owner: true, canHistory: true, canSend: true };
+    return { messages: [], system: [], templates: [] };
+  });
+  try {
+    render(<AdminEmailPage />);
+    await waitFor(() => expect(emailApi).toHaveBeenCalledWith('history', { global: true, page: 0, job_id: 'job-one' }));
+    expect(screen.getByRole('tab', { name: 'Outgoing history' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Show all messages' }));
+    await waitFor(() => expect(emailApi).toHaveBeenCalledWith('history', { global: true, page: 0 }));
+  } finally { window.history.replaceState(null, '', '/'); }
+});
 it('saves notification preferences for the selected admin without changing personal preferences', async () => {
   vi.mocked(emailApi).mockImplementation(async action => {
     if (action === 'state') return { owner: true, canSend: false, preferences: { signup: false, organization: false, review: false, failure: false } };

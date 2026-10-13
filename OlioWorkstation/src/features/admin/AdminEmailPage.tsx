@@ -90,6 +90,7 @@ export function AdminEmailPage({
   const [state, setState] = useState<State | null>(null),
     [tab, setTab] = useState('My notifications');
   const initialized = useRef(false);
+  const [linkedJob, setLinkedJob] = useState(() => new URLSearchParams(window.location.search).get('emailJob') || '');
   const [draft, setDraft] = useState<EmailDraft>(empty),
     [drafts, setDrafts] = useState<EmailDraft[]>([]);
   const [templateContent, setTemplateContent] = useState({
@@ -148,10 +149,11 @@ export function AdminEmailPage({
     void loadState().then(data => {
       if (!initialized.current) {
         initialized.current = true;
-        if (data.canSend) setTab('Compose');
+        if (linkedJob && data.canHistory) { setTab('Outgoing history'); setGlobal(!!data.owner); }
+        else if (data.canSend) setTab('Compose');
       }
     }).catch((e) => setError(e.message));
-  }, [loadState, refreshVersion]);
+  }, [loadState, refreshVersion, linkedJob]);
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
     setError('');
@@ -173,7 +175,7 @@ export function AdminEmailPage({
     if (tab === 'Templates' || (tab === 'Compose' && state?.canSend))
       setTemplates((await emailApi('templates')).templates);
     if (tab === 'Scheduled' || tab === 'Outgoing history') {
-      const data = await emailApi('history', { global, page });
+      const data = await emailApi('history', { global, page, ...(linkedJob ? { job_id: linkedJob } : {}) });
       setMessages(data.messages);
       setSystemMessages(data.system || []);
       setHealth(data.health || null);
@@ -190,7 +192,7 @@ export function AdminEmailPage({
       const data = await loadState();
       setPreferences(data.preferences || defaults);
     }
-  }, [tab, global, page, state?.canSend, loadState]);
+  }, [tab, global, page, state?.canSend, loadState, linkedJob]);
   useEffect(() => {
     void loadTab().catch((e) => setError(e.message));
   }, [loadTab, refreshVersion]);
@@ -646,6 +648,7 @@ export function AdminEmailPage({
         {(tab === 'Scheduled' || tab === 'Outgoing history') && (
           <>
             <section aria-label="Delivery progress" className="space-y-2 rounded-xl border border-blue-400/20 bg-blue-400/5 p-4">
+              {linkedJob && <button className={button} onClick={() => { setLinkedJob(''); const url = new URL(window.location.href); url.searchParams.delete('emailJob'); window.history.replaceState(null, '', url); }}>Show all messages</button>}
               <h3 className="font-medium">Delivery progress</h3>
               <p className="text-xs text-slate-400">Updates every 5 seconds while this page is visible. Last checked: {checkedAt ? new Date(checkedAt).toLocaleTimeString() : 'Checking…'}</p>
               {state?.owner && health && <>

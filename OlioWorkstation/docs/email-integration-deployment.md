@@ -59,7 +59,7 @@ Use the existing Olio Vercel project. Its **Root Directory must remain `OlioWork
 | `SEND_EMAIL_HOOK_SECRET` | The signing secret generated for the Supabase Send Email HTTP hook, including its `v1,whsec_` prefix |
 | `EMAIL_DELIVERY_ENABLED` | Initially `false` |
 | `EMAIL_AUTH_DELIVERY_ENABLED` | Initially `false`; separate from ordinary email |
-| `EMAIL_TEST_RECIPIENT_ALLOWLIST` | Initially one approved test address, or comma-separated approved addresses |
+| `EMAIL_TEST_RECIPIENT_ALLOWLIST` | Optional comma-separated test addresses for automatic notifications/authentication only. Manually composed messages can go to any valid recipient. |
 | `EMAIL_AUTH_TTL_SECONDS` | `600`, or a shorter value; never longer than Supabase's configured Email OTP Expiration |
 | `EMAIL_HOURLY_LIMIT` | `100`, or a lower verified provider allowance |
 
@@ -128,7 +128,13 @@ It invokes the worker every minute. Application delivery flags still control whe
 5. Test scheduling with the browser closed, cancellation before dispatch, and a separate message per recipient. Test with small permitted attachments first.
 6. Check **Email → Administration**. If SMTP configuration pauses delivery, fix the configuration, redeploy, then select **Resume after correcting configuration**. Do not repeatedly resend uncertain outcomes: they may already have reached the recipient.
 
-The allowlist cancels jobs addressed elsewhere. Do not enable the production auth hook while an allowlist would exclude real users. Test authentication in an isolated environment first.
+The allowlist cancels automatic notification/authentication jobs addressed elsewhere. It does not restrict manually composed messages, including external recipients; those still require sending permission, preview confirmation, enabled delivery, and the existing rate limits. Do not enable the production auth hook while an allowlist would exclude real users. Test authentication in an isolated environment first.
+
+### Faster pickup and notification details
+
+Deploy the updated API and frontend for permission-filtered notification summaries and direct links to accounts, organizations, review requests, and failed email jobs. Existing unsent notifications gain details when the worker sends them; already-sent messages do not change.
+
+Run `supabase/email-scheduler-fast.sql` in Supabase SQL Editor to change the existing scheduler to a 10-second interval. It preserves the job's active state and Vault settings. It calls the API when pending events or due jobs exist and no worker lease is active, plus a maintenance call roughly every five minutes. It does not bypass hourly limits, paused delivery, retry delays, or SMTP/provider delivery time. Under light load, scheduler pickup usually takes up to about 10 seconds instead of a minute. Verify `cron.job.schedule` is `10 seconds` and `active` is true.
 
 ## 6. Validate, then enable authentication delivery
 
