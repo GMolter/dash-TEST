@@ -1,8 +1,26 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { AdminEmailPage } from './AdminEmailPage';
 import { emailApi } from './emailApi';
 vi.mock('./emailApi', () => ({ emailApi: vi.fn() }));
+it('saves notification preferences for the selected admin without changing personal preferences', async () => {
+  vi.mocked(emailApi).mockImplementation(async action => {
+    if (action === 'state') return { owner: true, canSend: false, preferences: { signup: false, organization: false, review: false, failure: false } };
+    if (action === 'administration') return { admins: [{ id: 'other-admin', email: 'admin@example.com', app_owner: false }], preferences: [], health: { paused: false } };
+    return {};
+  });
+  render(<AdminEmailPage />);
+  fireEvent.click(await screen.findByRole('tab', { name: 'Administration' }));
+  await screen.findByRole('option', { name: 'admin@example.com' });
+  fireEvent.change(screen.getByLabelText('Manage an admin'), { target: { value: 'other-admin' } });
+  const panel = screen.getByRole('region', { name: 'Selected admin notification preferences' });
+  fireEvent.click(within(panel).getByLabelText('New signups'));
+  fireEvent.click(within(panel).getByRole('button', { name: 'Save admin preferences' }));
+  await waitFor(() => expect(emailApi).toHaveBeenCalledWith('preferences', { user_id: 'other-admin', signup: true, organization: false, review: false, failure: false }));
+  await screen.findByText('Admin notification preferences saved.');
+  fireEvent.click(screen.getByRole('tab', { name: 'My notifications' }));
+  await waitFor(() => expect(screen.getByLabelText('New signups')).not.toBeChecked());
+});
 beforeEach(() => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   vi.clearAllMocks();

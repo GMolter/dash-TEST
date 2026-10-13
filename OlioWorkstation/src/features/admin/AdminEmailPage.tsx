@@ -128,6 +128,7 @@ export function AdminEmailPage({
     [adminPreferences, setAdminPreferences] = useState<
       (Preferences & { user_id: string })[]
     >([]);
+  const [selectedPreferences, setSelectedPreferences] = useState<Preferences>(defaults);
   const [health, setHealth] = useState<{
     paused: boolean;
     error_code?: string;
@@ -983,7 +984,6 @@ export function AdminEmailPage({
                 void run(async () => {
                   await emailApi('preferences', {
                     ...preferences,
-                    ...(tab === 'Administration' ? { user_id: admin } : {}),
                   });
                   await loadTab();
                   setNotice('Notification preferences saved.');
@@ -1028,7 +1028,7 @@ export function AdminEmailPage({
                 value={admin}
                 onChange={(e) => {
                   setAdmin(e.target.value);
-                  setPreferences(
+                  setSelectedPreferences(
                     adminPreferences.find(
                       (pref) => pref.user_id === e.target.value,
                     ) || defaults,
@@ -1045,11 +1045,26 @@ export function AdminEmailPage({
               </select>
             </label>
             {admin && (
+              <section aria-label="Selected admin notification preferences" className="space-y-4 rounded-xl border border-white/10 p-4">
+                <h3 className="font-medium">Notifications for {admins.find(item => item.id === admin)?.email}</h3>
+                <p className="text-sm text-slate-400">Choose the emails this admin receives at their verified account address. These settings do not grant permission to send email.</p>
+                {emailEvents.map(event => <label key={event} className="flex items-center gap-3 text-sm">
+                  <input type="checkbox" checked={selectedPreferences[event]} onChange={e => setSelectedPreferences(current => ({ ...current, [event]: e.target.checked }))} />
+                  {labels[event]}
+                </label>)}
+                <button className={button} onClick={() => void run(async () => {
+                  await emailApi('preferences', { ...selectedPreferences, user_id: admin });
+                  await loadTab();
+                  setNotice('Admin notification preferences saved.');
+                })}>Save admin preferences</button>
+              </section>
+            )}
+            {admin && !admins.find(item => item.id === admin)?.app_owner && (
               <a
                 className="inline-block text-sm text-blue-300 underline"
-                href={`/admin?account=${admin}`}
+                href={`/admin?section=people&account=${encodeURIComponent(admin)}`}
               >
-                Manage this admin’s Email permissions in Account management
+                Open account management for sending permissions
               </a>
             )}
             <p className="text-xs text-slate-500">
