@@ -523,6 +523,7 @@ export function AdminEmailPage({
               <EmailPreviewDialog busy={busy} onClose={() => { setPreviewOpen(false); setPreview(null); }}>
               {error && <p role="alert" className="mb-4 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}
               {busy && !preview && <p role="status">Preparing your preview…</p>}
+              {!busy && !preview && !error && <p role="status">This preview is no longer current. Return to editing and preview the message again.</p>}
               {preview && (
               <section
                 aria-label="Confirm email"

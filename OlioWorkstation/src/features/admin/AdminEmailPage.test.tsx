@@ -3,21 +3,6 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { AdminEmailPage } from './AdminEmailPage';
 import { emailApi } from './emailApi';
 vi.mock('./emailApi', () => ({ emailApi: vi.fn() }));
-vi.mock('./EmailEditor', () => ({
-  EmailEditor: ({
-    value,
-    onChange,
-  }: {
-    value: string;
-    onChange: (html: string) => void;
-  }) => (
-    <textarea
-      aria-label="Email message"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  ),
-}));
 beforeEach(() => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   vi.clearAllMocks();
@@ -93,7 +78,9 @@ it('requires a preview and invalidates it when content changes', async () => {
   expect(
     await screen.findByRole('button', { name: 'Confirm send' }),
   ).toBeVisible();
-  expect(screen.getByRole('dialog', { name: 'Email preview' })).toBeVisible();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Back to editing' })).toBeEnabled());
+  expect(screen.getByRole('dialog', { name: 'Email preview' })).toHaveTextContent('Body');
+  expect(screen.getByRole('button', { name: 'Confirm send' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Back to editing' }));
   fireEvent.change(screen.getByLabelText('Subject'), {
     target: { value: 'Changed' },

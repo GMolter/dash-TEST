@@ -37,7 +37,9 @@ export function EmailEditor({
     },
     onUpdate: ({ editor }: { editor: Editor }) => onChange(editor.getHTML()),
   });
-  useEffect(() => { editor?.setEditable(!disabled); }, [editor, disabled]);
+  // Locking/unlocking is not a content edit. TipTap emits an update by default,
+  // which would invalidate the signed preview when the request finishes.
+  useEffect(() => { editor?.setEditable(!disabled, false); }, [editor, disabled]);
   useEffect(() => {
     if (editor && editor.getHTML() !== value)
       editor.commands.setContent(value, { emitUpdate: false });
