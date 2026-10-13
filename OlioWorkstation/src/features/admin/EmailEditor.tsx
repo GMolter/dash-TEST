@@ -32,7 +32,7 @@ export function EmailEditor({
         'aria-label': 'Email message',
         'aria-multiline': 'true',
         class:
-          'min-h-48 p-4 outline-none [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-6 [&_a]:text-blue-300 [&_a]:underline [&_p]:mb-2',
+          'min-h-72 bg-white p-6 text-slate-800 leading-7 outline-none [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-6 [&_a]:text-blue-700 [&_a]:underline [&_p]:mb-3',
       },
     },
     onUpdate: ({ editor }: { editor: Editor }) => onChange(editor.getHTML()),
@@ -46,7 +46,7 @@ export function EmailEditor({
   const toolbar =
     'rounded px-3 py-1.5 text-sm hover:bg-white/10 aria-pressed:bg-blue-500/25';
   return (
-    <div className="rounded-xl border border-white/15 bg-slate-950/40">
+    <div className="overflow-hidden rounded-xl border border-white/15 bg-slate-950/40">
       <div
         role="toolbar"
         aria-label="Message formatting"

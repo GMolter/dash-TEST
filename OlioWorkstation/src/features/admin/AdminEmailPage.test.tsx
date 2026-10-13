@@ -19,6 +19,7 @@ vi.mock('./EmailEditor', () => ({
   ),
 }));
 beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   vi.clearAllMocks();
   vi.mocked(emailApi).mockImplementation(async (action) =>
     action === 'state'
@@ -92,6 +93,8 @@ it('requires a preview and invalidates it when content changes', async () => {
   expect(
     await screen.findByRole('button', { name: 'Confirm send' }),
   ).toBeVisible();
+  expect(screen.getByRole('dialog', { name: 'Email preview' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Back to editing' }));
   fireEvent.change(screen.getByLabelText('Subject'), {
     target: { value: 'Changed' },
   });
@@ -99,4 +102,19 @@ it('requires a preview and invalidates it when content changes', async () => {
     screen.queryByRole('button', { name: 'Confirm send' }),
   ).not.toBeInTheDocument();
   expect(emailApi).not.toHaveBeenCalledWith('submit', expect.anything());
+});
+it('shows a failed preview inside the dialog and allows returning to the draft', async () => {
+  vi.mocked(emailApi).mockImplementation(async action => {
+    if (action === 'state') return { canSend: true, deliveryEnabled: true };
+    if (action === 'save-draft') throw new Error('Email storage unavailable.');
+    return { templates: [], users: [], organizations: [] };
+  });
+  render(<AdminEmailPage />);
+  fireEvent.click(await screen.findByRole('tab', { name: 'Compose' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Preview email' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Email preview' });
+  await waitFor(() => expect(dialog).toHaveTextContent('Email storage unavailable.'));
+  expect(screen.queryByRole('button', { name: 'Confirm send' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Back to editing' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });

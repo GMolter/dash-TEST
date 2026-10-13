@@ -4,13 +4,13 @@ import { AdminOverviewPage } from './AdminOverviewPage';
 import type { AdminOverview } from './types';
 
 const overview: AdminOverview = { isOwner: true, metrics: { projects: 987, pendingAdminReviews: 2 }, recentAudit: [{ id: 'event', action: 'update', resource: 'users' }], resources: [] };
-const sections = ['people', 'organizations', 'reviews', 'banner', 'platform', 'features', 'workspace', 'integrations', 'audit'];
+const sections = ['people', 'organizations', 'reviews', 'banner', 'email', 'platform', 'features', 'workspace', 'integrations', 'audit'];
 
 it('searches destinations by task and navigates to the selected area', () => {
   const navigate = vi.fn();
   render(<AdminOverviewPage overview={overview} allowedSections={sections} onNavigate={navigate} />);
   const directory = screen.getByRole('navigation', { name: 'Admin destinations' });
-  expect(within(directory).getAllByRole('button')).toHaveLength(9);
+  expect(within(directory).getAllByRole('button')).toHaveLength(10);
   expect(screen.queryByText('987')).not.toBeInTheDocument();
   expect(screen.queryByText('Recent activity')).not.toBeInTheDocument();
   fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'password' } });
@@ -20,7 +20,10 @@ it('searches destinations by task and navigates to the selected area', () => {
   fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'no-such-area' } });
   expect(screen.getByRole('status')).toHaveTextContent('No destinations found.');
   fireEvent.click(screen.getByRole('button', { name: 'Clear destination search' }));
-  expect(within(directory).getAllByRole('button')).toHaveLength(9);
+  expect(within(directory).getAllByRole('button')).toHaveLength(10);
+  fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'recipients' } });
+  fireEvent.click(within(directory).getByRole('button', { name: /Email/ }));
+  expect(navigate).toHaveBeenCalledWith('email');
 });
 
 it.each([

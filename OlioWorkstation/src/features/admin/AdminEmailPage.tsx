@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, Plus, Send, Paperclip } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import {
@@ -8,6 +8,8 @@ import {
 } from '../../../shared/email';
 import { EmailEditor } from './EmailEditor';
 import { emailApi } from './emailApi';
+import { EmailRecipients } from './EmailRecipients';
+import { EmailPreviewDialog } from './EmailPreviewDialog';
 type Preferences = Record<(typeof emailEvents)[number], boolean>;
 type State = {
   owner: boolean;
@@ -85,6 +87,7 @@ export function AdminEmailPage({
 }) {
   const [state, setState] = useState<State | null>(null),
     [tab, setTab] = useState('My notifications');
+  const initialized = useRef(false);
   const [draft, setDraft] = useState<EmailDraft>(empty),
     [drafts, setDrafts] = useState<EmailDraft[]>([]);
   const [templateContent, setTemplateContent] = useState({
@@ -98,13 +101,7 @@ export function AdminEmailPage({
   const [attachments, setAttachments] = useState<Attachment[]>([]),
     [preview, setPreview] = useState<Preview | null>(null),
     [key, setKey] = useState('');
-  const [external, setExternal] = useState(''),
-    [search, setSearch] = useState(''),
-    [users, setUsers] = useState<Admin[]>([]),
-    [organizations, setOrganizations] = useState<
-      { id: string; name: string }[]
-    >([]),
-    [organization, setOrganization] = useState('');
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [local, setLocal] = useState(''),
     [timezone, setTimezone] = useState(
       Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -143,7 +140,12 @@ export function AdminEmailPage({
     return data;
   }, []);
   useEffect(() => {
-    void loadState().catch((e) => setError(e.message));
+    void loadState().then(data => {
+      if (!initialized.current) {
+        initialized.current = true;
+        if (data.canSend) setTab('Compose');
+      }
+    }).catch((e) => setError(e.message));
   }, [loadState, refreshVersion]);
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
@@ -201,15 +203,6 @@ export function AdminEmailPage({
     setDraft(result.draft);
     return result.draft as EmailDraft;
   };
-  const addRecipients = (values: string[]) =>
-    change({
-      recipients: [
-        ...new Set([
-          ...draft.recipients,
-          ...values.map((value) => value.trim().toLowerCase()).filter(Boolean),
-        ]),
-      ],
-    });
   const tabs = [
     ...(state?.canSend ? ['Compose', 'Drafts'] : []),
     ...(state?.canHistory ? ['Scheduled', 'Outgoing history'] : []),
@@ -298,135 +291,9 @@ export function AdminEmailPage({
                   : 'Unsaved draft'}
               </span>
             </div>
-            <div className="space-y-3 rounded-xl border border-white/10 p-4">
-              <h3 className="text-sm font-medium">
-                Recipients · {draft.recipients.length} of 50
-              </h3>
-              <div className="flex gap-2">
-                <input
-                  aria-label="Find registered users"
-                  className={field}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search registered users"
-                />
-                <button
-                  className={button}
-                  onClick={() =>
-                    void run(async () => {
-                      const data = await emailApi('recipients', { search });
-                      setUsers(data.users);
-                      setOrganizations(data.organizations);
-                    })
-                  }
-                >
-                  Search
-                </button>
-              </div>
-              {users.length > 0 && (
-                <ul className="max-h-40 overflow-auto">
-                  {users.map((user) => (
-                    <li key={user.id}>
-                      <button
-                        className="py-1 text-left text-sm text-blue-300"
-                        onClick={() => addRecipients([user.email])}
-                      >
-                        {user.display_name || user.email} · {user.email} +
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className={button}
-                  onClick={() =>
-                    void run(async () => {
-                      const data = await emailApi('recipients', {
-                        group: 'all',
-                      });
-                      addRecipients(
-                        data.users.map((user: Admin) => user.email),
-                      );
-                      setOrganizations(data.organizations);
-                    })
-                  }
-                >
-                  Add all users
-                </button>
-                <select
-                  aria-label="Recipient organization"
-                  className={`${field} !w-auto`}
-                  value={organization}
-                  onChange={(e) => setOrganization(e.target.value)}
-                >
-                  <option value="">Choose organization</option>
-                  {organizations.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className={button}
-                  disabled={!organization}
-                  onClick={() =>
-                    void run(async () => {
-                      const data = await emailApi('recipients', {
-                        group: 'organization',
-                        organization,
-                      });
-                      addRecipients(
-                        data.users.map((user: Admin) => user.email),
-                      );
-                    })
-                  }
-                >
-                  Add members
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <textarea
-                  aria-label="External email addresses"
-                  className={field}
-                  value={external}
-                  onChange={(e) => setExternal(e.target.value)}
-                  placeholder="External addresses, separated by commas or lines"
-                />
-                <button
-                  className={button}
-                  onClick={() => {
-                    addRecipients(external.split(/[,;\s]+/));
-                    setExternal('');
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {draft.recipients.map((email) => (
-                  <button
-                    key={email}
-                    className="break-all rounded-md bg-white/5 px-2 py-1 text-xs text-slate-300"
-                    aria-label={`Remove ${email}`}
-                    onClick={() =>
-                      change({
-                        recipients: draft.recipients.filter(
-                          (value) => value !== email,
-                        ),
-                      })
-                    }
-                  >
-                    {email} ×
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-slate-500">
-                Each recipient receives a separate email. Group members are
-                copied into this list; review the exact addresses before
-                sending.
-              </p>
-            </div>
+            <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0 space-y-5 rounded-2xl border border-white/10 bg-slate-900/40 p-5 sm:p-6">
+            <div className="border-b border-white/10 pb-4"><h3 className="text-xl font-semibold">Write your message</h3><p className="mt-1 text-sm text-slate-400">Create, review, then send. Nothing is sent until you confirm.</p></div>
             {!!templates.length && (
               <label className="block text-sm text-slate-400">
                 Use a template
@@ -572,7 +439,7 @@ export function AdminEmailPage({
                 </div>
               ))}
             </div>
-            <div className="grid gap-3 rounded-xl border border-white/10 p-4 sm:grid-cols-3">
+            <details className="rounded-xl border border-white/10 p-4"><summary className="cursor-pointer text-sm text-slate-300">Schedule for later {local ? `· ${local.replace('T', ' ')}` : '(optional)'}</summary><div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="text-sm text-slate-400">
                 Schedule (optional)
                 <input
@@ -612,7 +479,8 @@ export function AdminEmailPage({
                 </select>
               </label>
             </div>
-            <div className="flex gap-3">
+            </details>
+            <div className="sticky bottom-0 flex flex-wrap gap-3 border-t border-white/10 bg-slate-900 py-4">
               <button
                 className={button}
                 onClick={() =>
@@ -629,6 +497,8 @@ export function AdminEmailPage({
                 className={`${button} bg-blue-500/15`}
                 onClick={() =>
                   void run(async () => {
+                    setPreviewOpen(true);
+                    setPreview(null);
                     const saved = await save();
                     setPreview(
                       await emailApi('preview', {
@@ -643,10 +513,17 @@ export function AdminEmailPage({
                   })
                 }
               >
-                Preview {local ? 'scheduled email' : 'email'}
+                {busy ? 'Preparing…' : `Preview ${local ? 'scheduled email' : 'email'}`}
               </button>
             </div>
-            {preview && (
+            </div>
+            <EmailRecipients value={draft.recipients} onChange={recipients => change({ recipients })} disabled={busy} />
+            </div>
+            {previewOpen && (
+              <EmailPreviewDialog busy={busy} onClose={() => { setPreviewOpen(false); setPreview(null); }}>
+              {error && <p role="alert" className="mb-4 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}
+              {busy && !preview && <p role="status">Preparing your preview…</p>}
+              {preview && (
               <section
                 aria-label="Confirm email"
                 className="space-y-4 rounded-xl border border-blue-400/30 bg-blue-500/5 p-5"
@@ -668,7 +545,7 @@ export function AdminEmailPage({
                   dangerouslySetInnerHTML={{ __html: preview.html }}
                 />
                 <button
-                  disabled={!state?.deliveryEnabled}
+                  disabled={busy || !state?.deliveryEnabled}
                   className={`${button} bg-blue-600`}
                   onClick={() =>
                     void run(async () => {
@@ -680,6 +557,7 @@ export function AdminEmailPage({
                       setDraft(empty());
                       setAttachments([]);
                       setPreview(null);
+                      setPreviewOpen(false);
                       setNotice(
                         'Email queued. Outgoing history shows each recipient’s result.',
                       );
@@ -690,6 +568,8 @@ export function AdminEmailPage({
                   Confirm {local ? 'schedule' : 'send'}
                 </button>
               </section>
+              )}
+              </EmailPreviewDialog>
             )}
           </>
         )}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Activity, ArrowRight, BookOpenText, Building2, Database, Lightbulb, Megaphone, Plug, Search, ShieldCheck, Users, X } from 'lucide-react';
+import { Activity, ArrowRight, BookOpenText, Building2, Database, Lightbulb, Mail, Megaphone, Plug, Search, ShieldCheck, Users, X } from 'lucide-react';
 import type { AdminOverview } from './types';
 
 const DESTINATION_GROUPS = [
@@ -14,6 +14,7 @@ const DESTINATION_GROUPS = [
   {
     title: 'Content & communication', description: 'Keep everyone informed and supported.', accent: 'text-violet-300 bg-violet-400/10',
     items: [
+      { key: 'email', title: 'Email', detail: 'Compose messages, schedule delivery, and manage notifications.', keywords: 'mail recipients templates send', icon: Mail },
       { key: 'banner', title: 'Banners', detail: 'Announcements and scheduled messages.', keywords: 'alerts updates', icon: Megaphone },
       { key: 'platform', title: 'Help Center', detail: 'Help articles and product guidance.', keywords: 'documentation support', icon: BookOpenText },
       { key: 'features', title: 'New features', detail: 'Feature ideas and development plans.', keywords: 'roadmap feedback planning', icon: Lightbulb },
