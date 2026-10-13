@@ -125,7 +125,7 @@ export async function emailAdmin(
     let query = service
       .from('email_messages')
       .select(
-        'id,owner_id,subject,scheduled_at,timezone,created_at,email_jobs(id,recipient,status,attempts,error_code,completed_at,available_at)',
+        'id,owner_id,subject,scheduled_at,timezone,created_at,email_jobs(id,recipient,status,attempts,error_code,completed_at,available_at,email_attempts(attempt,status,error_code,created_at))',
       )
       .order('created_at', { ascending: false })
       .range(
@@ -145,7 +145,11 @@ export async function emailAdmin(
         Math.max(0, Number(input.page) || 0) * 25 + 24,
       );
     if (!input.global) system = system.eq('owner_id', actor);
-    return { messages: checked(await query), system: checked(await system) };
+    const messages = checked(await query);
+    const systemMessages = checked(await system);
+    const health = access.appOwner ? checked(await service.from('email_health')
+      .select('paused,error_code,last_dispatch_at,worker_until').eq('id', true).single()) : null;
+    return { messages, system: systemMessages, health, deliveryEnabled: deliveryEnabled(), checkedAt: new Date().toISOString() };
   }
   if (action === 'templates') {
     requirePermission(access, 'email.read');

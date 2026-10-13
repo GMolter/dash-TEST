@@ -48,6 +48,8 @@ type Message = {
     attempts: number;
     error_code?: string;
     completed_at?: string;
+    available_at?: string;
+    email_attempts?: { attempt: number; status: string; error_code?: string; created_at: string }[];
   }[];
 };
 type Admin = {
@@ -130,7 +132,9 @@ export function AdminEmailPage({
     paused: boolean;
     error_code?: string;
     last_dispatch_at?: string;
+    worker_until?: string;
   } | null>(null);
+  const [checkedAt, setCheckedAt] = useState('');
   const [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false);
@@ -171,6 +175,9 @@ export function AdminEmailPage({
       const data = await emailApi('history', { global, page });
       setMessages(data.messages);
       setSystemMessages(data.system || []);
+      setHealth(data.health || null);
+      setCheckedAt(data.checkedAt || new Date().toISOString());
+      if (typeof data.deliveryEnabled === 'boolean') setState(current => current ? { ...current, deliveryEnabled: data.deliveryEnabled } : current);
     }
     if (tab === 'Administration') {
       const data = await emailApi('administration');
@@ -186,6 +193,19 @@ export function AdminEmailPage({
   useEffect(() => {
     void loadTab().catch((e) => setError(e.message));
   }, [loadTab, refreshVersion]);
+  useEffect(() => {
+    if (tab !== 'Outgoing history' && tab !== 'Scheduled') return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      if (!document.hidden) {
+        try { await loadTab(); } catch (e) { if (!stopped) setError(e instanceof Error ? e.message : 'Could not refresh delivery status.'); }
+      }
+      if (!stopped) timer = setTimeout(poll, 5000);
+    };
+    timer = setTimeout(poll, 5000);
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [tab, loadTab]);
   const openDraft = async (next: EmailDraft) => {
     setDraft(next);
     setPreview(null);
@@ -555,10 +575,12 @@ export function AdminEmailPage({
                         key,
                         confirmation: 'SEND',
                       });
+                      setDrafts(current => current.filter(item => item.id !== draft.id));
                       setDraft(empty());
                       setAttachments([]);
                       setPreview(null);
                       setPreviewOpen(false);
+                      if (state?.canHistory) { setGlobal(false); setPage(0); setTab('Outgoing history'); }
                       setNotice(
                         'Email queued. Outgoing history shows each recipient’s result.',
                       );
@@ -622,6 +644,16 @@ export function AdminEmailPage({
         )}
         {(tab === 'Scheduled' || tab === 'Outgoing history') && (
           <>
+            <section aria-label="Delivery progress" className="space-y-2 rounded-xl border border-blue-400/20 bg-blue-400/5 p-4">
+              <h3 className="font-medium">Delivery progress</h3>
+              <p className="text-xs text-slate-400">Updates every 5 seconds while this page is visible. Last checked: {checkedAt ? new Date(checkedAt).toLocaleTimeString() : 'Checking…'}</p>
+              {state?.owner && health && <>
+                <p className="text-sm">{!state.deliveryEnabled ? 'Delivery is disabled in this deployment.' : health.paused ? `Sending paused: ${health.error_code || 'check SMTP configuration'}.` : health.worker_until && Date.parse(health.worker_until) > Date.now() ? 'Worker lease is active. It may be processing the queue.' : 'Worker is idle.'}</p>
+                <p className="text-sm text-slate-300">Last worker pickup: {health.last_dispatch_at ? new Date(health.last_dispatch_at).toLocaleString() : 'Never'}</p>
+                {(!health.last_dispatch_at || Date.now() - Date.parse(health.last_dispatch_at) > 180000) && <p className="text-sm text-amber-200">No recent worker pickup. Check that the Supabase cron job is active and its dispatch URL and secret match Vercel. Queuing a message does not start the worker.</p>}
+              </>}
+              <p className="text-xs text-slate-400">Queued → sending → accepted by mail server. Retry means another attempt is scheduled; unknown means acceptance could not be confirmed.</p>
+            </section>
             {state?.owner && (
               <label className="flex gap-2 text-sm">
                 <input
@@ -667,6 +699,13 @@ export function AdminEmailPage({
                           {job.recipient}
                         </span>
                         <span>{deliveryLabels[job.status]}</span>
+                        <span className="text-xs text-slate-400">{job.attempts} sending attempt{job.attempts === 1 ? '' : 's'}</span>
+                        {job.available_at && ['queued', 'scheduled', 'retry'].includes(job.status) && <span className="text-xs text-slate-400">Eligible from {new Date(job.available_at).toLocaleString()}</span>}
+                        <details className="w-full rounded-lg bg-white/5 p-3">
+                          <summary className="cursor-pointer text-xs text-blue-200">View processing history</summary>
+                          <p className="mt-2 break-all text-xs text-slate-500">Job ID: {job.id}</p>
+                          {!job.email_attempts?.length ? <p className="mt-2 text-xs text-slate-400">No sending attempt recorded. The message has not reached the sending stage.</p> : <ol className="mt-2 space-y-2">{[...job.email_attempts].sort((a, b) => a.attempt - b.attempt).map(attempt => <li key={attempt.attempt} className="text-xs text-slate-300">Attempt {attempt.attempt} started {new Date(attempt.created_at).toLocaleString()} · {deliveryLabels[attempt.status] || attempt.status}{attempt.error_code ? ` · ${attempt.error_code}` : ''}</li>)}</ol>}
+                        </details>
                         {job.completed_at && (
                           <time className="text-xs text-slate-500">
                             {new Date(job.completed_at).toLocaleString()}

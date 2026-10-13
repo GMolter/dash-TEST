@@ -10,6 +10,7 @@ import {
 } from './emailTransport.js';
 
 export async function dispatchEmail(service: SupabaseClient) {
+  console.info('email dispatch', { stage: 'started', manualEnabled: deliveryEnabled(), authEnabled: deliveryEnabled(true) });
   // Expire encrypted auth payloads even if SMTP is paused or delivery is disabled.
   const { error: cleanupError } = await service.rpc('email_cleanup');
   if (cleanupError) throw new Error('Queue maintenance unavailable.');
@@ -20,7 +21,10 @@ export async function dispatchEmail(service: SupabaseClient) {
     { p_token: worker },
   );
   if (lockError) throw new Error('Queue unavailable.');
-  if (!locked) return { processed: 0, pausedOrBusy: true };
+  if (!locked) {
+    console.info('email dispatch', { stage: 'paused-or-busy' });
+    return { processed: 0, pausedOrBusy: true };
+  }
   let processed = 0;
   try {
     const { error } = await service.rpc('email_expand_events');
@@ -35,6 +39,7 @@ export async function dispatchEmail(service: SupabaseClient) {
       if (claimError) throw new Error('Queue claim failed.');
       const job = data?.[0];
       if (!job) break;
+      console.info('email dispatch', { stage: 'claimed', jobId: job.id });
       let outcome: { status: string; code?: string; pause?: boolean } = {
         status: 'failed',
         code: 'CONTENT_UNAVAILABLE',
@@ -80,6 +85,7 @@ export async function dispatchEmail(service: SupabaseClient) {
             }
           }
           if (mail) {
+            console.info('email dispatch', { stage: 'smtp-started', jobId: job.id });
             smtpStarted = true;
             try {
               const result = await transport.sendMail({
@@ -127,10 +133,12 @@ export async function dispatchEmail(service: SupabaseClient) {
       });
       // If persistence fails after SMTP, leave the lease for uncertain-outcome reconciliation.
       if (finishError) throw new Error('Could not record SMTP outcome.');
+      console.info('email dispatch', { stage: 'recorded', jobId: job.id, status: outcome.status, code: outcome.code || null });
       processed++;
       if (outcome.pause) break;
     }
     await cleanupAttachments(service);
+    console.info('email dispatch', { stage: 'finished', processed });
     return { processed };
   } finally {
     await service

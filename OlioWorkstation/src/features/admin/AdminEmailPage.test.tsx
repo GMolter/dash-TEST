@@ -105,3 +105,32 @@ it('shows a failed preview inside the dialog and allows returning to the draft',
   fireEvent.click(screen.getByRole('button', { name: 'Back to editing' }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
+it('moves a confirmed draft into history and explains a queue with no worker pickup', async () => {
+  const draft = { id: 'draft-one', revision: 1, subject: 'Test delivery', html: '<p>Hello</p>', recipients: ['a@example.com'], attachment_ids: [] };
+  let submitted = false;
+  vi.mocked(emailApi).mockImplementation(async action => {
+    if (action === 'state') return { canSend: true, canHistory: true, owner: true, deliveryEnabled: true };
+    if (action === 'drafts') return { drafts: submitted ? [] : [draft] };
+    if (action === 'save-draft') return { draft };
+    if (action === 'preview') return { ...draft, token: 'signed', scheduled_at: new Date().toISOString(), timezone: 'UTC', attachmentCount: 0 };
+    if (action === 'submit') { submitted = true; return { id: 'message-one', status: 'queued' }; }
+    if (action === 'history') return {
+      messages: [{ ...draft, scheduled_at: new Date().toISOString(), timezone: 'UTC', email_jobs: [{ id: 'job-one', recipient: 'a@example.com', status: 'queued', attempts: 0, email_attempts: [] }] }],
+      system: [], health: { paused: false, last_dispatch_at: null }, deliveryEnabled: true,
+    };
+    return { templates: [], users: [], organizations: [] };
+  });
+  render(<AdminEmailPage />);
+  fireEvent.click(await screen.findByRole('tab', { name: 'Drafts' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Preview email' }));
+  const confirm = await screen.findByRole('button', { name: 'Confirm send' });
+  await waitFor(() => expect(confirm).toBeEnabled());
+  fireEvent.click(confirm);
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Outgoing history' })).toHaveAttribute('aria-selected', 'true'));
+  expect(await screen.findByText(/No recent worker pickup/)).toBeVisible();
+  expect(screen.getByText('0 sending attempts')).toBeVisible();
+  fireEvent.click(screen.getByRole('tab', { name: 'Drafts' }));
+  expect(await screen.findByText('No saved drafts.')).toBeVisible();
+  expect(screen.queryByText('Test delivery')).not.toBeInTheDocument();
+});
