@@ -1,8 +1,11 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Session } from '@supabase/supabase-js';
 
 const auth = vi.hoisted(() => ({
+  signInWithPassword: vi.fn(),
+  signUp: vi.fn(),
+  rpc: vi.fn(),
   getSession: vi.fn(),
   getUser: vi.fn(),
   signOut: vi.fn(),
@@ -14,7 +17,10 @@ const auth = vi.hoisted(() => ({
 
 vi.mock("../lib/supabase", () => ({
   supabase: {
+    rpc: auth.rpc,
     auth: {
+      signInWithPassword: auth.signInWithPassword,
+      signUp: auth.signUp,
       getSession: auth.getSession,
       getUser: auth.getUser,
       signOut: auth.signOut,
@@ -45,6 +51,33 @@ function Probe() {
 }
 
 describe("AuthProvider session safety", () => {
+  it.each([true, false])('classifies invalid credentials using account existence (%s)', async (exists) => {
+    auth.signInWithPassword.mockResolvedValue({ data: {}, error: { code: 'invalid_credentials', message: 'Invalid login credentials' } });
+    auth.rpc.mockResolvedValue({ data: exists, error: null });
+    const { result } = renderHook(useAuth, { wrapper: AuthProvider });
+    await act(async () => {
+      expect(await result.current.signIn(' Person@example.com ', 'wrong')).toMatchObject({ success: false, code: exists ? 'incorrect_password' : 'user_not_found' });
+    });
+    expect(auth.rpc).toHaveBeenCalledWith('account_email_exists', { address: 'Person@example.com' });
+    expect(auth.signUp).not.toHaveBeenCalled();
+  });
+
+  it('does not offer signup when the lookup fails', async () => {
+    auth.signInWithPassword.mockResolvedValue({ data: {}, error: { code: 'invalid_credentials' } });
+    auth.rpc.mockResolvedValue({ data: null, error: { message: 'unavailable' } });
+    const { result } = renderHook(useAuth, { wrapper: AuthProvider });
+    await act(async () => {
+      expect(await result.current.signIn('person@example.com', 'wrong')).toMatchObject({ success: false, error: 'We couldn’t check your account. Please try signing in again.', code: undefined });
+    });
+  });
+
+  it('rejects blank first names before calling signup', async () => {
+    const { result } = renderHook(useAuth, { wrapper: AuthProvider });
+    await act(async () => {
+      expect(await result.current.signUp('person@example.com', 'password123', '  ')).toMatchObject({ success: false, error: 'Please enter your first name.' });
+    });
+    expect(auth.signUp).not.toHaveBeenCalled();
+  });
   afterEach(() => vi.useRealTimers());
   it('finishes startup on a fresh session event even when the initial read is stuck', async () => {
     auth.getSession.mockImplementationOnce(() => new Promise(() => {}));

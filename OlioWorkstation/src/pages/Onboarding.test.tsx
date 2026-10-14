@@ -14,11 +14,29 @@ async function signIn() {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  auth.signIn.mockResolvedValue({ success: false, code: 'invalid_credentials' });
+  auth.signIn.mockResolvedValue({ success: false, code: 'user_not_found' });
   auth.signUp.mockResolvedValue({ success: true, confirmationRequired: true });
 });
 
 describe('Unified account flow', () => {
+  it('keeps known emails on sign-in after an incorrect password', async () => {
+    auth.signIn.mockResolvedValue({ success: false, code: 'incorrect_password', error: 'Incorrect password.' });
+    render(<Onboarding />);
+    await signIn();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect password.');
+    expect(screen.queryByText('Yes, create an account')).not.toBeInTheDocument();
+    expect(auth.signUp).not.toHaveBeenCalled();
+  });
+
+  it('rejects whitespace-only first names', async () => {
+    render(<Onboarding />);
+    await signIn();
+    fireEvent.click(await screen.findByText('Yes, create an account'));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Please enter your first name.');
+    expect(auth.signUp).not.toHaveBeenCalled();
+  });
   it('collects separate first and last names for signup', async () => {
     render(<Onboarding />);
     await signIn();
@@ -28,16 +46,19 @@ describe('Unified account flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
     await waitFor(() => expect(auth.signUp).toHaveBeenCalledWith('person@example.com', 'password123', 'Avery', 'Stone'));
   });
-  it('offers creation after invalid credentials and only signs up with explicit consent', async () => {
+  it('offers creation for unknown emails and allows signup without a last name', async () => {
     render(<Onboarding />);
     expect(screen.queryByRole('button', { name: 'Create account', exact: true })).not.toBeInTheDocument();
     await signIn();
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, create an account' }));
     expect(auth.signUp).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Email address')).toHaveValue('person@example.com');
+    expect(screen.getByLabelText('First name')).toBeRequired();
+    expect(screen.getByLabelText(/Last name/)).not.toBeRequired();
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Avery' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
     await screen.findByRole('heading', { name: 'Check your inbox' });
-    expect(auth.signUp).toHaveBeenCalledWith('person@example.com', 'password123', undefined, undefined);
+    expect(auth.signUp).toHaveBeenCalledWith('person@example.com', 'password123', 'Avery', undefined);
     fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
     expect(screen.getByLabelText('Password')).toHaveValue('');
   });

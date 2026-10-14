@@ -9,7 +9,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   error: string | null;
-  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<{ success: boolean; error?: string; confirmationRequired?: boolean }>;
+  signUp: (email: string, password: string, firstName: string, lastName?: string) => Promise<{ success: boolean; error?: string; confirmationRequired?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   signOut: () => Promise<void>;
 }
@@ -177,9 +177,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
+  const signUp = async (email: string, password: string, firstName: string, lastName?: string) => {
     try {
       setError(null);
+      if (!firstName?.trim()) throw new Error('Please enter your first name.');
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -217,7 +218,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
 
-      if (signInError) throw signInError;
+      if (signInError) {
+        if (['invalid_credentials', 'user_not_found'].includes(signInError.code ?? '') || signInError.message === 'Invalid login credentials') {
+          const { data: exists, error: lookupError } = await supabase.rpc('account_email_exists', { address: email.trim() });
+          if (lookupError || typeof exists !== 'boolean') {
+            throw new Error('We couldn’t check your account. Please try signing in again.');
+          }
+          const message = exists ? 'Incorrect password.' : 'No account exists with this email address.';
+          setError(message);
+          return { success: false, error: message, code: exists ? 'incorrect_password' : 'user_not_found' };
+        }
+        throw signInError;
+      }
 
       // Profile provisioning and organization setup do not invalidate a login.
       // OrgProvider repairs/loads the profile without signing the user back out.

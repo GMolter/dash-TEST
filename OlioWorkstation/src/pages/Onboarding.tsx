@@ -22,6 +22,10 @@ export function Onboarding() {
     if (submitting.current) return;
     setError('');
     setOfferAccount(false);
+    if (creating && !firstName.trim()) {
+      setError('Please enter your first name.');
+      return;
+    }
     if (creating && password.length < 6) {
       setError('Choose a password with at least 6 characters.');
       return;
@@ -31,13 +35,13 @@ export function Onboarding() {
     try {
       const address = email.trim();
       if (creating) {
-        const result = await signUp(address, password, firstName.trim() || undefined, lastName.trim() || undefined);
+        const result = await signUp(address, password, firstName.trim(), lastName.trim() || undefined);
         if (!result.success) setError(result.error || 'We couldn’t create your account. Please try again.');
         else if (result.confirmationRequired) { setConfirmation(true); setPassword(''); }
       } else {
         const result = await signIn(address, password);
         if (!result.success) {
-          if (result.code === 'invalid_credentials' || result.code === 'user_not_found' || result.error === 'Invalid login credentials') {
+          if (result.code === 'user_not_found') {
             setOfferAccount(true);
           } else {
             setError(result.code === 'email_not_confirmed'
@@ -82,8 +86,8 @@ export function Onboarding() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <fieldset disabled={loading} className="space-y-5 disabled:opacity-60">
                 {creating && <div className="grid gap-4 sm:grid-cols-2">
-                  <div><label htmlFor="auth-first-name" className="mb-2 block text-sm font-medium text-slate-300">First name <span className="font-normal text-slate-500">(optional)</span></label>
-                  <input id="auth-first-name" autoFocus autoComplete="given-name" maxLength={100} value={firstName} onChange={e => setFirstName(e.target.value)} className={inputClass} /></div>
+                  <div><label htmlFor="auth-first-name" className="mb-2 block text-sm font-medium text-slate-300">First name</label>
+                  <input id="auth-first-name" required autoFocus autoComplete="given-name" maxLength={100} value={firstName} onChange={e => setFirstName(e.target.value)} className={inputClass} /></div>
                   <div><label htmlFor="auth-last-name" className="mb-2 block text-sm font-medium text-slate-300">Last name <span className="font-normal text-slate-500">(optional)</span></label>
                   <input id="auth-last-name" autoComplete="family-name" maxLength={100} value={lastName} onChange={e => setLastName(e.target.value)} className={inputClass} /></div>
                 </div>}
@@ -103,7 +107,7 @@ export function Onboarding() {
                 {error && <p role="alert" className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
                 {offerAccount && <div role="status" className="rounded-2xl border border-violet-300/20 bg-violet-400/10 p-4 text-sm leading-6 text-slate-300">
                   <p className="font-medium text-white">New to Olio?</p>
-                  <p className="mt-1">We couldn’t sign you in with those details. Check your email and password, or create an account if you haven’t joined yet.</p>
+                  <p className="mt-1">No account exists with this email address. Would you like to create one?</p>
                   <button type="button" onClick={() => { setCreating(true); setOfferAccount(false); setError(''); }} className="mt-3 font-medium text-violet-200 underline underline-offset-4 hover:text-white">Yes, create an account</button>
                 </div>}
                 <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300/20 bg-violet-600 px-4 py-3.5 text-sm font-semibold text-white shadow-[0_8px_30px_rgba(139,92,246,0.2)] transition hover:bg-violet-500 disabled:cursor-wait focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-300">
