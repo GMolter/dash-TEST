@@ -19,7 +19,8 @@
     "test:launcher-quick-pastes": "vitest run test/launcherQuickPastesApi.test.ts api/_utils/launcherProtocol.test.ts test/launcherQuickPastesPrivacy.test.ts test/vercelFunctionBudget.test.ts",
     "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "test:support": "vitest run src/features/support test/supportDatabase.test.ts api/_utils/emailNotification.test.ts api/_utils/emailWorker.test.ts src/features/admin/AdminEmailPage.test.tsx src/features/admin/AdminOperationsConsole.test.tsx test/vercelFunctionBudget.test.ts"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",

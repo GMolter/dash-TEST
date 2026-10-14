@@ -47,6 +47,7 @@ const Onboarding = lazy(() => import('./pages/Onboarding').then(({ Onboarding: C
 const OrgSetup = lazy(() => import('./pages/OrgSetup').then(({ OrgSetup: Component }) => ({ default: Component })));
 const OrganizationPage = lazy(() => import('./pages/OrganizationPage').then(({ OrganizationPage: Component }) => ({ default: Component })));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings').then(({ ProfileSettings: Component }) => ({ default: Component })));
+const SupportPage = lazy(() => import('./features/support/SupportPage').then(({ SupportPage: Component }) => ({ default: Component })));
 const HelpPage = lazy(() => import('./pages/HelpPage').then(({ HelpPage: Component }) => ({ default: Component })));
 const HelpArticlePage = lazy(() => import('./pages/HelpArticlePage').then(({ HelpArticlePage: Component }) => ({ default: Component })));
 const LauncherAuthorization = lazy(() => import('./pages/LauncherAuthorization').then(({ LauncherAuthorization: Component }) => ({ default: Component })));
@@ -63,6 +64,7 @@ type View =
   | { type: 'admin-editor' }
   | { type: 'organization' }
   | { type: 'profile' }
+  | { type: 'support' }
   | { type: 'help' }
   | { type: 'help-article'; slug: string }
   | { type: 'classdash' }
@@ -260,6 +262,7 @@ function App() {
         return;
       }
 
+      if (cleanPath === '/support') { setView({ type: 'support' }); return; }
       if (cleanPath === '/help') {
         setView({ type: 'help' });
         return;
@@ -322,7 +325,7 @@ function App() {
       }
 
       const maybeCode = cleanPath.replace(/^\//, '');
-      if (maybeCode && !['home', 'admin', 'utilities', 'p', 'pastes', 'projects', 'organization', 'profile', 'help'].includes(maybeCode)) {
+      if (maybeCode && !['home', 'admin', 'utilities', 'p', 'pastes', 'projects', 'organization', 'profile', 'help', 'support'].includes(maybeCode)) {
         setView({ type: 'redirect', code: maybeCode });
         return;
       }
@@ -496,7 +499,7 @@ function App() {
     return <LauncherAuthorization requestId={view.requestId} displayCode={view.displayCode} />;
   }
 
-  const needsWorkspaceProfile = !isPublicRoute && !['help', 'help-article', 'admin', 'admin-editor'].includes(view.type);
+  const needsWorkspaceProfile = !isPublicRoute && !['help', 'help-article', 'admin', 'admin-editor', 'support'].includes(view.type);
   if (needsWorkspaceProfile && user && !authLoading) {
     if (!profile || profile.id !== user.id) {
       return <div className="relative flex min-h-screen items-center justify-center p-6 text-white">
@@ -538,6 +541,12 @@ function App() {
         />
       </>
     );
+  }
+
+  if (view.type === 'support') {
+    if (authLoading) return <div role="status" className="min-h-screen bg-slate-950">Checking sign-in status…</div>;
+    if (!user) return <Onboarding />;
+    return <><AnimatedBackground theme={appBackgroundTheme} preset={appBackgroundPreset} />{floatingNavigation}<SupportPage key={user.id} /></>;
   }
 
   if (view.type === 'help') {

@@ -1,3 +1,5 @@
+import { SupportPage } from '../support/SupportPage';
+import { SupportBadge } from '../support/SupportBadge';
 import { useAdminAccess } from './AdminAccessBoundary';
 
 import { AdminFeaturesPage } from "./AdminFeaturesPage";
@@ -27,6 +29,7 @@ type PendingOperation = { operation: Omit<AdminOperation, "reason">; title: stri
 
 const NAVIGATION = [
   { key: "overview", label: "Overview", icon: Gauge },
+  { key: "support", label: "Support inbox", icon: Mail },
   { key: "people", label: "People", icon: Users },
   { key: "email", label: "Email", icon: Mail },
   { key: "organizations", label: "Organizations", icon: Building2 },
@@ -112,7 +115,7 @@ function SharedAdminOperationsConsole() {
   const resources = useMemo(() => overview?.resources || [], [overview?.resources]);
   const sectionResources = useMemo(() => resources.filter((item) => resourceInSection(item.group, section)), [resources, section]);
   const workspaceMode = section === 'workspace' && !accountUserId && !organizationId;
-  const visibleNavigation = NAVIGATION.filter(item => item.key === "overview" || item.key === "email" || ((!delegated || resources.some(resource => resourceInSection(resource.group, item.key))) && (!("ownerOnly" in item) || overview?.isOwner)));
+  const visibleNavigation = NAVIGATION.filter(item => item.key === "overview" || item.key === "email" || item.key === "support" || ((!delegated || resources.some(resource => resourceInSection(resource.group, item.key))) && (!("ownerOnly" in item) || overview?.isOwner)));
   const selectedResource = sectionResources.find((item) => item.key === resource);
   const ownerAccountLocked = row?._admin_protected === true || (data?.resource === "users" && row?.app_owner === true && !overview?.isOwner);
   const accountLinks = Boolean(accountUserId) && ["quicklinks", "quicklink-folders"].includes(resource);
@@ -126,7 +129,7 @@ function SharedAdminOperationsConsole() {
     try {
       const next = await loadAdminOverview();
       setOverview(next);
-      if (delegated && section !== "overview" && section !== 'email' && !next.resources.some(item => resourceInSection(item.group, section))) { setSection("overview"); setResource(""); setAccountUserId(""); setOrganizationId(""); }
+      if (delegated && section !== "overview" && section !== 'email' && section !== 'support' && !next.resources.some(item => resourceInSection(item.group, section))) { setSection("overview"); setResource(""); setAccountUserId(""); setOrganizationId(""); }
       setAccess("ready");
       if (!next.isOwner && section === "reviews") {
         setSection("overview");
@@ -134,7 +137,7 @@ function SharedAdminOperationsConsole() {
         setFilters({});
         return;
       }
-      if (!accountUserId && section !== 'email' && section !== "overview" && section !== "banner" && section !== "features" && !next.resources.some((item) => item.key === resource && resourceInSection(item.group, section))) {
+      if (!accountUserId && section !== 'email' && section !== 'support' && section !== "overview" && section !== "banner" && section !== "features" && !next.resources.some((item) => item.key === resource && resourceInSection(item.group, section))) {
         const first = next.resources.find((item) => resourceInSection(item.group, section));
         setResource(first?.key || "users");
       }
@@ -170,7 +173,7 @@ function SharedAdminOperationsConsole() {
 
   const refreshResource = useCallback(async () => {
     const request = ++resourceRequest.current;
-    if (access !== "ready" || organizationId || section === 'email' || section === "overview" || section === "banner" || section === "features" || !resource || accountLinks || (accountUserId && !accountOverview)) { setLoading(false); return; }
+    if (access !== "ready" || organizationId || section === 'email' || section === 'support' || section === "overview" || section === "banner" || section === "features" || !resource || accountLinks || (accountUserId && !accountOverview)) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
@@ -196,6 +199,10 @@ function SharedAdminOperationsConsole() {
   useEffect(() => {
     const query = new URLSearchParams();
     query.set("section", section);
+    if (section === 'support') {
+      const ticket = new URLSearchParams(window.location.search).get('ticket');
+      if (ticket) query.set('ticket', ticket);
+    }
     // Keep email deep links until the lazy-loaded page can consume them.
     if (section === 'email') {
       const current = new URLSearchParams(window.location.search);
@@ -204,7 +211,7 @@ function SharedAdminOperationsConsole() {
         if (value) query.set(key, value);
       }
     }
-    if (section !== 'email' && section !== "overview" && section !== "banner" && section !== "features" && resource) query.set("resource", resource);
+    if (section !== 'email' && section !== 'support' && section !== "overview" && section !== "banner" && section !== "features" && resource) query.set("resource", resource);
     if (accountUserId) query.set("account", accountUserId);
     if (organizationId) query.set("organization", organizationId);
     if (row?._admin_id) query.set("record", row._admin_id);
@@ -394,9 +401,9 @@ function SharedAdminOperationsConsole() {
             <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 lg:hidden" aria-label="Close navigation"><X className="h-5 w-5" /></button>
           </div>
           <nav aria-label="Admin navigation" className="mt-7 flex-1 space-y-1 overflow-y-auto"><p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Manage</p>
-            {visibleNavigation.filter((item) => ["overview", "people", "organizations", "banner", "reviews"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
+            {visibleNavigation.filter((item) => ["overview", "people", "support", "organizations", "banner", "reviews"].includes(item.key) && (!("ownerOnly" in item) || overview?.isOwner)).map((item) => {
               const Icon = item.icon;
-              return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" /><span className="flex-1">{item.key === "audit" ? "Activity" : item.label}</span>{item.key === "reviews" && !!overview?.metrics.pendingAdminReviews && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">{overview.metrics.pendingAdminReviews}</span>}</button>;
+              return <button key={item.key} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${section === item.key ? "bg-blue-500/10 text-blue-100" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4" /><span className="flex-1">{item.key === "audit" ? "Activity" : item.label}{item.key === "support" && <SupportBadge admin location={section} />}</span>{item.key === "reviews" && !!overview?.metrics.pendingAdminReviews && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">{overview.metrics.pendingAdminReviews}</span>}</button>;
             })}
             <div className="pt-4">
               <button aria-expanded={moreOpen} aria-controls="admin-more-navigation" onClick={() => setMoreOpen(!moreOpen)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white">Workspace tools<ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} /></button>
@@ -424,13 +431,13 @@ function SharedAdminOperationsConsole() {
               <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-200 lg:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
               <div><h1 className="text-2xl font-semibold">{accountUserId ? "Account management" : NAVIGATION.find((item) => item.key === section)?.label || "Overview"}</h1></div>
             </div>
-            <button onClick={() => { if (section === "features" || section === "email") { setFeatureRefresh(v => v + 1); } else if (section === "banner") { setBannerRefresh(v => v + 1); } else if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
+            <button onClick={() => { if (section === "features" || section === "email" || section === "support") { setFeatureRefresh(v => v + 1); } else if (section === "banner") { setBannerRefresh(v => v + 1); } else if (organizationId) { setOrganizationRefresh(v => v + 1); } else if (accountUserId) { void refreshAccount(); if (resource) void refreshResource(); } else if (section === "overview") void bootstrap(); else void refreshResource(); }} disabled={loading || accountLoading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading || accountLoading ? "animate-spin" : ""}`} /> Refresh</button>
           </header>
 
           {toast && <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100"><span>{toast}</span><button onClick={() => setToast(null)}><X className="h-4 w-4" /></button></div>}
           {error && <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-          {section === "email" ? <AdminEmailPage refreshVersion={featureRefresh} /> : section === "features" ? <AdminFeaturesPage refreshVersion={featureRefresh} /> : section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <AdminOverviewPage overview={overview} onNavigate={selectSection} allowedSections={visibleNavigation.map(item => item.key)} /> : accountUserId ? (
+          {section === "support" ? <SupportPage admin refreshVersion={featureRefresh} /> : section === "email" ? <AdminEmailPage refreshVersion={featureRefresh} /> : section === "features" ? <AdminFeaturesPage refreshVersion={featureRefresh} /> : section === "banner" ? <AdminBannerPage refreshVersion={bannerRefresh} /> : organizationId ? <AdminOrganizationPage key={organizationId} organizationId={organizationId} refreshVersion={organizationRefresh} onBack={() => selectSection("organizations")} onOpenReference={openReference} /> : section === "overview" ? <AdminOverviewPage overview={overview} onNavigate={selectSection} allowedSections={visibleNavigation.map(item => item.key)} /> : accountUserId ? (
             <AdminUserAccountPage overview={accountOverview} loading={accountLoading} error={accountError} selectedResource={resource} onBack={closeAccount} onAccountOperation={requestAccountOperation} onOpenReference={openReference} onSelectResource={selectAccountResource}>
               {accountLinks && accountOverview ? <AdminAccountQuicklinks key={accountUserId} user={accountOverview.user} onComplete={() => { void refreshAccount(); void loadAdminOverview().then(setOverview).catch(() => undefined); }} onOpenReference={openReference} /> : resource && <AdminResourceTable data={data} loading={loading} search={searchInput} filters={filters} selected={selected} onSearch={setSearchInput}
                 onFilters={(next) => { setFilters(next); setPage(1); setSelected(new Set()); }} onSelection={setSelected}

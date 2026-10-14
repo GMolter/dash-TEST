@@ -1,0 +1,25 @@
+import { act, render, screen } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { SupportBadge } from './SupportBadge';
+import { unreadTickets } from './api';
+vi.mock('./api', () => ({ unreadTickets: vi.fn() }));
+afterEach(() => vi.useRealTimers());
+it('refreshes per-view badges on navigation, focus, interval and read events, and cleans up', async () => {
+  vi.useFakeTimers();
+  vi.mocked(unreadTickets).mockResolvedValue(2);
+  const view = render(<SupportBadge admin location="overview" />);
+  await act(async () => {});
+  expect(screen.getByLabelText('2 unread support tickets')).toBeVisible();
+  expect(unreadTickets).toHaveBeenLastCalledWith(true);
+  vi.mocked(unreadTickets).mockResolvedValue(1);
+  await act(async () => { window.dispatchEvent(new Event('support-changed')); });
+  expect(screen.getByLabelText('1 unread support tickets')).toBeVisible();
+  await act(async () => { vi.advanceTimersByTime(30_000); });
+  await act(async () => { window.dispatchEvent(new Event('focus')); });
+  view.rerender(<SupportBadge admin location="support" />);
+  await act(async () => {});
+  expect(unreadTickets).toHaveBeenCalledTimes(5);
+  view.unmount();
+  await act(async () => { vi.advanceTimersByTime(30_000); window.dispatchEvent(new Event('focus')); });
+  expect(unreadTickets).toHaveBeenCalledTimes(5);
+});

@@ -14,7 +14,14 @@ export async function notificationMail(service: SupabaseClient, job: { owner_id:
   const add = (label: string, value: unknown) => { if (value) details.push(`<p><strong>${label}:</strong> ${escape(value)}</p>`); };
   let path = '/admin';
   let label = 'Open admin workspace';
-  if (job.event_type === 'signup') {
+  if (job.event_type === 'support' || job.event_type === 'support_user') {
+    const result = await service.from('support_events').select('ticket_id,kind').eq('id', job.event_target).maybeSingle();
+    if (result.error || !result.data) throw new Error('NOTIFICATION_DETAILS_UNAVAILABLE');
+    path = job.event_type === 'support' ? `/admin?section=support&ticket=${encodeURIComponent(result.data.ticket_id)}` : `/support?ticket=${encodeURIComponent(result.data.ticket_id)}`;
+    label = 'View support ticket';
+    add('Update', ({ created: 'A new support ticket was submitted.', reply: 'A new reply is available.', completed: 'The ticket was completed.', reopened: 'The ticket was reopened.' } as Record<string, string>)[result.data.kind]);
+    details.push('<p>Reply inside Olio. Replies to this email are not monitored.</p>');
+  } else if (job.event_type === 'signup') {
     path = `/admin?section=people&account=${encodeURIComponent(job.event_target)}`; label = 'View account';
     if (await can('users.read')) {
       const result = await service.from('profiles').select('display_name,email,app_owner').eq('id', job.event_target).maybeSingle();

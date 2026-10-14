@@ -56,7 +56,7 @@ export async function dispatchEmail(service: SupabaseClient) {
             job.kind === 'auth'
               ? decryptPayload(job.encrypted_payload)
               : job.payload;
-          if (job.kind === 'notification' && job.event_type && job.event_target)
+          if ((job.kind === 'notification' || job.event_type === 'support_user') && job.event_type && job.event_target)
             mail = await notificationMail(service, job);
           let attachments: Awaited<ReturnType<typeof loadAttachments>> = [];
           if (job.kind === 'manual') {
@@ -87,6 +87,13 @@ export async function dispatchEmail(service: SupabaseClient) {
               outcome = { status: 'cancelled', code: 'ACCESS_REVOKED' };
               mail = null;
             }
+          }
+          if (mail && (job.event_type === 'support' || job.event_type === 'support_user')) {
+            const { data: allowed, error: accessError } = await service.rpc('support_email_allowed', {
+              p_user: job.owner_id, p_event: job.event_target, p_recipient: job.recipient, p_admin: job.event_type === 'support',
+            });
+            if (accessError) throw new Error('ACCESS_CHECK_UNAVAILABLE');
+            if (!allowed) { outcome = { status: 'cancelled', code: 'ACCESS_REVOKED' }; mail = null; }
           }
           if (mail) {
             console.info('email dispatch', { stage: 'smtp-started', jobId: job.id });

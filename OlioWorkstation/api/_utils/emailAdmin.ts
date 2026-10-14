@@ -81,7 +81,7 @@ export async function emailAdmin(
   if (action === 'preferences') {
     const target = input.user_id ? uuid(input.user_id) : actor;
     const preferences = Object.fromEntries(
-      ['signup', 'organization', 'review', 'failure'].map((key) => [key, (input as Record<string, unknown>)[key] === true]),
+      ['signup', 'organization', 'review', 'failure', 'support'].map((key) => [key, (input as Record<string, unknown>)[key] === true]),
     );
     checked(
       await service.rpc('email_preferences_save', {

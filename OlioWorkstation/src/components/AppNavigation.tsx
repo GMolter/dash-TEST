@@ -1,3 +1,4 @@
+import { SupportBadge } from '../features/support/SupportBadge';
 import { useEffect, useRef, useState } from 'react';
 import {
   BookOpenText,
@@ -22,6 +23,7 @@ const navigationItems = [
   { path: '/utilities', label: 'Utilities', icon: Wrench },
   { path: '/organization', label: 'Organization', icon: Building2 },
   { path: '/profile', label: 'Profile', icon: UserCircle },
+  { path: '/support', label: 'Contact support', icon: BookOpenText },
   { path: '/help', label: 'Help Center', icon: BookOpenText },
 ];
 
@@ -140,7 +142,7 @@ export function AppNavigation({ currentPath, organizationName, isAppAdmin = fals
                     <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${active ? 'bg-indigo-400/15' : 'bg-white/[0.045]'}`}>
                       <Icon className="h-5 w-5" />
                     </span>
-                    <span className="font-medium">{item.label}</span>
+                    <span className="font-medium">{item.label}{item.path === '/support' && <SupportBadge location={currentPath} />}{item.path === '/admin' && <SupportBadge admin location={currentPath} />}</span>
                   </button>
                 );
               })}

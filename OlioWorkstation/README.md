@@ -37,6 +37,13 @@ The Vercel project Root Directory should be configured as `OlioWorkstation`.
 
 ## Admin operations console
 
+Contact support is available at `/support` and in the Help Center/navigation. All
+application admins share **Support inbox**, with conversations, completion/reopening,
+and individual unread indicators. Apply `20261014120000_support_tickets.sql` before
+deploying the frontend and email worker. Support email subscriptions default off for
+admins; requester updates use the existing transactional queue. See the
+[support deployment and verification guide](docs/support-tickets.md).
+
 Admin → Email supports private drafts/templates, individual-recipient SMTP delivery,
 attachments, reviewed scheduling, outgoing history, and opt-in event notifications.
 Apply `20261012030000_email_integration.sql` after the admin-permissions migrations.

@@ -5,6 +5,7 @@ export const emailEvents = [
   'organization',
   'review',
   'failure',
+  'support',
 ] as const;
 export type EmailEvent = (typeof emailEvents)[number];
 export const deliveryLabels: Record<string, string> = {

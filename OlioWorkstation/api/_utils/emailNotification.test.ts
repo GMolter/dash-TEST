@@ -2,6 +2,13 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { notificationMail } from './emailNotification';
 afterEach(() => vi.unstubAllEnvs());
+it.each(['support', 'support_user'])('links %s updates without exposing conversation text', async event_type => {
+  const db = service(false, { ticket_id: 'ticket-id', kind: 'reply', body: 'Private conversation' });
+  const mail = await notificationMail(db as never, { owner_id: 'user', event_type, event_target: 'event-id', payload: { subject: 'Support ticket #12: new reply' } });
+  expect(mail.text).toContain(event_type === 'support' ? '/admin?section=support&ticket=ticket-id' : '/support?ticket=ticket-id');
+  expect(mail.text).toContain('A new reply is available.');
+  expect(mail.html).not.toContain('Private conversation');
+});
 function service(owner: boolean, data: Record<string, unknown>) {
   let reads = 0;
   const chain = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn(async () => ({ error: null, data: reads++ === 0 ? { app_owner: owner } : data })) };

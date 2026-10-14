@@ -66,7 +66,7 @@ it('saves notification preferences for the selected admin without changing perso
   const panel = screen.getByRole('region', { name: 'Selected admin notification preferences' });
   fireEvent.click(within(panel).getByLabelText('New signups'));
   fireEvent.click(within(panel).getByRole('button', { name: 'Save admin preferences' }));
-  await waitFor(() => expect(emailApi).toHaveBeenCalledWith('preferences', { user_id: 'other-admin', signup: true, organization: false, review: false, failure: false }));
+  await waitFor(() => expect(emailApi).toHaveBeenCalledWith('preferences', { user_id: 'other-admin', signup: true, organization: false, review: false, failure: false, support: false }));
   await screen.findByText('Admin notification preferences saved.');
   fireEvent.click(screen.getByRole('tab', { name: 'My notifications' }));
   await waitFor(() => expect(screen.getByLabelText('New signups')).not.toBeChecked());

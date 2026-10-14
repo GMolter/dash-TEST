@@ -10,6 +10,7 @@ afterEach(() => vi.unstubAllGlobals());
 it('browses every guide, filters topics, and searches visible results', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ articles }) }));
   render(<HelpPage />);
+  expect(screen.getByRole('link', { name: 'Contact support' })).toHaveAttribute('href', '/support');
   expect(await screen.findByRole('link', { name: /Custom guide/ })).toHaveAttribute('href', '/help/article/custom-guide');
   fireEvent.click(screen.getByRole('button', { name: 'Projects' }));
   expect(screen.getByRole('link', { name: /Project Board/ })).toBeInTheDocument();

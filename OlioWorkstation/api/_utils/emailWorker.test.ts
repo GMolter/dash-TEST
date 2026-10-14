@@ -8,6 +8,23 @@ vi.mock('nodemailer', () => ({
 }));
 import { dispatchEmail } from './emailWorker';
 import { personalizedEmail } from './emailPersonalization';
+it.each(['accepted', 'revoked', 'retry'])('handles support delivery outcome %s without changing ticket data', async outcome => {
+  vi.stubEnv('SMTP_EMAIL', 'noreply@olio.one');
+  vi.stubEnv('SMTP_PASSWORD', 'test-only');
+  vi.stubEnv('EMAIL_DELIVERY_ENABLED', 'true');
+  if (outcome === 'retry') mocks.send.mockRejectedValue({ code: 'ECONNECTION' });
+  else mocks.send.mockResolvedValue({ accepted: ['user@example.com'] });
+  let claims = 0;
+  const rpc = vi.fn(async (name: string) => ({ error: null, data: name === 'email_worker_lock' ? true : name === 'support_email_allowed' ? outcome !== 'revoked' : name === 'email_claim' && claims++ === 0 ? [{ id: 'job', kind: 'transactional', owner_id: 'user', recipient: 'user@example.com', event_type: 'support_user', event_target: 'event', payload: { subject: 'Support ticket #12: new reply' }, lease_token: 'lease' }] : null }));
+  const chain = { eq: vi.fn().mockReturnThis(), lt: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), update: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }), maybeSingle: vi.fn().mockResolvedValue({ data: { app_owner: false, ticket_id: 'ticket', kind: 'reply' }, error: null }) };
+  const from = vi.fn(() => chain);
+  await dispatchEmail({ rpc, from } as never);
+  expect(rpc).toHaveBeenCalledWith('support_email_allowed', { p_user: 'user', p_event: 'event', p_recipient: 'user@example.com', p_admin: false });
+  expect(rpc).toHaveBeenCalledWith('email_finish', expect.objectContaining({ p_status: outcome === 'revoked' ? 'cancelled' : outcome }));
+  if (outcome === 'revoked') expect(mocks.send).not.toHaveBeenCalled();
+  else expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ text: expect.stringContaining('/support?ticket=ticket') }));
+  expect(from).not.toHaveBeenCalledWith('support_tickets');
+});
 it('sends the exact personalized preview from frozen queue values', async () => {
   vi.stubEnv('SMTP_EMAIL', 'noreply@olio.one');
   vi.stubEnv('SMTP_PASSWORD', 'test-only');

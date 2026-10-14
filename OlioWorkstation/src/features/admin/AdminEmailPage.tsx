@@ -72,8 +72,10 @@ const defaults: Preferences = {
   organization: false,
   review: false,
   failure: false,
+  support: false,
 };
 const labels: Record<string, string> = {
+  support: 'Support tickets and user replies',
   signup: 'New signups',
   organization: 'New organizations',
   review: 'Pending admin reviews (owners)',
@@ -213,7 +215,7 @@ export function AdminEmailPage({
     }
     if (tab === 'My notifications') {
       const data = await loadState();
-      setPreferences(data.preferences || defaults);
+      setPreferences({ ...defaults, ...data.preferences });
     }
   }, [tab, global, page, state?.canSend, loadState, linkedJob]);
   useEffect(() => {
