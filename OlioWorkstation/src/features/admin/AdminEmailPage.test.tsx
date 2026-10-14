@@ -147,7 +147,8 @@ it('requires a preview and invalidates it when content changes', async () => {
     await screen.findByRole('button', { name: 'Confirm send' }),
   ).toBeVisible();
   await waitFor(() => expect(screen.getByRole('button', { name: 'Back to editing' })).toBeEnabled());
-  expect(screen.getByRole('dialog', { name: 'Email preview' })).toHaveTextContent('Body');
+  expect(screen.getByTitle('Rendered email')).toHaveAttribute('srcdoc', '<p>Body</p>');
+  expect(screen.getByTitle('Rendered email')).toHaveAttribute('sandbox', '');
   expect(screen.getByRole('button', { name: 'Confirm send' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Back to editing' }));
   fireEvent.change(screen.getByLabelText('Subject'), {

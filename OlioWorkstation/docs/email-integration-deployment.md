@@ -1,5 +1,11 @@
 # Email Integration deployment
 
+## Automatic email appearance (October 14)
+
+Redeploy the frontend and API together. This update needs no SQL migration or environment changes. New rendered mail uses a light default, declares both supported color schemes, and includes `prefers-color-scheme` dark styles plus Outlook dark-mode selectors. The recipient's email app chooses the appearance when displaying the message; the sender's Olio theme does not choose it. Preview is isolated in a sandboxed iframe and follows the browser/device theme.
+
+Email clients vary: some honor these styles, some automatically invert light defaults, and some do not expose their dark-mode setting to email content (including Gmail desktop). Exact theme matching cannot be forced in every app. See [Litmus's email dark-mode compatibility guide](https://www.litmus.com/blog/the-ultimate-guide-to-dark-mode-for-email-marketers). Previously delivered emails and Supabase's directly configured auth templates are unchanged.
+
 ## Composer refresh (October 13)
 
 For an existing working installation, run `supabase/migrations/20261013170000_email_personalization.sql` in **Supabase → SQL Editor → New query**, then deploy the frontend and API together to Vercel. No new environment variables are required. This migration preserves the existing queue, adds first/last names from signup metadata, and creates the service-only submission function for personalized messages. Missing migration errors stop submission instead of sending unresolved variables.
@@ -8,7 +14,7 @@ Use **People → account → Contact User → Send email** to start with that re
 
 Variables supported in subject and body: `{{firstname}}`, `{{lastname}}`, `{{fullname}}`, `{{email}}`. The composer’s **Personalize…** menu inserts them into the message. Registered users and groups resolve per recipient; external addresses still work without variables. Missing names and unregistered recipients block a personalized preview. Legacy accounts use their existing display name as a fallback. New signups retain separate first and last names as well as the combined display name.
 
-The preview selector shows each recipient’s final message. Name values are signed with the preview and stored with the queue, so a later profile edit does not change a confirmed scheduled message. Manual messages and app-generated notifications use an Olio dark theme and an automatic divider/sign-off matching the supplied reference, with the actual recipient’s address. This is email-safe HTML, rather than an image containing a fixed address. Supabase’s directly configured authentication templates remain managed in Supabase.
+The preview selector shows each recipient’s final message. Name values are signed with the preview and stored with the queue, so a later profile edit does not change a confirmed scheduled message. Manual messages and app-generated notifications use Olio styling and an automatic divider/sign-off matching the supplied reference, with the actual recipient’s address. This is email-safe HTML, rather than an image containing a fixed address. Supabase’s directly configured authentication templates remain managed in Supabase.
 
 After deployment, preview a two-person message using `Hello {{firstname}}`, switch the preview recipient, and confirm their name and footer address change together. Send a test to an address you own. Then test an external address with ordinary text and verify that using a variable with an external address reports a clear error.
 

@@ -15,6 +15,21 @@ import { classifyMailError, mailTransport } from './emailTransport';
 import { validateAttachment, attachmentName } from './emailAttachments';
 afterEach(() => vi.unstubAllEnvs());
 describe('Email content and transport boundaries', () => {
+  it('provides light defaults, dark overrides and matching footer/link colors in a complete email document', () => {
+    const mail = renderEmail('Theme test', '<p>Hello <a href="https://olio.one">Olio</a></p>', 'a@example.com');
+    expect(mail.html).toMatch(/^<!doctype html>/);
+    expect(mail.html).toContain('<meta name="color-scheme" content="light dark">');
+    expect(mail.html).toContain('<meta name="supported-color-schemes" content="light dark">');
+    const documentBody = mail.html.slice(mail.html.indexOf('<body'));
+    expect(documentBody).toContain('background:#f4f6fb');
+    expect(documentBody).toContain('background:#ffffff');
+    expect(documentBody).not.toContain('background:#0b1020');
+    expect(mail.html).toContain('@media (prefers-color-scheme:dark)');
+    expect(mail.html).toContain('.olio-email-panel{background:#111a2e!important;border-color:#283650!important;}');
+    expect(mail.html).toContain('.olio-email-content a{color:#93c5fd!important;}');
+    expect(mail.html).toContain('[data-ogsc] .olio-email-footer,[data-ogsb] .olio-email-footer');
+    expect(mail.text).toBe('Hello Olio (https://olio.one)\n\nThis message was sent to a@example.com by Olio.\nReplies to this email are not monitored.');
+  });
   it('normalizes and deduplicates addresses without accepting headers or display names', () => {
     expect(recipientList([' A@Example.com ', 'a@example.com'])).toEqual([
       'a@example.com',

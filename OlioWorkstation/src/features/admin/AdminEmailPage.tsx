@@ -604,9 +604,13 @@ export function AdminEmailPage({
                   </select>
                 </label>
                 <h4 className="font-medium">{preview.subject}</h4>
-                <div
-                  className="overflow-hidden rounded-xl bg-slate-950 [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-6 [&_p]:mb-3"
-                  dangerouslySetInnerHTML={{ __html: preview.html }}
+                <iframe
+                  title="Rendered email"
+                  sandbox=""
+                  referrerPolicy="no-referrer"
+                  className="block h-[480px] w-full rounded-xl border-0"
+                  style={{ colorScheme: 'light dark' }}
+                  srcDoc={preview.html}
                 />
                 <button
                   disabled={busy || !state?.deliveryEnabled}
