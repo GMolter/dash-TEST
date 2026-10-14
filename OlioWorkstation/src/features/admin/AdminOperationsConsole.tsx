@@ -196,6 +196,14 @@ function SharedAdminOperationsConsole() {
   useEffect(() => {
     const query = new URLSearchParams();
     query.set("section", section);
+    // Keep email deep links until the lazy-loaded page can consume them.
+    if (section === 'email') {
+      const current = new URLSearchParams(window.location.search);
+      for (const key of ['contactUser', 'emailJob']) {
+        const value = current.get(key);
+        if (value) query.set(key, value);
+      }
+    }
     if (section !== 'email' && section !== "overview" && section !== "banner" && section !== "features" && resource) query.set("resource", resource);
     if (accountUserId) query.set("account", accountUserId);
     if (organizationId) query.set("organization", organizationId);

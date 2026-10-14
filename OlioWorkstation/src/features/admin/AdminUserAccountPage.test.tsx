@@ -26,15 +26,21 @@ describe("AdminUserAccountPage", () => {
     const { rerender } = render(<AdminUserAccountPage {...props} />);
     await actor.click(screen.getByRole('button', { name: 'Appearance' }));
     expect(screen.getByText('Background editor')).toBeVisible();
-    await actor.click(screen.getByRole('button', { name: 'Send banner' }));
+    await actor.click(screen.getByRole('button', { name: 'Contact User' }));
+    expect(screen.getByRole('link', { name: /Send email/ })).toHaveAttribute('href', expect.stringContaining('contactUser='));
+    await actor.click(screen.getByRole('button', { name: /Send banner/ }));
     expect(screen.queryByText('Background editor')).not.toBeInTheDocument();
     expect(screen.getByTestId('banner-recipient')).toHaveTextContent('user-a: Avery (avery@example.com)');
     await actor.click(screen.getByText('Complete banner'));
     expect(screen.getByRole('status')).toHaveTextContent('Banner saved for Avery');
-    await actor.click(screen.getByRole('button', { name: 'Send banner' }));
+    await actor.click(screen.getByRole('button', { name: 'Contact User' }));
+    expect(screen.getByRole('link', { name: /Send email/ })).toHaveAttribute('href', expect.stringContaining('contactUser='));
+    await actor.click(screen.getByRole('button', { name: /Send banner/ }));
     rerender(<AdminUserAccountPage {...props} overview={{ ...overview, user: { _admin_id: 'user-b', display_name: 'Blair', email: 'blair@example.com' } }} />);
     expect(screen.queryByTestId('banner-recipient')).toBeNull();
-    await actor.click(screen.getByRole('button', { name: 'Send banner' }));
+    await actor.click(screen.getByRole('button', { name: 'Contact User' }));
+    expect(screen.getByRole('link', { name: /Send email/ })).toHaveAttribute('href', expect.stringContaining('contactUser='));
+    await actor.click(screen.getByRole('button', { name: /Send banner/ }));
     expect(screen.getByTestId('banner-recipient')).toHaveTextContent('user-b: Blair');
   });
   it("shows the complete account summary and opens related data by name", async () => {

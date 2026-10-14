@@ -45,6 +45,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
   const [showEmpty, setShowEmpty] = useState(false);
   const [tab, setTab] = useState('overview');
   const editing = tab === 'access';
+  const [contactOpen, setContactOpen] = useState(false);
   const [bannerUserId, setBannerUserId] = useState<string | null>(null);
   const [bannerSentTo, setBannerSentTo] = useState<string | null>(null);
   const [form, setForm] = useState<AccountForm>(EMPTY_FORM);
@@ -82,6 +83,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
 
   useEffect(() => {
     setTab(selectedResource ? 'data' : 'overview');
+    setContactOpen(false);
     setBannerUserId(null);
     setBannerSentTo(null);
   }, [overview?.user._admin_id, selectedResource]);
@@ -120,7 +122,7 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2"><button disabled={!all("dashboard-alerts.create", "dashboard-alerts.fields.user_ids.update")} onClick={() => { setBannerUserId(bannerUserId === user._admin_id ? null : user._admin_id); setBannerSentTo(null); setTab("overview"); }} className="rounded-xl border border-violet-400/30 bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-100">{bannerUserId === user._admin_id ? "Close banner composer" : "Send banner"}</button><button disabled={overview.canManage === false} onClick={() => { setTab(editing ? "overview" : "access"); setBannerUserId(null); }} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button></div>
+        <div className="flex flex-wrap gap-2"><button disabled={!can('email.send') && !all('dashboard-alerts.create', 'dashboard-alerts.fields.user_ids.update')} aria-expanded={contactOpen} aria-controls="account-contact-options" onClick={() => setContactOpen(current => !current)} className="rounded-xl border border-violet-400/30 bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-100">Contact User</button><button disabled={overview.canManage === false} onClick={() => { setTab(editing ? "overview" : "access"); setBannerUserId(null); }} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-500/20">{editing ? <X className="h-4 w-4" /> : <UserRoundCog className="h-4 w-4" />} {editing ? "Close editor" : "Edit account and access"}</button></div>
       </div>
     </section>
 
@@ -129,6 +131,14 @@ export function AdminUserAccountPage({ overview, loading, error, selectedResourc
     </nav>
 
     {tab === 'appearance' && overview.canManage && <section className="rounded-2xl border border-white/10 bg-slate-900/40 p-5 sm:p-6"><div className="mb-6 flex items-start gap-3"><Paintbrush className="mt-1 h-5 w-5 text-violet-300" /><div><h3 className="font-semibold">Dashboard appearance</h3><p className="mt-1 text-sm text-slate-400">View or change the custom background for {name}.</p></div></div><fieldset disabled={!can("users.background-write")}><DashboardPhotoSettings key={user._admin_id} accountUserId={user._admin_id} /></fieldset></section>}
+
+    {contactOpen && <section id="account-contact-options" aria-label="Contact user" className="rounded-2xl border border-blue-400/20 bg-slate-900/60 p-5">
+      <h3 className="font-semibold">Contact {name}</h3><p className="mt-1 text-sm text-slate-400">Choose how you’d like to reach this person.</p>
+      <div className="mt-4 flex flex-wrap gap-3">
+        {all('dashboard-alerts.create', 'dashboard-alerts.fields.user_ids.update') && <button className="rounded-xl border border-white/15 px-4 py-3 text-left hover:bg-white/5" onClick={() => { setBannerUserId(user._admin_id); setBannerSentTo(null); setTab('overview'); setContactOpen(false); }}>Send banner<span className="mt-1 block text-xs text-slate-400">Show a message on their dashboard</span></button>}
+        {can('email.send') && <a href={'/admin?section=email&contactUser=' + encodeURIComponent(user._admin_id)} className="rounded-xl border border-blue-400/25 bg-blue-500/10 px-4 py-3 text-left text-blue-100 hover:bg-blue-500/20">Send email<span className="mt-1 block text-xs text-slate-400">Open a new message for this user</span></a>}
+      </div>
+    </section>}
 
     {bannerSentTo === user._admin_id && <p role="status" className="text-sm text-emerald-300">Banner saved for {name}. It will appear within 30 seconds or at the scheduled start.</p>}
     {bannerUserId === user._admin_id && <AdminTargetedAlerts key={user._admin_id} recipient={{ id: user._admin_id, label: name + ' (' + email + ')' }} onSent={() => { setBannerUserId(null); setBannerSentTo(user._admin_id); }} />}

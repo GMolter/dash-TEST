@@ -44,6 +44,7 @@ export function authMessages(body: HookBody) {
       ...renderEmail(
         subject,
         `<p><a href="${url.replace(/&/g, '&amp;')}">${subject}</a></p><p>Open the link, then confirm to continue. If you did not request this, ignore this email.</p>`,
+        normalizeEmail(target.email),
       ),
     };
   });

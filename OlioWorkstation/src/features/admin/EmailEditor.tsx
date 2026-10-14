@@ -32,7 +32,7 @@ export function EmailEditor({
         'aria-label': 'Email message',
         'aria-multiline': 'true',
         class:
-          'min-h-72 bg-white p-6 text-slate-800 leading-7 outline-none [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-6 [&_a]:text-blue-700 [&_a]:underline [&_p]:mb-3',
+          'min-h-48 bg-slate-950/30 p-5 text-slate-100 leading-7 outline-none focus:bg-slate-950/50 [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-6 [&_a]:text-blue-300 [&_a]:underline [&_p]:mb-3',
       },
     },
     onUpdate: ({ editor }: { editor: Editor }) => onChange(editor.getHTML()),
@@ -110,6 +110,10 @@ export function EmailEditor({
         >
           Link
         </button>
+        <select disabled={disabled} aria-label="Insert personalized field" value="" className="ml-auto rounded-lg border border-white/10 bg-slate-900 px-2 py-1.5 text-xs text-blue-200" onChange={event => { if (event.target.value) editor.chain().focus().insertContent('{{' + event.target.value + '}}').run(); }}>
+          <option value="">Personalize…</option>
+          <option value="firstname">First name</option><option value="lastname">Last name</option><option value="fullname">Full name</option><option value="email">Email address</option>
+        </select>
       </div>
       <EditorContent editor={editor} />
     </div>

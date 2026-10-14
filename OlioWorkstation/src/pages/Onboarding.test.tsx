@@ -19,6 +19,15 @@ beforeEach(() => {
 });
 
 describe('Unified account flow', () => {
+  it('collects separate first and last names for signup', async () => {
+    render(<Onboarding />);
+    await signIn();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, create an account' }));
+    fireEvent.change(screen.getByLabelText(/First name/), { target: { value: ' Avery ' } });
+    fireEvent.change(screen.getByLabelText(/Last name/), { target: { value: 'Stone' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+    await waitFor(() => expect(auth.signUp).toHaveBeenCalledWith('person@example.com', 'password123', 'Avery', 'Stone'));
+  });
   it('offers creation after invalid credentials and only signs up with explicit consent', async () => {
     render(<Onboarding />);
     expect(screen.queryByRole('button', { name: 'Create account', exact: true })).not.toBeInTheDocument();
@@ -28,7 +37,7 @@ describe('Unified account flow', () => {
     expect(screen.getByLabelText('Email address')).toHaveValue('person@example.com');
     fireEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
     await screen.findByRole('heading', { name: 'Check your inbox' });
-    expect(auth.signUp).toHaveBeenCalledWith('person@example.com', 'password123', undefined);
+    expect(auth.signUp).toHaveBeenCalledWith('person@example.com', 'password123', undefined, undefined);
     fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
     expect(screen.getByLabelText('Password')).toHaveValue('');
   });

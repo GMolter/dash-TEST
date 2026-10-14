@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { appOrigin } from './appOrigin.js';
 import { renderEmail } from './emailPolicy.js';
 const escape = (value: unknown) => String(value ?? '').slice(0, 500).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
-export async function notificationMail(service: SupabaseClient, job: { owner_id: string; event_type: string; event_target: string; payload: { subject: string } }) {
+export async function notificationMail(service: SupabaseClient, job: { owner_id: string; event_type: string; event_target: string; recipient?: string; payload: { subject: string } }) {
   const details: string[] = [];
   const { data: actor, error } = await service.from('profiles').select('app_owner').eq('id', job.owner_id).maybeSingle();
   if (error) throw new Error('ACCESS_CHECK_UNAVAILABLE');
@@ -47,5 +47,5 @@ export async function notificationMail(service: SupabaseClient, job: { owner_id:
     add('Recipient', result.data?.recipient); add('Status', result.data?.status); add('Error', result.data?.error_code);
   }
   const href = `${appOrigin()}${path}`;
-  return renderEmail(job.payload.subject, `${details.join('') || '<p>Open the item to see its current details.</p>'}<p><a href="${escape(href)}">${label}</a></p>`);
+  return renderEmail(job.payload.subject, `${details.join('') || '<p>Open the item to see its current details.</p>'}<p><a href="${escape(href)}">${label}</a></p>`, job.recipient);
 }

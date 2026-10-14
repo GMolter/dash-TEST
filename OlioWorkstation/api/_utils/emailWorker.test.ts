@@ -7,6 +7,22 @@ vi.mock('nodemailer', () => ({
   },
 }));
 import { dispatchEmail } from './emailWorker';
+import { personalizedEmail } from './emailPersonalization';
+it('sends the exact personalized preview from frozen queue values', async () => {
+  vi.stubEnv('SMTP_EMAIL', 'noreply@olio.one');
+  vi.stubEnv('SMTP_PASSWORD', 'test-only');
+  vi.stubEnv('EMAIL_DELIVERY_ENABLED', 'true');
+  const variables = { firstname: 'Avery', fullname: 'Avery Stone' };
+  const message = { subject: 'Hello {{firstname}}', html: '<p>Hi {{fullname}}</p>', attachment_ids: [] };
+  mocks.send.mockResolvedValue({ accepted: ['a@example.com'] });
+  let claims = 0;
+  const rpc = vi.fn(async (name: string) => ({ error: null, data: name === 'email_worker_lock' || name === 'admin_has_permission' ? true : name === 'email_claim' && claims++ === 0 ? [{ id: 'personal-job', kind: 'manual', recipient: 'a@example.com', owner_id: 'owner', message_id: 'message', lease_token: 'lease', payload: { presentation: 'olio-v1', variables } }] : null }));
+  const chain = { eq: vi.fn().mockReturnThis(), lt: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), update: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }), single: vi.fn().mockResolvedValue({ data: message, error: null }) };
+  const from = vi.fn(() => chain);
+  await dispatchEmail({ rpc, from } as never);
+  expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining(personalizedEmail(message.subject, message.html, 'a@example.com', variables)));
+  expect(from).not.toHaveBeenCalledWith('profiles');
+});
 it.each(['manual', 'notification'])('applies the test allowlist only to automatic mail: %s', async kind => {
   vi.stubEnv('SMTP_EMAIL', 'noreply@olio.one');
   vi.stubEnv('SMTP_PASSWORD', 'test-only');

@@ -9,7 +9,8 @@ export function Onboarding() {
   const [offerAccount, setOfferAccount] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,7 +31,7 @@ export function Onboarding() {
     try {
       const address = email.trim();
       if (creating) {
-        const result = await signUp(address, password, displayName.trim() || undefined);
+        const result = await signUp(address, password, firstName.trim() || undefined, lastName.trim() || undefined);
         if (!result.success) setError(result.error || 'We couldn’t create your account. Please try again.');
         else if (result.confirmationRequired) { setConfirmation(true); setPassword(''); }
       } else {
@@ -80,9 +81,11 @@ export function Onboarding() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               <fieldset disabled={loading} className="space-y-5 disabled:opacity-60">
-                {creating && <div>
-                  <label htmlFor="auth-name" className="mb-2 block text-sm font-medium text-slate-300">Your name <span className="font-normal text-slate-500">(optional)</span></label>
-                  <input id="auth-name" autoFocus autoComplete="name" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="What should we call you?" className={inputClass} />
+                {creating && <div className="grid gap-4 sm:grid-cols-2">
+                  <div><label htmlFor="auth-first-name" className="mb-2 block text-sm font-medium text-slate-300">First name <span className="font-normal text-slate-500">(optional)</span></label>
+                  <input id="auth-first-name" autoFocus autoComplete="given-name" maxLength={100} value={firstName} onChange={e => setFirstName(e.target.value)} className={inputClass} /></div>
+                  <div><label htmlFor="auth-last-name" className="mb-2 block text-sm font-medium text-slate-300">Last name <span className="font-normal text-slate-500">(optional)</span></label>
+                  <input id="auth-last-name" autoComplete="family-name" maxLength={100} value={lastName} onChange={e => setLastName(e.target.value)} className={inputClass} /></div>
                 </div>}
                 <div>
                   <label htmlFor="auth-email" className="mb-2 block text-sm font-medium text-slate-300">Email address</label>

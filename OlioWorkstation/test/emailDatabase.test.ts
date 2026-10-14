@@ -16,7 +16,7 @@ beforeAll(async () => {
   await db.exec(`create role anon; create role authenticated; create role service_role;
   create schema auth; create schema storage;
   create function auth.uid() returns uuid language sql as $$select null::uuid$$;
-  create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,encrypted_password text);
+  create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,encrypted_password text,raw_user_meta_data jsonb);
   create table public.profiles(id uuid primary key references auth.users(id),app_admin boolean default true,app_owner boolean default false);
   create table public.account_ban_state(user_id uuid primary key,banned_until timestamptz);
   create table public.organizations(id uuid primary key);
@@ -49,12 +49,13 @@ beforeAll(async () => {
     ),
   );
   await db.exec(readFileSync('supabase/migrations/20261013150000_owner_notification_copy.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261013170000_email_personalization.sql', 'utf8'));
 }, 30000);
 beforeEach(async () => {
   await db.exec(`truncate public.email_attempts,public.email_jobs,public.email_messages,public.email_drafts,public.email_attachments,public.email_events,public.email_preferences,public.email_cooldowns,public.admin_audit_log,public.admin_permission_grants,public.account_ban_state,public.profiles,auth.users cascade;
   update public.email_health set worker_token=null,worker_until=null,paused=false,error_code=null;
-  insert into auth.users values('${owner}','owner@example.com',now(),'original'),('${admin}','admin@example.com',now(),'original');
-  insert into public.profiles values('${owner}',true,true),('${admin}',true,false);
+  insert into auth.users(id,email,email_confirmed_at,encrypted_password) values('${owner}','owner@example.com',now(),'original'),('${admin}','admin@example.com',now(),'original');
+  insert into public.profiles(id,app_admin,app_owner) values('${owner}',true,true),('${admin}',true,false);
   delete from public.email_events;`);
 });
 afterAll(async () => {
@@ -66,6 +67,25 @@ const payload = {
   recipients: ['person@example.com'],
   attachment_ids: [],
 };
+it('stores signup names without changing existing roles or legacy names', async () => {
+  const id = randomUUID();
+  await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)', [id, { first_name: ' Avery ', last_name: 'Stone' }]);
+  await db.query('insert into public.profiles(id,app_admin) values($1,false)', [id]);
+  expect((await db.query('select first_name,last_name,app_admin from public.profiles where id=$1', [id])).rows[0]).toEqual({ first_name: 'Avery', last_name: 'Stone', app_admin: false });
+});
+it('keeps personalized jobs separate, idempotent, and reversible to the original draft', async () => {
+  const content = { ...payload, subject: 'Hello {{firstname}}', html: '<p>Hi {{firstname}}</p>', recipients: ['a@example.com', 'b@example.com'] };
+  const draft = await scalar('select (public.email_save_draft($1,null,0,$2)).id as value', [owner, content]);
+  const snapshot = { ...content, text: 'Hi {{firstname}}', scheduled_at: new Date(Date.now() + 3600000).toISOString(), timezone: 'UTC', presentation: 'olio-v1', personalization: { 'a@example.com': { firstname: 'Avery' }, 'b@example.com': { firstname: 'Blair' } } };
+  const args = [owner, draft, 1, randomUUID(), 'signed-fingerprint', snapshot];
+  const id = await scalar('select public.email_submit_personalized($1,$2,$3,$4,$5,$6) as value', args);
+  expect(await scalar('select public.email_submit_personalized($1,$2,$3,$4,$5,$6) as value', args)).toBe(id);
+  const jobs = (await db.query<{ recipient: string; payload: unknown }>('select recipient,payload from public.email_jobs order by recipient')).rows;
+  expect(jobs).toEqual([{ recipient: 'a@example.com', payload: { presentation: 'olio-v1', variables: { firstname: 'Avery' } } }, { recipient: 'b@example.com', payload: { presentation: 'olio-v1', variables: { firstname: 'Blair' } } }]);
+  await scalar('select public.email_cancel($1,$2,true) as value', [owner, id]);
+  expect(await scalar('select html as value from public.email_drafts')).toBe(content.html);
+  expect(await scalar("select has_function_privilege('authenticated','public.email_submit_personalized(uuid,uuid,integer,uuid,text,jsonb)','execute') as value")).toBe(false);
+});
 it('copies subscribed owner notifications once and rechecks owner status before sending', async () => {
   await db.query('update auth.users set email=$1 where id=$2', ['gavin@olio.one', owner]);
   await db.query('insert into public.email_preferences(user_id,signup) values($1,true)', [owner]);

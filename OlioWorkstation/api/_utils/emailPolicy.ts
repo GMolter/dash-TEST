@@ -9,7 +9,7 @@ import {
 import sanitizeHtml from './emailSanitizer.generated.cjs';
 import { recipientList, scheduledInstant } from '../../shared/email.js';
 export { recipientList, scheduledInstant };
-export function renderEmail(subject: unknown, body: unknown) {
+export function sanitizeEmailContent(subject: unknown, body: unknown) {
   if (
     typeof subject !== 'string' ||
     !subject.trim() ||
@@ -44,15 +44,16 @@ export function renderEmail(subject: unknown, body: unknown) {
     .replace(/&#39;/g, "'")
     .trim();
   if (!text) throw new Error('Write a message before continuing.');
+  return { subject: subject.trim(), html, text };
+}
+export const escapeEmailText = (value: string) => value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
+export function renderEmail(subject: unknown, body: unknown, recipient?: string) {
+  const content = sanitizeEmailContent(subject, body);
+  const sentTo = recipient ? `This message was sent to ${recipient} by Olio.` : 'This message was sent by Olio.';
   const footer = 'Replies to this email are not monitored.';
-  const rendered = `${html}<p>${footer}</p>`;
-  if (Buffer.byteLength(rendered) > 102400)
-    throw new Error('Message is too large (100 KB maximum).');
-  return {
-    subject: subject.trim(),
-    html: rendered,
-    text: `${text}\n\n${footer}`,
-  };
+  // Inline styles and a presentation table survive common email clients. No remote images are needed.
+  const html = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b1020;color:#e2e8f0;font-family:Arial,Helvetica,sans-serif;"><tr><td style="padding:32px 16px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;margin:0 auto;background:#111a2e;border:1px solid #283650;border-radius:16px;"><tr><td style="padding:28px 28px 20px;border-bottom:1px solid #283650;"><span style="font-size:28px;font-weight:700;letter-spacing:-1px;color:#bfdbfe;">Olio<span style="color:#a78bfa;">.</span></span></td></tr><tr><td style="padding:24px 28px;font-size:16px;line-height:1.7;color:#e2e8f0;overflow-wrap:anywhere;">${content.html.replace(/<a /g, '<a style="color:#93c5fd;text-decoration:underline;" ')}</td></tr><tr><td style="padding:8px 28px 28px;"><div style="border-top:1px solid #64748b;padding-top:20px;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.8;color:#cbd5e1;">${escapeEmailText(sentTo)}<br>${footer}</div></td></tr></table></td></tr></table>`;
+  return { subject: content.subject, html, text: `${content.text}\n\n${sentTo}\n${footer}` };
 }
 export { appOrigin } from './appOrigin.js';
 export const digest = (value: unknown) =>
@@ -74,7 +75,7 @@ export function signPreview(value: Record<string, unknown>) {
 }
 export function readPreview(token: unknown): {
   actor: string; draft: string; revision: number; fingerprint: string; expires: number;
-  snapshot: { subject: string; html: string; text: string; recipients: string[]; scheduled_at: string; timezone: string };
+  snapshot: { subject: string; html: string; text: string; recipients: string[]; scheduled_at: string; timezone: string; presentation?: string; personalization?: Record<string, Record<string, string> | null> };
 } {
   if (typeof token !== 'string') throw new Error('Review the message again.');
   const [payload, signature, extra] = token.split('.');

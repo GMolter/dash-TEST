@@ -3,11 +3,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdminAccess } from './adminAccess.js';
 import { hasPermission, requirePermission } from './adminPermissions.js';
 import { attachmentName, loadAttachments } from './emailAttachments.js';
+import { resolveRecordHandle } from './adminRecordHandles.js';
+import { emailVariables, personVariables, personalizedEmail } from './emailPersonalization.js';
 import {
   digest,
   readPreview,
   recipientList,
   renderEmail,
+  sanitizeEmailContent,
   scheduledInstant,
   signPreview,
 } from './emailPolicy.js';
@@ -23,6 +26,7 @@ const uuid = (value: unknown) => {
   return value;
 };
 type Input = {
+  recipient?: string;
   job_id?: string;
   id?: string; ids?: string[]; user_id?: string; subject?: string; html?: string;
   recipients?: string[]; attachment_ids?: string[]; revision?: number;
@@ -220,6 +224,22 @@ export async function emailAdmin(
     return { template };
   }
   requirePermission(access, 'email.send');
+  if (action === 'contact-user') {
+    const id = uuid(resolveRecordHandle(String(input.user_id || '')));
+    const person = checked(await service.from('profiles').select('email,display_name,org_id,created_at').eq('id', id).single());
+    if (!person?.email) throw new Error('This account has no email address.');
+    const organization = person.org_id && hasPermission(access, 'organizations.read') && hasPermission(access, 'organizations.fields.name.read') && hasPermission(access, 'users.fields.org_id.read')
+      ? checked(await service.from('organizations').select('name').eq('id', person.org_id).maybeSingle())?.name : null;
+    return { person: { email: person.email, display_name: person.display_name, organization,
+      joined: hasPermission(access, 'users.fields.created_at.read') ? person.created_at : null } };
+  }
+  if (action === 'preview-recipient') {
+    const preview = readPreview(input.token);
+    if (preview.actor !== actor) throw new Error('PERMISSION_DENIED');
+    const recipient = String(input.recipient || '');
+    if (!preview.snapshot.recipients.includes(recipient)) throw new Error('Choose a recipient from this preview.');
+    return { recipient, ...personalizedEmail(preview.snapshot.subject, preview.snapshot.html, recipient, preview.snapshot.personalization?.[recipient] || null) };
+  }
   if (action === 'recipients') {
     const search = String(input.search || '')
       .replace(/[^a-zA-Z0-9@ ._+-]/g, '')
@@ -377,8 +397,18 @@ export async function emailAdmin(
         .single(),
     );
     if (draft.revision !== input.revision) throw new Error('DRAFT_CHANGED');
-    const rendered = renderEmail(draft.subject, draft.html);
+    const rendered = sanitizeEmailContent(draft.subject, draft.html);
+    const variables = emailVariables(rendered.subject, rendered.html);
+    if (variables.length && !draft.recipients?.length) throw new Error('Select a registered user or group before using email variables.');
     const recipients = recipientList(draft.recipients);
+    const people = variables.length ? checked(await service.from('profiles').select('email,display_name,first_name,last_name').in('email', recipients)) || [] : [];
+    const personalization: Record<string, Record<string, string> | null> = {};
+    for (const recipient of recipients) {
+      const person = people.find(person => person.email?.toLowerCase() === recipient);
+      personalization[recipient] = person ? personVariables(person) : null;
+      // Validate every recipient before signing; scheduled sends keep these exact values.
+      personalizedEmail(rendered.subject, rendered.html, recipient, personalization[recipient]);
+    }
     await loadAttachments(service, actor, draft.attachment_ids);
     const timezone = input.local ? String(input.timezone) : 'UTC';
     const scheduled_at = input.local
@@ -392,7 +422,7 @@ export async function emailAdmin(
       throw new Error(
         'Choose a time between one minute and one year from now.',
       );
-    const snapshot = { ...rendered, recipients, scheduled_at, timezone };
+    const snapshot = { ...rendered, recipients, scheduled_at, timezone, presentation: 'olio-v1', personalization };
     const token = signPreview({
       actor,
       draft: draft.id,
@@ -400,7 +430,7 @@ export async function emailAdmin(
       snapshot,
       fingerprint: digest({ snapshot, attachments: draft.attachment_ids }),
     });
-    return { ...snapshot, token, attachmentCount: draft.attachment_ids.length };
+    return { ...snapshot, ...personalizedEmail(rendered.subject, rendered.html, recipients[0], personalization[recipients[0]]), recipient: recipients[0], token, attachmentCount: draft.attachment_ids.length };
   }
   if (action === 'submit') {
     if (!deliveryEnabled())
@@ -412,7 +442,7 @@ export async function emailAdmin(
     if (input.confirmation !== 'SEND')
       throw new Error('Confirm the reviewed message before submitting.');
     const id = checked(
-      await service.rpc('email_submit', {
+      await service.rpc('email_submit_personalized', {
         p_actor: actor,
         p_draft: preview.draft,
         p_revision: preview.revision,

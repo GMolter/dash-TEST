@@ -28,6 +28,7 @@ type Template = {
 };
 type Attachment = { id: string; name: string; size?: number };
 type Preview = {
+  recipient?: string;
   token: string;
   subject: string;
   html: string;
@@ -90,6 +91,11 @@ export function AdminEmailPage({
   const [state, setState] = useState<State | null>(null),
     [tab, setTab] = useState('My notifications');
   const initialized = useRef(false);
+  const [contactHandle] = useState(() => new URLSearchParams(window.location.search).get('contactUser') || '');
+  const contactConsumed = useRef(false);
+  const [contact, setContact] = useState<{ email: string; display_name: string; organization?: string; joined?: string } | null>(null);
+  const [contactLoading, setContactLoading] = useState(!!contactHandle);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [linkedJob, setLinkedJob] = useState(() => new URLSearchParams(window.location.search).get('emailJob') || '');
   const [draft, setDraft] = useState<EmailDraft>(empty),
     [drafts, setDrafts] = useState<EmailDraft[]>([]);
@@ -154,6 +160,23 @@ export function AdminEmailPage({
       }
     }).catch((e) => setError(e.message));
   }, [loadState, refreshVersion, linkedJob]);
+  useEffect(() => {
+    if (!contactHandle || !state || contactConsumed.current) return;
+    if (!state.canSend) { setContactLoading(false); return; }
+    let active = true;
+    void emailApi('contact-user', { user_id: contactHandle }).then(({ person }) => {
+      if (!active) return;
+      setContact(person);
+      setDraft({ ...empty(), recipients: [person.email.toLowerCase()] });
+      setTab('Compose');
+      contactConsumed.current = true;
+      const url = new URL(window.location.href);
+      url.searchParams.delete('contactUser');
+      window.history.replaceState(null, '', url);
+    }).catch(e => { if (active) setError(e.message); }).finally(() => { if (active) setContactLoading(false); });
+    return () => { active = false; };
+  }, [contactHandle, state?.canSend]);
+  useEffect(() => { if (!['Compose', 'Drafts'].includes(tab) && initialized.current) setMoreOpen(true); }, [tab, state?.canSend]);
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
     setError('');
@@ -210,6 +233,7 @@ export function AdminEmailPage({
     return () => { stopped = true; clearTimeout(timer); };
   }, [tab, loadTab]);
   const openDraft = async (next: EmailDraft) => {
+    setContact(null);
     setDraft(next);
     setPreview(null);
     setLocal('');
@@ -241,7 +265,7 @@ export function AdminEmailPage({
         <div>
           <h2 className="text-lg font-semibold">Email</h2>
           <p className="mt-1 text-sm text-slate-400">
-            From Olio &lt;noreply@olio.one&gt;. Replies are not monitored.
+            A personal message, from Olio. Choose your recipients, write, and preview before sending.
           </p>
         </div>
       </div>
@@ -254,12 +278,13 @@ export function AdminEmailPage({
           preferences while delivery is configured.
         </p>
       )}
+      <div className="flex flex-wrap items-start gap-3">
       <div
         role="tablist"
         aria-label="Email views"
         className="flex flex-wrap gap-2"
       >
-        {tabs.map((name) => (
+        {tabs.filter(name => ['Compose', 'Drafts'].includes(name)).map((name) => (
           <button
             role="tab"
             aria-selected={tab === name}
@@ -275,6 +300,13 @@ export function AdminEmailPage({
             {name}
           </button>
         ))}
+      </div>
+      <details open={moreOpen} onToggle={event => setMoreOpen(event.currentTarget.open)} className="rounded-lg border border-white/10 px-3 py-2">
+        <summary className="cursor-pointer text-sm text-slate-400">More email tools</summary>
+        <div role="tablist" aria-label="Additional email views" className="mt-3 flex flex-wrap gap-2">
+          {tabs.filter(name => !['Compose', 'Drafts'].includes(name)).map(name => <button key={name} role="tab" aria-selected={tab === name} className={`${button} ${tab === name ? 'bg-blue-500/20 text-blue-200' : 'text-slate-400'}`} onClick={() => { setTab(name); setPage(0); setError(''); setNotice(''); }}>{name}</button>)}
+        </div>
+      </details>
       </div>
       {error && (
         <p
@@ -292,7 +324,8 @@ export function AdminEmailPage({
           {notice}
         </p>
       )}
-      <fieldset disabled={busy} className="min-w-0 space-y-4">
+      {contactLoading && <p role="status" className="text-sm text-slate-400">Preparing this user’s message…</p>}
+      <fieldset disabled={busy || contactLoading} className="min-w-0 space-y-4">
         {tab === 'Compose' && (
           <>
             <div className="flex flex-wrap gap-3">
@@ -303,6 +336,7 @@ export function AdminEmailPage({
                   setAttachments([]);
                   setPreview(null);
                   setLocal('');
+                  setContact(null);
                 }}
               >
                 <Plus className="mr-1 inline h-4 w-4" />
@@ -310,13 +344,13 @@ export function AdminEmailPage({
               </button>
               <span className="self-center text-xs text-slate-500">
                 {draft.id
-                  ? `Saved draft · revision ${draft.revision}`
+                  ? 'Draft saved'
                   : 'Unsaved draft'}
               </span>
             </div>
             <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="min-w-0 space-y-5 rounded-2xl border border-white/10 bg-slate-900/40 p-5 sm:p-6">
-            <div className="border-b border-white/10 pb-4"><h3 className="text-xl font-semibold">Write your message</h3><p className="mt-1 text-sm text-slate-400">Create, review, then send. Nothing is sent until you confirm.</p></div>
+            <div className="border-b border-white/10 pb-4"><h3 className="text-xl font-semibold">Write your message</h3><p className="mt-1 text-xs text-slate-400">From Olio &lt;noreply@olio.one&gt; · Your branded sign-off is added automatically.</p></div>
             {!!templates.length && (
               <label className="block text-sm text-slate-400">
                 Use a template
@@ -356,7 +390,8 @@ export function AdminEmailPage({
               value={draft.html}
               onChange={(html) => change({ html })}
             />
-            <div className="space-y-2">
+            <details className="text-xs text-slate-400"><summary className="cursor-pointer text-blue-200">Personalize with names and account details</summary><p className="mt-2 leading-6">Use {'{{firstname}}'}, {'{{lastname}}'}, {'{{fullname}}'}, or {'{{email}}'} in the subject or message. Select registered users or a group; each person gets their own details. External recipients can receive messages without variables. Preview checks for missing information.</p></details>
+            <details className="rounded-xl border border-white/10 p-4"><summary className="cursor-pointer text-sm text-slate-300"><Paperclip className="mr-1 inline h-4 w-4" />Attachments {attachments.length ? `(${attachments.length})` : '(optional)'}</summary><div className="mt-3 space-y-2">
               <label className="block text-sm text-slate-400">
                 <Paperclip className="mr-1 inline h-4 w-4" />
                 Attachments
@@ -461,7 +496,7 @@ export function AdminEmailPage({
                   </button>
                 </div>
               ))}
-            </div>
+            </div></details>
             <details className="rounded-xl border border-white/10 p-4"><summary className="cursor-pointer text-sm text-slate-300">Schedule for later {local ? `· ${local.replace('T', ' ')}` : '(optional)'}</summary><div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="text-sm text-slate-400">
                 Schedule (optional)
@@ -540,7 +575,10 @@ export function AdminEmailPage({
               </button>
             </div>
             </div>
-            <EmailRecipients value={draft.recipients} onChange={recipients => change({ recipients })} disabled={busy} />
+            <div className="order-first space-y-4 xl:order-last">
+              {contact && draft.recipients.includes(contact.email.toLowerCase()) && <section aria-label="Recipient account summary" className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-5"><p className="text-xs font-medium uppercase tracking-wider text-violet-300">Contacting an Olio user</p><h3 className="mt-2 font-semibold">{contact.display_name || contact.email}</h3><p className="mt-1 break-all text-sm text-slate-400">{contact.email}</p>{contact.organization && <p className="mt-3 text-sm text-slate-300">Organization: {contact.organization}</p>}{contact.joined && <p className="mt-1 text-xs text-slate-400">Joined {new Date(contact.joined).toLocaleDateString()}</p>}</section>}
+              <EmailRecipients value={draft.recipients} onChange={recipients => change({ recipients })} disabled={busy || contactLoading} />
+            </div>
             </div>
             {previewOpen && (
               <EmailPreviewDialog busy={busy} onClose={() => { setPreviewOpen(false); setPreview(null); }}>
@@ -560,12 +598,14 @@ export function AdminEmailPage({
                     ? `${new Date(preview.scheduled_at).toLocaleString('en-US', { timeZone: preview.timezone })} (${preview.timezone})`
                     : 'Send as soon as the queue is processed'}
                 </p>
-                <p className="break-words text-sm text-slate-400">
-                  {preview.recipients.join(', ')}
-                </p>
+                <label className="block text-sm text-slate-400">Preview for
+                  <select className={`${field} mt-1`} value={preview.recipient || preview.recipients[0]} disabled={busy || preview.recipients.length === 1} onChange={event => { const recipient = event.target.value; void run(async () => { const sample = await emailApi('preview-recipient', { token: preview.token, recipient }); setPreview(current => current ? { ...current, ...sample } : current); }); }}>
+                    {preview.recipients.map(recipient => <option key={recipient} value={recipient}>{recipient}</option>)}
+                  </select>
+                </label>
                 <h4 className="font-medium">{preview.subject}</h4>
                 <div
-                  className="rounded-lg bg-white p-4 text-slate-900 [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-6 [&_a]:text-blue-700"
+                  className="overflow-hidden rounded-xl bg-slate-950 [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-6 [&_p]:mb-3"
                   dangerouslySetInnerHTML={{ __html: preview.html }}
                 />
                 <button
@@ -581,6 +621,7 @@ export function AdminEmailPage({
                       setDrafts(current => current.filter(item => item.id !== draft.id));
                       setDraft(empty());
                       setAttachments([]);
+                      setContact(null);
                       setPreview(null);
                       setPreviewOpen(false);
                       if (state?.canHistory) { setGlobal(false); setPage(0); setTab('Outgoing history'); }
@@ -647,9 +688,9 @@ export function AdminEmailPage({
         )}
         {(tab === 'Scheduled' || tab === 'Outgoing history') && (
           <>
-            <section aria-label="Delivery progress" className="space-y-2 rounded-xl border border-blue-400/20 bg-blue-400/5 p-4">
-              {linkedJob && <button className={button} onClick={() => { setLinkedJob(''); const url = new URL(window.location.href); url.searchParams.delete('emailJob'); window.history.replaceState(null, '', url); }}>Show all messages</button>}
-              <h3 className="font-medium">Delivery progress</h3>
+            {linkedJob && <button className={button} onClick={() => { setLinkedJob(''); const url = new URL(window.location.href); url.searchParams.delete('emailJob'); window.history.replaceState(null, '', url); }}>Show all messages</button>}
+            <details className="space-y-2 rounded-xl border border-blue-400/20 bg-blue-400/5 p-4">
+              <summary className="cursor-pointer text-sm font-medium">Delivery diagnostics</summary>
               <p className="text-xs text-slate-400">Updates every 5 seconds while this page is visible. Last checked: {checkedAt ? new Date(checkedAt).toLocaleTimeString() : 'Checking…'}</p>
               {state?.owner && health && <>
                 <p className="text-sm">{!state.deliveryEnabled ? 'Delivery is disabled in this deployment.' : health.paused ? `Sending paused: ${health.error_code || 'check SMTP configuration'}.` : health.worker_until && Date.parse(health.worker_until) > Date.now() ? 'Worker lease is active. It may be processing the queue.' : 'Worker is idle.'}</p>
@@ -657,7 +698,7 @@ export function AdminEmailPage({
                 {(!health.last_dispatch_at || Date.now() - Date.parse(health.last_dispatch_at) > 180000) && <p className="text-sm text-amber-200">No recent worker pickup. Check that the Supabase cron job is active and its dispatch URL and secret match Vercel. Queuing a message does not start the worker.</p>}
               </>}
               <p className="text-xs text-slate-400">Queued → sending → accepted by mail server. Retry means another attempt is scheduled; unknown means acceptance could not be confirmed.</p>
-            </section>
+            </details>
             {state?.owner && (
               <label className="flex gap-2 text-sm">
                 <input

@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { decryptPayload } from './emailPolicy.js';
 import { loadAttachments } from './emailAttachments.js';
 import { notificationMail } from './emailNotification.js';
+import { personalizedEmail } from './emailPersonalization.js';
 import {
   allowedTestRecipient,
   classifyMailError,
@@ -71,7 +72,7 @@ export async function dispatchEmail(service: SupabaseClient) {
               job.owner_id,
               message.attachment_ids,
             );
-            mail = {
+            mail = job.payload?.presentation === 'olio-v1' ? personalizedEmail(message.subject, message.html, job.recipient, job.payload.variables) : {
               subject: message.subject,
               html: message.html,
               text: message.plain_text,

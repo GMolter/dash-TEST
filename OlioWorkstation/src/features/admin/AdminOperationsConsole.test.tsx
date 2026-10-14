@@ -9,6 +9,7 @@ vi.mock('./AdminAccessBoundary', () => ({ useAdminAccess: () => accessMock.value
 
 vi.mock('./api', () => ({ loadAdminOverview: vi.fn(), loadAdminResource: vi.fn(), loadAdminUserAccount: vi.fn(), revealAdminField: vi.fn() }));
 vi.mock('./AdminFeaturesPage', () => ({ AdminFeaturesPage: () => <div>Shared feature ideas</div> }));
+vi.mock('./AdminEmailPage', () => ({ AdminEmailPage: () => <div data-testid="email-location">{window.location.search}</div> }));
 vi.mock('./AdminOperationDialog', () => ({ AdminOperationDialog: ({ operation }: { operation: unknown }) => operation ? <output data-testid="operation">{JSON.stringify(operation)}</output> : null }));
 const resources = [
   { key: 'projects', label: 'Projects', group: 'projects', actions: ['update'] },
@@ -27,6 +28,11 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/admin');
   vi.mocked(loadAdminOverview).mockResolvedValue({ isOwner: true, metrics: {}, recentAudit: [], resources });
   vi.mocked(loadAdminResource).mockImplementation(async input => list(input.resource));
+});
+it.each(['contactUser=opaque.account', 'emailJob=job-one'])('preserves email deep links while loading the page: %s', async query => {
+  window.history.replaceState({}, '', '/admin?section=email&' + query);
+  render(<AdminOperationsConsole />);
+  expect(await screen.findByTestId('email-location')).toHaveTextContent(query);
 });
 
 it('uses the shared sidebar and overview for custom admins and hides unassigned areas', async () => {

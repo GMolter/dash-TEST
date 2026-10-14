@@ -1,5 +1,17 @@
 # Email Integration deployment
 
+## Composer refresh (October 13)
+
+For an existing working installation, run `supabase/migrations/20261013170000_email_personalization.sql` in **Supabase → SQL Editor → New query**, then deploy the frontend and API together to Vercel. No new environment variables are required. This migration preserves the existing queue, adds first/last names from signup metadata, and creates the service-only submission function for personalized messages. Missing migration errors stop submission instead of sending unresolved variables.
+
+Use **People → account → Contact User → Send email** to start with that recipient and their account summary. The Email page puts Compose and Drafts first; **More email tools** contains history, scheduling, templates, preferences, and administration. Attachments, scheduling options, and delivery diagnostics are collapsed.
+
+Variables supported in subject and body: `{{firstname}}`, `{{lastname}}`, `{{fullname}}`, `{{email}}`. The composer’s **Personalize…** menu inserts them into the message. Registered users and groups resolve per recipient; external addresses still work without variables. Missing names and unregistered recipients block a personalized preview. Legacy accounts use their existing display name as a fallback. New signups retain separate first and last names as well as the combined display name.
+
+The preview selector shows each recipient’s final message. Name values are signed with the preview and stored with the queue, so a later profile edit does not change a confirmed scheduled message. Manual messages and app-generated notifications use an Olio dark theme and an automatic divider/sign-off matching the supplied reference, with the actual recipient’s address. This is email-safe HTML, rather than an image containing a fixed address. Supabase’s directly configured authentication templates remain managed in Supabase.
+
+After deployment, preview a two-person message using `Hello {{firstname}}`, switch the preview recipient, and confirm their name and footer address change together. Send a test to an address you own. Then test an external address with ordinary text and verify that using a variable with an external address reports a clear error.
+
 The code is prepared locally; deployment, live database changes, secrets, and real email delivery have not been performed by this task. Deploy the frontend and API together. Keep the existing Supabase email delivery in place until the new dispatcher and auth hook have been tested.
 
 ## 1. Database prerequisites and the RLS prompt
