@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { categories, listTickets, loadTicket, markRead, mutateTicket, type Category, type Mutation, type Ticket } from './api';
 import { useSupportRefresh } from './useSupportRefresh';
+import { RequesterSummary } from './RequesterSummary';
 
 const field = 'mt-2 w-full rounded-xl border border-white/20 bg-slate-900 p-3 text-white';
 const button = 'rounded-xl border border-white/20 px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-50';
@@ -85,6 +86,7 @@ function TicketDetail({ id, admin, refreshVersion }: { id: string; admin: boolea
       <h2 className="mt-2 text-2xl font-semibold">{categories[ticket.category]}</h2>
       <p className="mt-2 text-sm text-slate-400">{ticket.requester} · {date(ticket.created_at)}</p>
     </div>{admin && <button className={button} disabled={mutation.busy} onClick={() => { void mutation.run({ action: ticket.status === 'open' ? 'completed' : 'reopened', ticket: id }, () => { void refresh(); }); }}>{ticket.status === 'open' ? 'Mark completed' : 'Reopen ticket'}</button>}</header>
+    {admin && <RequesterSummary key={ticket.user_id} userId={ticket.user_id} fallbackName={ticket.requester} />}
     <div><h3 className="font-medium">Original description</h3><p className="mt-2 whitespace-pre-wrap break-words text-slate-200">{ticket.description}</p></div>
     <ol aria-label="Conversation" className="space-y-4">{events.filter(event => event.kind !== 'created').map(event => <li key={event.id} className="rounded-xl border border-white/10 p-4">
       <p className="text-sm font-medium">{event.author}{event.admin ? ' · Admin' : ' · Requester'} <time className="ml-2 font-normal text-slate-400" dateTime={event.created_at}>{date(event.created_at)}</time></p>
