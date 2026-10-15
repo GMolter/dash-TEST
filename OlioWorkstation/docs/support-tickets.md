@@ -2,11 +2,11 @@
 
 ## Deployment
 
-1. Apply `supabase/migrations/20261014120000_support_tickets.sql` after the existing email migrations, including `20261013150000_owner_notification_copy.sql` and `20261013170000_email_personalization.sql`.
+1. Apply `supabase/migrations/20261014120000_support_tickets.sql` after the existing email migrations, including `20261013150000_owner_notification_copy.sql` and `20261013170000_email_personalization.sql`. Then apply `20261015013000_support_notification_owner_copy.sql` to preserve the existing owner-approved administrative-notification copy for support. The fix does not resend old notifications.
 2. Deploy the Workstation frontend and existing email worker together. No new Vercel function, secrets, bucket, or scheduler is required.
 3. Verify a regular account can submit at `/support`, see its own history, and reply while a ticket is open. Another regular account must not see it, including through a copied link.
 4. Verify both an owner and a delegated application admin can open `/admin?section=support`, reply, complete, and reopen tickets. Reading as one admin must not clear another admin's unread badge.
-5. Admins enable **Support tickets and user replies** under **Email → My notifications**. It defaults off. User reply/status notifications are transactional and go to the current verified account email.
+5. Admins enable **Support tickets and user replies** under **Email → My notifications**. It defaults off. User reply/status notifications are transactional and go to the current verified account email. The existing owner-only copy from `gavin@olio.one` to `gmolter8@gmail.com` also applies to subscribed administrative support notifications; both addresses are checked before delivery, and revocation or unsubscribe disables the copy.
 6. With the existing email scheduler and delivery enabled, verify notification links and delivery history using test accounts. Respect the existing recipient allowlist during staging. Then verify the normal production delivery configuration from `email-integration-deployment.md`.
 
 Ticket data and notification outbox entries commit together. SMTP failures do not roll back tickets. Existing queue retry/paused/uncertain-delivery rules apply; inspect Admin → Email for failures. Support emails include a ticket reference and activity summary, never the conversation body. Email replies are not ingested.

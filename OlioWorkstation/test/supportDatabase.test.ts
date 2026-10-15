@@ -53,6 +53,7 @@ beforeAll(async () => {
   await db.exec(`grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;
   create function public.current_account_is_allowed() returns boolean language sql stable security definer as $$select not exists(select 1 from public.account_ban_state where user_id=auth.uid() and banned_until>now())$$;`);
   await db.exec(readFileSync('supabase/migrations/20261014120000_support_tickets.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261015013000_support_notification_owner_copy.sql', 'utf8'));
 }, 30000);
 beforeEach(async () => {
   await db.exec(`reset role; truncate public.email_attempts,public.email_jobs,public.email_messages,public.email_drafts,public.email_attachments,public.email_events,public.email_preferences,public.email_cooldowns,public.admin_audit_log,public.admin_permission_grants,public.account_ban_state,public.profiles,auth.users cascade;
@@ -166,4 +167,27 @@ it('paginates own history, filters completed tickets, and rejects anonymous call
   expect((await scalar("select public.support_list(false,'completed',0) as value") as {total:number}).total).toBe(1);
   await db.exec('reset role; set role anon');
   await expect(scalar('select public.support_list() as value')).rejects.toThrow(/permission denied/);
+});
+it('copies support notifications to the approved owner address once and rechecks both addresses', async () => {
+  await db.query('update auth.users set email=$1 where id=$2', ['gavin@olio.one', owner]);
+  await db.query('select public.email_preferences_save($1,$1,$2)', [owner, { signup:false, organization:false, review:false, failure:false, support:true }]);
+  await setupUser();
+  const ticket = await mutate('created', null, 'A new request');
+  await db.exec('reset role; select public.email_expand_events(); select public.email_expand_events();');
+  const jobs = (await db.query<{recipient:string;event_target:string}>("select recipient,event_target from public.email_jobs where event_type='support' order by recipient")).rows;
+  expect(jobs.map(job => job.recipient)).toEqual(['gavin@olio.one', 'gmolter8@gmail.com']);
+  for (const job of jobs) expect(await scalar('select public.support_email_allowed($1,$2,$3,true) as value', [owner,job.event_target,job.recipient])).toBe(true);
+  expect(await scalar('select public.support_email_allowed($1,$2,$3,true) as value', [owner,jobs[0].event_target,'unapproved@example.com'])).toBe(false);
+  await db.query('select public.email_worker_lock($1)', [worker]);
+  const first = await db.query<{recipient:string}>('select recipient from public.email_claim($1,false,true,100)', [worker]);
+  const second = await db.query<{recipient:string}>('select recipient from public.email_claim($1,false,true,100)', [worker]);
+  expect([...first.rows,...second.rows].map(row => row.recipient).sort()).toEqual(['gavin@olio.one','gmolter8@gmail.com']);
+  await db.query('update public.profiles set app_owner=false where id=$1', [owner]);
+  expect(await scalar('select public.support_email_allowed($1,$2,$3,true) as value', [owner,jobs[0].event_target,'gmolter8@gmail.com'])).toBe(false);
+  expect(await scalar('select public.support_email_allowed($1,$2,$3,true) as value', [owner,jobs[0].event_target,'gavin@olio.one'])).toBe(true);
+  await db.query('update public.email_preferences set support=false where user_id=$1', [owner]);
+  expect(await scalar('select public.support_email_allowed($1,$2,$3,true) as value', [owner,jobs[0].event_target,'gavin@olio.one'])).toBe(false);
+  await actor(admin); await mutate('reply',ticket,'Reply to the requester');
+  await db.exec('reset role; select public.email_expand_events()');
+  expect((await db.query("select recipient from public.email_jobs where event_type='support_user'")).rows).toEqual([{recipient:'user@example.com'}]);
 });
