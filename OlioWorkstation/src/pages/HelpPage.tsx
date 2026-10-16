@@ -1,10 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowRight, Search, X, Compass, LayoutGrid, FolderOpen, Link2, SlidersHorizontal } from 'lucide-react';
 import { ArticleRow, HelpShell } from '../components/HelpCenter';
 import { helpTopics, topicFor, articleHref, type HelpSummary } from '../lib/helpCenter';
 
 const icons = [Compass, LayoutGrid, FolderOpen, Link2, SlidersHorizontal];
-export function HelpPage() {
+export function HelpPage({ supportContent }: { supportContent?: ReactNode }) {
+  const readSupportView = () => window.location.pathname === '/support' || new URLSearchParams(window.location.search).get('section') === 'support' || new URLSearchParams(window.location.search).has('ticket');
+  const [supportView, setSupportView] = useState(readSupportView);
+  useEffect(() => {
+    const onBack = () => setSupportView(readSupportView());
+    window.addEventListener('popstate', onBack);
+    return () => window.removeEventListener('popstate', onBack);
+  }, []);
+  const selectView = (support: boolean) => {
+    if (support === supportView) return;
+    window.history.pushState({}, '', support ? '/help?section=support' : '/help');
+    setSupportView(support);
+  };
   const [articles, setArticles] = useState<HelpSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -30,6 +42,11 @@ export function HelpPage() {
   }), [articles, query, topic]);
   const featured = ['getting-started', 'home-dashboard', 'plugins-and-classdash'].map(slug => articles.find(article => article.slug === slug)).filter((article): article is HelpSummary => !!article);
   return <HelpShell><main id="help-main" className="help-home">
+    <nav className="help-filters" aria-label="Help Center sections">
+      <button aria-pressed={!supportView} onClick={() => selectView(false)}>Help articles</button>
+      <button aria-pressed={supportView} onClick={() => selectView(true)}>Contact support</button>
+    </nav>
+    {supportView ? (supportContent || <section className="help-state"><h1>Contact support</h1><p>Sign in to create a ticket and follow replies from our team.</p><a href="/support">Sign in to contact support</a></section>) : <>
     <section className="help-hero">
       <div className="help-eyebrow"><span /> A GUIDE TO YOUR WORKSPACE</div>
       <h1>Find your way.<br /><span>Make it yours.</span></h1>
@@ -49,6 +66,7 @@ export function HelpPage() {
       })}</div>}
     </section>
     <section className="help-bottom-note"><Compass size={25} /><div><h2>A good place to start</h2><p>Pick a tool in your workspace, then use these guides to make it work for you.</p></div><a href="/">Open Olio <ArrowRight size={16} /></a></section>
+    </>}
   </main></HelpShell>;
 }
 function BookMark() { return <span className="help-orbit-center"><Compass size={48} strokeWidth={1} /></span>; }

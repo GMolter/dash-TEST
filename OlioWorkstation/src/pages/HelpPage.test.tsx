@@ -6,11 +6,11 @@ const articles = [
   { id: '2', slug: 'project-board', title: 'Project Board', summary: 'Move cards between lanes' },
   { id: '3', slug: 'custom-guide', title: 'Custom guide', summary: 'A guide from your team' },
 ];
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); window.history.replaceState({}, '', '/help'); });
 it('browses every guide, filters topics, and searches visible results', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ articles }) }));
   render(<HelpPage />);
-  expect(screen.getByRole('link', { name: 'Contact support' })).toHaveAttribute('href', '/support');
+  expect(screen.getByRole('link', { name: 'Contact support' })).toHaveAttribute('href', '/help?section=support');
   expect(await screen.findByRole('link', { name: /Custom guide/ })).toHaveAttribute('href', '/help/article/custom-guide');
   fireEvent.click(screen.getByRole('button', { name: 'Projects' }));
   expect(screen.getByRole('link', { name: /Project Board/ })).toBeInTheDocument();
@@ -29,4 +29,35 @@ it('shows a retry action when the server fails', async () => {
   const alert = await screen.findByRole('alert');
   fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
   expect(await screen.findByRole('link', { name: /Quick Links/ })).toBeInTheDocument();
+});
+
+it('switches between articles and embedded support and responds to history navigation', async () => {
+  window.history.replaceState({}, '', '/help');
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ articles }) }));
+  render(<HelpPage supportContent={<section>Support ticket workspace</section>} />);
+  expect(await screen.findByRole('link', { name: /Custom guide/ })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Contact support' }));
+  expect(screen.getByText('Support ticket workspace')).toBeVisible();
+  expect(window.location.search).toBe('?section=support');
+  fireEvent.click(screen.getByRole('button', { name: 'Help articles' }));
+  expect(screen.queryByText('Support ticket workspace')).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Custom guide/ })).toBeVisible();
+  window.history.replaceState({}, '', '/help?section=support&ticket=one');
+  fireEvent.popState(window);
+  expect(screen.getByText('Support ticket workspace')).toBeVisible();
+});
+it.each(['/support?ticket=one', '/help?section=support&ticket=one'])('opens support deep links within the Help Center: %s', async path => {
+  window.history.replaceState({}, '', path);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ articles }) }));
+  render(<HelpPage supportContent={<section>Support ticket workspace</section>} />);
+  expect(screen.getByText('Support ticket workspace')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Contact support' })).toHaveAttribute('aria-pressed', 'true');
+});
+it('keeps articles public and asks signed-out visitors to sign in for tickets', async () => {
+  window.history.replaceState({}, '', '/help?section=support');
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ articles }) }));
+  render(<HelpPage />);
+  expect(screen.getByRole('link', { name: 'Sign in to contact support' })).toHaveAttribute('href', '/support');
+  fireEvent.click(screen.getByRole('button', { name: 'Help articles' }));
+  expect(await screen.findByRole('link', { name: /Custom guide/ })).toBeVisible();
 });

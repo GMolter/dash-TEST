@@ -7,7 +7,7 @@ const field = 'mt-2 w-full rounded-xl border border-white/20 bg-slate-900 p-3 te
 const button = 'rounded-xl border border-white/20 px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-50';
 const panel = 'rounded-2xl border border-white/10 bg-slate-900/80 p-5 sm:p-7';
 const date = (value: string) => new Date(value).toLocaleString();
-const ticketUrl = (admin: boolean, id?: string) => `${admin ? '/admin?section=support' : '/support'}${id ? `${admin ? '&' : '?'}ticket=${encodeURIComponent(id)}` : ''}`;
+const ticketUrl = (admin: boolean, id?: string) => `${admin ? '/admin?section=support' : '/help?section=support'}${id ? `&ticket=${encodeURIComponent(id)}` : ''}`;
 
 // Retain the request identifier when retrying the same operation after a lost response.
 function useMutation() {
@@ -109,7 +109,7 @@ function TicketDetail({ id, admin, refreshVersion }: { id: string; admin: boolea
   </section>;
 }
 
-export function SupportPage({ admin = false, refreshVersion = 0 }: { admin?: boolean; refreshVersion?: number }) {
+export function SupportPage({ admin = false, refreshVersion = 0, embedded = false }: { admin?: boolean; refreshVersion?: number; embedded?: boolean }) {
   const [selected, setSelected] = useState(() => new URLSearchParams(window.location.search).get('ticket'));
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<string>();
@@ -138,9 +138,9 @@ export function SupportPage({ admin = false, refreshVersion = 0 }: { admin?: boo
   const select = (id?: string) => {
     window.history.pushState({}, '', ticketUrl(admin, id)); setSelected(id ?? null); setCreating(false);
   };
-  const Container = admin ? 'section' : 'main';
+  const Container = admin || embedded ? 'section' : 'main';
   const Heading = admin ? 'h2' : 'h1';
-  return <Container className={admin ? 'space-y-6' : 'relative z-10 mx-auto min-h-screen max-w-4xl space-y-6 px-5 pb-16 pt-28 text-white'}>
+  return <Container className={admin || embedded ? 'space-y-6 text-white' : 'relative z-10 mx-auto min-h-screen max-w-4xl space-y-6 px-5 pb-16 pt-28 text-white'}>
     <header className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm text-violet-300">Olio support</p><Heading className="mt-2 text-3xl font-semibold">{admin ? 'Support inbox' : 'Contact support'}</Heading><p className="mt-2 text-slate-300">{admin ? 'Help people across Olio Workstation.' : 'Get help and follow your open and completed tickets.'}</p></div>
       {!admin && <button className={`${button} bg-violet-600`} onClick={() => { setCreating(true); setSelected(null); }}>New ticket</button>}
     </header>

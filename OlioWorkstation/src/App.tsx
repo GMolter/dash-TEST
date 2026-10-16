@@ -469,7 +469,7 @@ function App() {
     if (view.type === 'projects-center' || view.type === 'project-dashboard') return '/utilities';
     if (view.type === 'organization') return '/organization';
     if (view.type === 'profile') return '/profile';
-    if (view.type === 'help') return '/help';
+    if (view.type === 'help' || view.type === 'support') return '/help';
     if (view.type === 'help-article') return `/help/article/${view.slug}`;
     if (view.type === 'classdash') return '/classdash';
     return window.location.pathname || '/';
@@ -546,7 +546,7 @@ function App() {
   if (view.type === 'support') {
     if (authLoading) return <div role="status" className="min-h-screen bg-slate-950">Checking sign-in status…</div>;
     if (!user) return <Onboarding />;
-    return <><AnimatedBackground theme={appBackgroundTheme} preset={appBackgroundPreset} />{floatingNavigation}<SupportPage key={user.id} /></>;
+    return <><AnimatedBackground theme={appBackgroundTheme} preset={appBackgroundPreset} />{floatingNavigation}<div className="relative z-10"><HelpPage supportContent={<SupportPage key={user.id} embedded />} /></div></>;
   }
 
   if (view.type === 'help') {
@@ -554,7 +554,7 @@ function App() {
       <>
         <AnimatedBackground theme={appBackgroundTheme} preset={appBackgroundPreset} />
         {floatingNavigation}
-        <div className="relative z-10"><HelpPage /></div>
+        <div className="relative z-10"><HelpPage supportContent={authLoading ? <p role="status">Checking sign-in status…</p> : user ? <SupportPage key={user.id} embedded /> : undefined} /></div>
       </>
     );
   }

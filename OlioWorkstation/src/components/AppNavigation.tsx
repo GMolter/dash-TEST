@@ -21,9 +21,9 @@ type AppNavigationProps = {
 const navigationItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/utilities', label: 'Utilities', icon: Wrench },
-  { path: '/support', label: 'Support', icon: BookOpenText },
-  { path: '/profile', label: 'Profile', icon: UserCircle },
+  { path: '/help', label: 'Help Center', icon: BookOpenText },
   { path: '/organization', label: 'Organization', icon: Building2 },
+  { path: '/profile', label: 'Profile', icon: UserCircle },
 ];
 
 function isActivePath(currentPath: string, itemPath: string) {
@@ -141,7 +141,7 @@ export function AppNavigation({ currentPath, organizationName, isAppAdmin = fals
                     <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${active ? 'bg-indigo-400/15' : 'bg-white/[0.045]'}`}>
                       <Icon className="h-5 w-5" />
                     </span>
-                    <span className="font-medium">{item.label}{item.path === '/support' && <SupportBadge location={currentPath} />}{item.path === '/admin' && <SupportBadge admin location={currentPath} />}</span>
+                    <span className="font-medium">{item.label}{item.path === '/help' && <SupportBadge location={currentPath} />}{item.path === '/admin' && <SupportBadge admin location={currentPath} />}</span>
                   </button>
                 );
               })}

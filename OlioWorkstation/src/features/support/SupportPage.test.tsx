@@ -14,7 +14,8 @@ beforeEach(() => {
   vi.mocked(mutateTicket).mockResolvedValue(ticket.id);
 });
 it('submits category and description, confirms success and links the new ticket', async () => {
-  render(<SupportPage />);
+  render(<main><SupportPage embedded /></main>);
+  expect(screen.getAllByRole('main')).toHaveLength(1);
   fireEvent.click(screen.getByRole('button', { name: 'New ticket' }));
   expect(screen.getByRole('button', { name: 'Submit ticket' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Problem'), { target: { value: 'account' } });
@@ -23,7 +24,7 @@ it('submits category and description, confirms success and links the new ticket'
   fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: 'Submit ticket' }));
   expect(await screen.findByText('Your support ticket has been submitted. An admin will be in contact shortly.')).toBeVisible();
-  expect(screen.getByRole('link', { name: 'View ticket' })).toHaveAttribute('href', '/support?ticket=ticket-one');
+  expect(screen.getByRole('link', { name: 'View ticket' })).toHaveAttribute('href', '/help?section=support&ticket=ticket-one');
   expect(mutateTicket).toHaveBeenCalledWith(expect.objectContaining({ action: 'created', category: 'account', body: 'Please help', emailUpdates: true }));
   expect(await screen.findByText('Cannot open my dashboard')).toBeVisible();
   await waitFor(() => expect(markRead).toHaveBeenCalledWith(ticket.id, 1));
