@@ -36,7 +36,7 @@ it('switches between articles and embedded support and responds to history navig
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ articles }) }));
   render(<HelpPage supportContent={<section>Support ticket workspace</section>} />);
   expect(await screen.findByRole('link', { name: /Custom guide/ })).toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: 'Contact support' }));
+  fireEvent.click(within(screen.getByRole('complementary', { name: 'Need a hand?' })).getByRole('button', { name: 'Contact support' }));
   expect(screen.getByText('Support ticket workspace')).toBeVisible();
   expect(window.location.search).toBe('?section=support');
   fireEvent.click(screen.getByRole('button', { name: 'Help articles' }));
@@ -51,7 +51,7 @@ it.each(['/support?ticket=one', '/help?section=support&ticket=one'])('opens supp
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ articles }) }));
   render(<HelpPage supportContent={<section>Support ticket workspace</section>} />);
   expect(screen.getByText('Support ticket workspace')).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Contact support' })).toHaveAttribute('aria-pressed', 'true');
+  expect(within(screen.getByRole('navigation', { name: 'Help Center sections' })).getByRole('button', { name: 'Contact support' })).toHaveAttribute('aria-pressed', 'true');
 });
 it('keeps articles public and asks signed-out visitors to sign in for tickets', async () => {
   window.history.replaceState({}, '', '/help?section=support');

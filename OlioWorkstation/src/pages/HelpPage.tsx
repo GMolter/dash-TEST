@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, Search, X, Compass, LayoutGrid, FolderOpen, Link2, SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, MessageCircle, Search, X, Compass, LayoutGrid, FolderOpen, Link2, SlidersHorizontal } from 'lucide-react';
 import { ArticleRow, HelpShell } from '../components/HelpCenter';
 import { helpTopics, topicFor, articleHref, type HelpSummary } from '../lib/helpCenter';
 
@@ -48,12 +48,21 @@ export function HelpPage({ supportContent }: { supportContent?: ReactNode }) {
     </nav>
     {supportView ? (supportContent || <section className="help-state"><h1>Contact support</h1><p>Sign in to create a ticket and follow replies from our team.</p><a href="/support">Sign in to contact support</a></section>) : <>
     <section className="help-hero">
+      <div className="help-hero-copy">
       <div className="help-eyebrow"><span /> A GUIDE TO YOUR WORKSPACE</div>
       <h1>Find your way.<br /><span>Make it yours.</span></h1>
       <p>Practical answers for whatever you’re working on.</p>
       <div className="help-search"><Search size={21} aria-hidden="true" /><input aria-label="Search help articles" placeholder="Try “quick links” or “join a team”" value={search} onChange={event => { setSearch(event.target.value); setTopic('all'); }} />{search && <button aria-label="Clear search" onClick={() => setSearch('')}><X size={18} /></button>}</div>
       <div className="help-search-hint">Explore the guides below, or search by tool or task.</div>
-      <div className="help-orbit" aria-hidden="true"><div /><div /><div /><BookMark /></div>
+      </div>
+      <aside className="help-support-card" aria-labelledby="support-card-title">
+        <span className="help-support-icon"><MessageCircle size={24} aria-hidden="true" /></span>
+        <div className="help-eyebrow">HELP FROM OUR TEAM</div>
+        <h2 id="support-card-title">Need a hand?</h2>
+        <p>You don’t have to figure it out alone. Tell us what’s happening and our support team will help.</p>
+        <button onClick={() => selectView(true)}>Contact support <ArrowRight size={18} aria-hidden="true" /></button>
+        <span className="help-support-note">Send a ticket and follow replies here.</span>
+      </aside>
     </section>
     {!query && topic === 'all' && !loading && !error && featured.length > 0 && <section className="help-featured" aria-label="Start here">{featured.map((article) => <a key={article.id} href={articleHref(article.slug)}><span className="help-eyebrow">{article.slug === 'getting-started' ? 'NEW TO OLIO' : article.slug === 'home-dashboard' ? 'MAKE IT YOURS' : 'PLAN YOUR DAY'}</span><strong>{article.title}</strong><span>{article.summary}</span><ArrowRight size={20} aria-hidden="true" /></a>)}</section>}
     <section className="help-library" aria-labelledby="guide-heading">
@@ -69,4 +78,3 @@ export function HelpPage({ supportContent }: { supportContent?: ReactNode }) {
     </>}
   </main></HelpShell>;
 }
-function BookMark() { return <span className="help-orbit-center"><Compass size={48} strokeWidth={1} /></span>; }
