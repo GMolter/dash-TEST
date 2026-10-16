@@ -14,7 +14,7 @@ export type SupportEvent = {
   id: string; sequence: number; author: string; admin: boolean;
   kind: 'created' | 'reply' | 'completed' | 'reopened'; body: string; created_at: string;
 };
-export type Mutation = { request: string; action: SupportEvent['kind']; ticket?: string; category?: Category; body?: string };
+export type Mutation = { request: string; action: SupportEvent['kind']; ticket?: string; category?: Category; body?: string; emailUpdates?: boolean };
 export const supportChanged = () => window.dispatchEvent(new Event('support-changed'));
 function failure(error: { message: string }): Error {
   if (error.message.includes('TICKET_COMPLETED')) return new Error('This ticket has been completed. Your reply was not sent.');
@@ -51,6 +51,7 @@ export async function mutateTicket(input: Mutation): Promise<string> {
   const { data, error } = await supabase.rpc('support_mutate', {
     p_request: input.request, p_action: input.action, p_ticket: input.ticket ?? null,
     p_category: input.category ?? null, p_body: input.body ?? '',
+    ...(input.action === 'created' ? { p_email_updates: input.emailUpdates ?? false } : {}),
   });
   if (error) throw failure(error);
   supportChanged();

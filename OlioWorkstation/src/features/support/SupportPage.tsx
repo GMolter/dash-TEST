@@ -32,10 +32,11 @@ function useMutation() {
 function NewTicket({ onCreated }: { onCreated: (id: string) => void }) {
   const [category, setCategory] = useState<Category | ''>('');
   const [description, setDescription] = useState('');
+  const [emailUpdates, setEmailUpdates] = useState(false);
   const { busy, error, run } = useMutation();
   return <form className={panel} onSubmit={event => {
     event.preventDefault();
-    if (category && description.trim()) void run({ action: 'created', category, body: description.trim() }, onCreated);
+    if (category && description.trim()) void run({ action: 'created', category, body: description.trim(), emailUpdates }, onCreated);
   }}>
     <h2 className="text-xl font-semibold">How can we help?</h2>
     <p className="mt-2 text-sm text-slate-300">Choose a problem and tell us what happened. Please don’t include passwords or other secrets.</p>
@@ -44,6 +45,10 @@ function NewTicket({ onCreated }: { onCreated: (id: string) => void }) {
       <label className="block">Problem<select required className={field} value={category} onChange={e => setCategory(e.target.value as Category)}><option value="">Select a problem</option>{Object.entries(categories).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label className="block">Description<textarea required maxLength={5000} rows={6} className={field} value={description} onChange={e => setDescription(e.target.value)} /></label>
       <p className="text-xs text-slate-400">{description.length.toLocaleString()} / 5,000 characters</p>
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-4">
+        <input type="checkbox" checked={emailUpdates} onChange={event => setEmailUpdates(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-violet-500" aria-describedby="support-email-help" />
+        <span><span className="block font-medium">Email me updates about this ticket</span><span id="support-email-help" className="mt-1 block text-sm text-slate-400">Receive an email when an admin replies, completes, or reopens this ticket. You can always view updates in Contact support.</span></span>
+      </label>
       <button className={`${button} bg-violet-600`} disabled={!category || !description.trim()}>{busy ? 'Submitting…' : 'Submit ticket'}</button>
     </fieldset>
   </form>;

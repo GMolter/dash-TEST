@@ -55,6 +55,7 @@ beforeAll(async () => {
   await db.exec(readFileSync('supabase/migrations/20261014120000_support_tickets.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20261015013000_support_notification_owner_copy.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20261015170000_remove_owner_notification_copies.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261016120000_support_ticket_email_opt_in.sql', 'utf8'));
 }, 30000);
 beforeEach(async () => {
   await db.exec(`reset role; truncate public.email_attempts,public.email_jobs,public.email_messages,public.email_drafts,public.email_attachments,public.email_events,public.email_preferences,public.email_cooldowns,public.admin_audit_log,public.admin_permission_grants,public.account_ban_state,public.profiles,auth.users cascade;
@@ -206,4 +207,36 @@ it('removes all administrative copies and cancels unsent legacy copies', async (
   await db.query('select public.email_worker_lock($1)', [worker]);
   for (let i=0;i<6;i++) await db.query('select * from public.email_claim($1,false,true,100)', [worker]);
   expect(await scalar("select status as value from public.email_jobs where dedupe_key='late:owner-copy'")).toBe('cancelled');
+});
+it('persists ticket email choices and suppresses all requester updates for opt-outs', async () => {
+  // The preceding legacy cleanup test reinstalls the prior email functions.
+  const migration = readFileSync('supabase/migrations/20261016120000_support_ticket_email_opt_in.sql', 'utf8');
+  await db.exec(migration.slice(migration.indexOf('create or replace function public.support_email_allowed'), migration.lastIndexOf('commit;')));
+  await setupUser();
+  const request = randomUUID();
+  const args = [request, 'created', null, 'account', 'No email please', false];
+  const ticket = await scalar('select public.support_mutate($1,$2,$3,$4,$5,$6) as value', args);
+  expect(await scalar('select public.support_mutate($1,$2,$3,$4,$5,$6) as value', args)).toBe(ticket);
+  await expect(scalar('select public.support_mutate($1,$2,$3,$4,$5,$6) as value', [...args.slice(0,5),true])).rejects.toThrow('REQUEST_CONFLICT');
+  expect(await scalar('select email_updates as value from public.support_tickets where id=$1', [ticket])).toBe(false);
+  await actor(admin);
+  await mutate('reply', ticket, 'An update');
+  await mutate('completed', ticket);
+  await mutate('reopened', ticket);
+  await db.exec('reset role; select public.email_expand_events()');
+  expect(await scalar("select count(*) as value from public.email_events where event_type='support_user'")).toBe(0);
+  const event = await scalar("select id as value from public.support_events where ticket_id=$1 and kind='reply'", [ticket]);
+  expect(await scalar('select public.support_email_allowed($1,$2,$3,false) as value', [user,event,'user@example.com'])).toBe(false);
+  // A stale outbox event must also respect the stored preference.
+  await db.query("insert into public.email_events(event_type,target_id,dedupe_key) values('support_user',$1,'stale-opt-out')", [event]);
+  await db.exec('select public.email_expand_events()');
+  expect(await scalar("select count(*) as value from public.email_jobs where event_type='support_user'")).toBe(0);
+  await actor(user);
+  const optedIn = await scalar('select public.support_mutate($1,$2,$3,$4,$5,$6) as value', [randomUUID(),'created',null,'other','Email please',true]);
+  await actor(admin);
+  await mutate('reply', optedIn, 'An update');
+  await mutate('completed', optedIn);
+  await mutate('reopened', optedIn);
+  await db.exec('reset role; select public.email_expand_events()');
+  expect(await scalar("select count(*) as value from public.email_jobs where event_type='support_user'")).toBe(3);
 });

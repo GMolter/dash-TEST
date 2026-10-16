@@ -19,10 +19,12 @@ it('submits category and description, confirms success and links the new ticket'
   expect(screen.getByRole('button', { name: 'Submit ticket' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Problem'), { target: { value: 'account' } });
   fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Please help' } });
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+  fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: 'Submit ticket' }));
   expect(await screen.findByText('Your support ticket has been submitted. An admin will be in contact shortly.')).toBeVisible();
   expect(screen.getByRole('link', { name: 'View ticket' })).toHaveAttribute('href', '/support?ticket=ticket-one');
-  expect(mutateTicket).toHaveBeenCalledWith(expect.objectContaining({ action: 'created', category: 'account', body: 'Please help' }));
+  expect(mutateTicket).toHaveBeenCalledWith(expect.objectContaining({ action: 'created', category: 'account', body: 'Please help', emailUpdates: true }));
   expect(await screen.findByText('Cannot open my dashboard')).toBeVisible();
   await waitFor(() => expect(markRead).toHaveBeenCalledWith(ticket.id, 1));
 });
@@ -35,9 +37,11 @@ it('preserves input and request ID when retrying a lost submission response', as
   fireEvent.click(screen.getByRole('button', { name: 'Submit ticket' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Connection lost');
   expect(screen.getByLabelText('Description')).toHaveValue('Keep my text');
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
   fireEvent.click(screen.getByRole('button', { name: 'Submit ticket' }));
   await waitFor(() => expect(mutateTicket).toHaveBeenCalledTimes(2));
   expect(vi.mocked(mutateTicket).mock.calls[0][0].request).toBe(vi.mocked(mutateTicket).mock.calls[1][0].request);
+  expect(vi.mocked(mutateTicket).mock.calls[1][0].emailUpdates).toBe(false);
 });
 it('loads completed deep links read-only for users', async () => {
   window.history.replaceState(null, '', '/support?ticket=ticket-one');
@@ -81,6 +85,9 @@ it('supports opening and completing the new-ticket form by keyboard', async () =
   await user.selectOptions(screen.getByLabelText('Problem'), 'other');
   await user.tab();
   await user.keyboard('Keyboard request');
+  await user.tab();
+  expect(screen.getByRole('checkbox')).toHaveFocus();
+  await user.keyboard(' ');
   await user.tab();
   expect(screen.getByRole('button', { name: 'Submit ticket' })).toHaveFocus();
   await user.keyboard('{Enter}');
