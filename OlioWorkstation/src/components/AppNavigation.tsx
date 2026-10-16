@@ -21,10 +21,9 @@ type AppNavigationProps = {
 const navigationItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/utilities', label: 'Utilities', icon: Wrench },
-  { path: '/organization', label: 'Organization', icon: Building2 },
+  { path: '/support', label: 'Support', icon: BookOpenText },
   { path: '/profile', label: 'Profile', icon: UserCircle },
-  { path: '/support', label: 'Contact support', icon: BookOpenText },
-  { path: '/help', label: 'Help Center', icon: BookOpenText },
+  { path: '/organization', label: 'Organization', icon: Building2 },
 ];
 
 function isActivePath(currentPath: string, itemPath: string) {
@@ -124,7 +123,7 @@ export function AppNavigation({ currentPath, organizationName, isAppAdmin = fals
             </div>
 
             <nav className="mt-7 space-y-2" aria-label="Primary navigation">
-              {[...navigationItems, ...(isAppAdmin ? [{ path: '/admin', label: 'Admin panel', icon: Shield }] : [])].map((item) => {
+              {[...navigationItems, ...(isAppAdmin ? [{ path: '/admin', label: 'Admin', icon: Shield }] : [])].map((item) => {
                 const Icon = item.icon;
                 const active = isActivePath(currentPath, item.path);
                 return (

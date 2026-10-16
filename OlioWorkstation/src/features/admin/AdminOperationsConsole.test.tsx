@@ -41,7 +41,7 @@ it('preserves support deep links and grants the inbox to delegated admins withou
   vi.mocked(loadAdminOverview).mockResolvedValue({ isOwner: false, metrics: {}, recentAudit: [], resources: [] });
   render(<AdminOperationsConsole />);
   expect(await screen.findByTestId('support-location')).toHaveTextContent('ticket=ticket-one');
-  expect(screen.getByRole('button', { name: 'Support inbox' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Support Inbox' })).toBeVisible();
   expect(loadAdminResource).not.toHaveBeenCalled();
 });
 
@@ -54,35 +54,38 @@ it('uses the shared sidebar and overview for custom admins and hides unassigned 
   expect(within(navigation).queryByRole('button', { name: 'People' })).not.toBeInTheDocument();
   expect(within(navigation).queryByRole('link', { name: /Supabase/ })).not.toBeInTheDocument();
   await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace tools' }));
-  await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace data' }));
+  await userEvent.click(within(screen.getByRole('region', { name: 'Workspace tools' })).getByRole('button', { name: 'Workspace data' }));
   expect(await screen.findByText('projects example')).toBeVisible();
   expect(loadAdminResource).toHaveBeenCalledWith(expect.objectContaining({ resource: 'projects' }));
   expect(within(navigation).queryByRole('button', { name: 'Help Center' })).not.toBeInTheDocument();
 });
 
-it('keeps deployment links outside the collapsed workspace tools and opens them in new tabs', async () => {
+it('opens the tools page with deployment links and tool destinations', async () => {
   render(<AdminOperationsConsole />);
   const navigation = await screen.findByRole('navigation', { name: 'Admin navigation' });
-  expect(within(navigation).getByRole('button', { name: 'Workspace tools' })).toHaveAttribute('aria-expanded', 'false');
-  const supabase = within(navigation).getByRole('link', { name: /Supabase/ });
+  expect(within(navigation).getAllByRole('button').map(button => button.textContent)).toEqual(['Overview', 'People', 'Support Inbox', 'Pending Reviews', 'Workspace tools']);
+  await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace tools' }));
+  expect(window.location.search).toBe('?section=tools');
+  expect(loadAdminResource).not.toHaveBeenCalled();
+  const supabase = within(screen.getByRole('region', { name: 'Workspace tools' })).getByRole('link', { name: /Supabase/ });
   expect(supabase).toHaveAttribute('href', 'https://supabase.com/dashboard/project/zttlbebkdqlgwtomnrtr');
   expect(supabase).toHaveAttribute('target', '_blank');
   expect(supabase).toHaveAttribute('rel', 'noopener noreferrer');
-  const vercel = within(navigation).getByRole('link', { name: /Vercel/ });
+  const vercel = within(screen.getByRole('region', { name: 'Workspace tools' })).getByRole('link', { name: /Vercel/ });
   expect(vercel).toHaveAttribute('href', 'https://vercel.com/gmolter8-gmailcoms-projects/dash-test-51zf/deployments');
   expect(vercel).toHaveAttribute('target', '_blank');
   await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace tools' }));
-  await userEvent.click(within(navigation).getByRole('button', { name: 'New features' }));
+  await userEvent.click(within(screen.getByRole('region', { name: 'Workspace tools' })).getByRole('button', { name: 'New features' }));
   expect(await screen.findByText('Shared feature ideas')).toBeVisible();
   expect(loadAdminResource).not.toHaveBeenCalled();
   expect(window.location.search).toBe('?section=features');
 });
 
-it('opens the New features deep link with workspace tools expanded', async () => {
+it('opens the New features deep link with workspace tools active', async () => {
   window.history.replaceState({}, '', '/admin?section=features');
   render(<AdminOperationsConsole />);
   expect(await screen.findByText('Shared feature ideas')).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Workspace tools' })).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByRole('button', { name: 'Workspace tools' })).toHaveAttribute('aria-current', 'page');
   expect(loadAdminResource).not.toHaveBeenCalled();
 });
 
@@ -91,10 +94,10 @@ it('moves Activity into Workspace tools and replaces the three navigation entrie
   const navigation = await screen.findByRole('navigation', { name: 'Admin navigation' });
   expect(within(navigation).queryByRole('button', { name: 'Activity', exact: true })).not.toBeInTheDocument();
   await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace tools' }));
-  expect(within(navigation).getByRole('button', { name: 'Activity', exact: true })).toBeVisible();
-  expect(within(navigation).getByRole('button', { name: 'Help Center' })).toBeVisible();
+  expect(within(screen.getByRole('region', { name: 'Workspace tools' })).getByRole('button', { name: 'Activity', exact: true })).toBeVisible();
+  expect(within(screen.getByRole('region', { name: 'Workspace tools' })).getByRole('button', { name: 'Help Center' })).toBeVisible();
   expect(within(navigation).queryByRole('button', { name: /^(Projects|Content|Utilities|Platform)$/ })).not.toBeInTheDocument();
-  await userEvent.click(within(navigation).getByRole('button', { name: 'Workspace data' }));
+  await userEvent.click(within(screen.getByRole('region', { name: 'Workspace tools' })).getByRole('button', { name: 'Workspace data' }));
   expect(await screen.findByRole('navigation', { name: 'Workspace collections' })).toBeVisible();
   expect(await screen.findByRole('button', { name: /projects example View details/ })).toBeVisible();
 });
@@ -142,4 +145,16 @@ it('clears record selection and search when switching collections and ignores a 
   expect(await screen.findByRole('button', { name: /pastes example View details/ })).toBeVisible();
   expect(screen.getByLabelText('Search records')).toHaveValue('');
   expect(screen.queryByRole('region', { name: 'View Quick links' })).not.toBeInTheDocument();
+});
+
+it('opens the tools page directly for a delegated admin without loading records', async () => {
+  window.history.replaceState({}, '', '/admin?section=tools');
+  accessMock.value = { appOwner: false, preset: 'custom', permissions: [] };
+  vi.mocked(loadAdminOverview).mockResolvedValue({ isOwner: false, metrics: {}, recentAudit: [], resources: [resources[0]] });
+  render(<AdminOperationsConsole />);
+  const tools = await screen.findByRole('region', { name: 'Workspace tools' });
+  expect(within(tools).getByRole('button', { name: 'Workspace data' })).toBeVisible();
+  expect(within(tools).queryByRole('button', { name: 'Help Center' })).not.toBeInTheDocument();
+  expect(within(tools).queryByRole('link', { name: /Supabase/ })).not.toBeInTheDocument();
+  expect(loadAdminResource).not.toHaveBeenCalled();
 });
